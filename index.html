@@ -31,7 +31,7 @@
   *{-webkit-tap-highlight-color:transparent}
   /* 1) 아래로 당겨 새로고침 · 화면 끌림 막기 */
   html{height:100%;overflow:hidden;overscroll-behavior:none}
-  body{height:100%;overflow-y:auto;overflow-x:hidden;overscroll-behavior:none}
+  body{height:100%;height:100dvh;overflow-y:auto;overflow-x:hidden;overscroll-behavior:none}
   .side .spacer{flex:1}
   .nav-btn .flymark{display:none;width:34px;height:34px;stroke:none;fill:currentColor;color:var(--ink)}
   .nav-btn.fly .flymark{display:block}
@@ -2515,8 +2515,24 @@ if(Y.run) setTimeout(()=>toast('열품타 기록이 켜진 채로 남아 있어�
     else return;
     set(rubber(over));
   },{passive:true});
-  addEventListener('touchend',release,{passive:true});
-  addEventListener('touchcancel',release,{passive:true});
+  let touching=false;
+  addEventListener('touchstart',()=>{touching=true},{passive:true});
+  addEventListener('touchend',()=>{touching=false;release()},{passive:true});
+  addEventListener('touchcancel',()=>{touching=false;release()},{passive:true});
+  // 관성(손 뗀 뒤)으로 맨 위·맨 아래에 부딪히면 속도만큼 튕김
+  let pst=B.scrollTop, pt=performance.now(), vel=0;
+  B.addEventListener('scroll',()=>{
+    const st=B.scrollTop, t=performance.now(), max=B.scrollHeight-B.clientHeight;
+    const v=(st-pst)/Math.max(1,t-pt); vel=.6*v+.4*vel;
+    const hitTop=st<=0&&pst>0, hitBot=st>=max-1&&pst<max-1;
+    pst=st; pt=t;
+    if(touching||over||blocked()||!(hitTop||hitBot)||Math.abs(vel)<.25) return;
+    const v2=view(); if(!v2||!v2.animate) return;
+    const d=Math.min(70,Math.abs(vel)*28)*(hitTop?1:-1);
+    v2.animate([{transform:'translate3d(0,0,0)'},{transform:`translate3d(0,${d}px,0)`,offset:.32,easing:'cubic-bezier(.2,.7,.3,1)'},{transform:'translate3d(0,0,0)'}],
+      {duration:620,easing:'cubic-bezier(.3,1.25,.4,1)'});
+    vel=0;
+  },{passive:true});
   addEventListener('wheel',e=>{
     if(e.ctrlKey||blocked()||Math.abs(e.deltaY)<Math.abs(e.deltaX))return;
     if(!(over||(e.deltaY<0&&atTop())||(e.deltaY>0&&atBot())))return;
