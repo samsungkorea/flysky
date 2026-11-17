@@ -2624,13 +2624,12 @@ function reconcile(){
       if(me.since>0&&me.since<=now&&Math.abs(me.since-Y.run.startedAt)>5000&&now-me.since<864e5){Y.run.startedAt=me.since;saveY()}   // 서버 시작 시각에 맞춤
       return}
     if(me.paused||now-Y.run.startedAt<60000) return;          // 일시정지거나 막 시작했으면 기다림
-    if(++miss<2) return;                                       // 두 번 연속 끊겨 있으면
-    const recent=(Y.log||[]).filter(x=>x.e==='auto-restart'&&now-x.t<30*60000);
-    if(recent.length&&now-recent[recent.length-1].t<5*60000) return;   // 5분 안에 또 재시작하지 않음
-    if(recent.length>=3){if(!reconcile.warned){reconcile.warned=1;toast('열품타 기록이 계속 끊겨요. 열품타 앱에서 상태를 확인해 주세요')}return}
-    miss=0; fixing=true; const subj=Y.run.subject;
-    ylog('server-stopped',{s:subj}); Y.run=null;
-    enqueue(()=>studyStart(subj,true)).finally(()=>{fixing=false});   // 바로 다시 시작
+    if(++miss<2) return;                                       // 두 번 연속 멈춰 있으면
+    /* 열품타처럼 '하나의 기기'로: 다른 기기 · 열품타 앱에서 멈췄으면 여기서도 멈춤 */
+    miss=0; ylog('server-stopped',{s:Y.run.subject});
+    Y.run=null; Y.runAt=now; saveY();
+    toast('다른 기기에서 공부를 멈췄어요');
+    loadDay().then(render,()=>render());
   }else if(me.on&&me.since>0&&me.since<=now&&now-me.since<864e5){
     Y.run={startedAt:me.since,subject:me.subj||curSubj()}; ylog('adopt',{s:Y.run.subject}); saveY();   // 열품타 앱 등에서 시작한 공부
   }
@@ -2912,7 +2911,7 @@ function memberDetail(i){
       <span class="st2 ${m.on?'on':m.paused?'pause':'off'}">${state}</span>
     </div>
     ${rows.map(([k,v,big])=>`<div class="mdstat"><span>${k}</span><b${big?'':' class="sm"'}>${esc(v)}</b></div>`).join('')}
-    ${me&&(Y.log||[]).length?`<details class="mdraw"><summary>기록 내역</summary><pre>${esc((Y.log||[]).slice().reverse().map(x=>{const t=new Date(x.t);return `${t.getMonth()+1}/${t.getDate()} ${pad(t.getHours())}:${pad(t.getMinutes())}:${pad(t.getSeconds())}  ${({start:'시작','auto-restart':'끊김 → 자동 재시작',stop:'정지','remote-start':'다른 기기에서 시작','remote-stop':'다른 기기에서 정지','server-stopped':'서버에서 끊김 발견',adopt:'열품타 앱 기록 반영','relogin-try':'로그인 만료 → 재로그인 시도',relogin:'재로그인 성공',expired:'로그인 만료'})[x.e]||x.e}${x.s?' · '+x.s:''}  (${x.d})`}).join('\n'))}</pre></details>`:''}
+    ${me&&(Y.log||[]).length?`<details class="mdraw"><summary>기록 내역</summary><pre>${esc((Y.log||[]).slice().reverse().map(x=>{const t=new Date(x.t);return `${t.getMonth()+1}/${t.getDate()} ${pad(t.getHours())}:${pad(t.getMinutes())}:${pad(t.getSeconds())}  ${({start:'시작','auto-restart':'끊김 → 자동 재시작',stop:'정지','remote-start':'다른 기기에서 시작','remote-stop':'다른 기기에서 정지','server-stopped':'다른 기기 · 열품타 앱에서 정지',adopt:'열품타 앱 기록 반영','relogin-try':'로그인 만료 → 재로그인 시도',relogin:'재로그인 성공',expired:'로그인 만료'})[x.e]||x.e}${x.s?' · '+x.s:''}  (${x.d})`}).join('\n'))}</pre></details>`:''}
     <div class="mfoot"><button type="button" class="pbtn" onclick="closeModal()">닫기</button></div>`;
   M.classList.add('open');
 }
@@ -2955,7 +2954,7 @@ document.addEventListener('visibilitychange',()=>{if(document.hidden||!Y.jwt)ret
 
 render();
 if(Y.jwt) refresh();
-if(Y.run) setTimeout(()=>toast(`열품타 기록 중 · ${Y.run.subject||'공부'}`),800);
+if(Y.run) setTimeout(()=>{if(Y.run)toast(`열품타 기록 중 · ${Y.run.subject||'공부'}`)},800);
 })();
 </script>
 <script>
