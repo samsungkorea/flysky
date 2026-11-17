@@ -608,7 +608,7 @@
   /* fixed sidebar + no zoom */
   html{touch-action:pan-x pan-y;-webkit-text-size-adjust:100%;text-size-adjust:100%}
   .side{position:fixed;top:28px;left:max(28px,calc(50vw - 652px))}
-  @media (min-width:901px){.side{height:calc(100vh - 56px);height:calc(100svh - 56px);min-height:0;overflow:hidden}}
+  @media (min-width:901px){.side{top:28px;bottom:28px;height:auto;min-height:0;overflow:hidden}}
   .app>main{margin-left:104px}
   @media (max-width:900px){
     .side{left:16px;top:auto}
