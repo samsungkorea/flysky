@@ -1463,11 +1463,11 @@ function openSettings(){
   openModal('설정',`
     <div class="setrow"><div><b>계정</b><small>${user?esc(user.name||user.email)+(user.email?' · '+esc(user.email):''):'로그인 안 됨'}</small></div>
       <button type="button" class="pbtn soft" id="setAcct">${user?'로그아웃':'로그인'}</button></div>
-    <div class="setrow"><div><b>기기 간 동기화</b><small>${syncTxt}<br>원서·D-day·목표 대학·성적·버킷리스트·열품타 그룹 순서가 같은 Google 계정의 모든 기기에서 같아요. 일정은 Google 캘린더에 저장돼요.</small></div></div>
+    <div class="setrow"><div><b>기기 간 동기화</b><small>${syncTxt}</small></div></div>
     <div class="setrow"><div><b>열품타</b><small>${yp.on?'연결됨 · @'+esc(yp.nick||'열품타'):'연결 안 됨'}</small></div>
       <button type="button" class="pbtn soft" id="setYpt">${yp.on?'연결 해제':'연결'}</button></div>
-    ${yp.on&&window.__ypt.groups().length>1?`<div class="setrow" style="display:block"><b>열품타 그룹 순서</b><small style="margin-bottom:10px">≡를 끌어서 순서를 바꿔요.</small><div class="greorder" id="setGroups"></div></div>`:''}
-    <div class="setrow"><div><b>이 기기 데이터 초기화</b><small>이 브라우저에 저장된 Fly Sky 데이터를 지워요. 동기화가 켜져 있으면 다시 로그인할 때 클라우드에서 가져올 수 있어요.</small></div>
+    ${yp.on&&window.__ypt.groups().length>1?`<div class="setrow" style="display:block"><b>열품타 그룹 순서</b><small style="margin-bottom:10px"></small><div class="greorder" id="setGroups"></div></div>`:''}
+    <div class="setrow"><div><b>이 기기 데이터 초기화</b></div>
       <button type="button" class="pbtn del" id="setReset">초기화</button></div>`);
   const sa=document.getElementById('setAcct');
   if(sa) sa.onclick=()=>{closeModal();if(user)logout();else{document.getElementById('pop').classList.remove('open');document.getElementById('login').classList.add('open')}};
@@ -1630,7 +1630,7 @@ function renderCal(){
     ?'<span><i></i>내 일정</span><span><i style="background:var(--ink)"></i>D-day</span><span><i style="background:var(--accent-light)"></i>원서</span>'+(S.events.length?'<span><i style="background:#8a93a8"></i>이 기기에만</span>':'')
     :'<span><i></i>일정</span><span><i style="background:var(--ink)"></i>D-day</span><span><i style="background:var(--accent-light)"></i>원서</span>';
   const mg=$('gMigrate');
-  if(gMode()&&S.events.length){mg.style.display='';mg.innerHTML=`<p>이 기기에만 저장된 일정 ${S.events.length}개<small>Google 캘린더로 옮기면 어디서나 보여요</small></p><button class="pbtn soft" data-act="ev-migrate">옮기기</button>`}
+  if(gMode()&&S.events.length){mg.style.display='';mg.innerHTML=`<p>이 기기에만 저장된 일정 ${S.events.length}개</p><button class="pbtn soft" data-act="ev-migrate">옮기기</button>`}
   else {mg.style.display='none';mg.innerHTML=''}
 }
 function editEvent(id,date){
@@ -1658,8 +1658,7 @@ function editGEvent(gid){
   openModal('일정 수정',`
     <div class="fx"><label>제목</label><input name="title" value="${esc(e.title)}" required></div>
     <div class="fx2"><div class="fx"><label>날짜</label><input type="date" name="date" value="${e.date}" required></div>
-    <div class="fx"><label>시간</label><input type="time" name="time" value="${e.time}"></div></div>
-    <p style="font-size:12px;color:var(--sub);margin-top:4px">Google 캘린더 일정이에요. 바꾸면 Google에도 바로 반영돼요.</p>`,{
+    <div class="fx"><label>시간</label><input type="time" name="time" value="${e.time}"></div></div>`,{
     onSave:fd=>{const v={title:fd.get('title').trim(),date:fd.get('date'),time:fd.get('time')};sel=v.date;gSave(e,v)},
     onDelete:()=>gRemove(e)
   });
@@ -2222,6 +2221,7 @@ async function loadMembers(){
   if(!Y.gid){members=[];return}
   const j=await call('GET',`/logs/group/members/v2?groupID=${Y.gid}&countryID=${Y.coid||0}&isLooking=true&version=810046`);
   const sbool=v=>v===true||v===1||v==='1'||v==='true';
+  const prev=new Map(members.map(m=>[m.n,m])), now=Date.now();
   members=(Array.isArray(j.ms)?j.ms:[]).map(m=>{
     const dl=m.dl&&typeof m.dl==='object'?m.dl:{};
     const paused=sbool(dl.ia??dl.ip??m.ia??m.ip);
@@ -2230,10 +2230,19 @@ async function loadMembers(){
     return {n:String(m.n||''),ud:+(m.ud??m.userId)||0,sm:+(dl.sm??dl.tp??m.sm)||0,on:studying,paused,
       subj:(typeof dl.sn==='string'?dl.sn:typeof dl.sb==='string'?dl.sb:'')||'',
       since, cat:String(m.ct||'')};
+  }).map(m=>{
+    if(m.on){const p=prev.get(m.n); m.seenAt=(p&&p.on&&p.sm===m.sm&&p.seenAt)?p.seenAt:now}
+    return m;
   }).sort((a,b)=>b.sm-a.sm);
   markMe();
 }
 /* 그룹에서 '나' 찾기: 그룹 이름이 계정 닉네임과 다를 수 있어서 여러 단서를 씀 */
+function liveMs(m){
+  if(m.me&&Y.run) return m.sm+runMs();
+  if(!m.on) return m.sm;
+  const now=Date.now(), st=(m.since>0&&m.since<=now&&now-m.since<864e5)?m.since:(m.seenAt||now);
+  return m.sm+Math.max(0,now-st);
+}
 function markMe(){
   const L=members; let me=-1;
   if(Y.uid) me=L.findIndex(m=>m.ud&&m.ud===Y.uid);
@@ -2338,7 +2347,7 @@ function groupParts(){
   const on=!!Y.jwt, g=groups.find(x=>x.id===Y.gid), og=orderedGroups();
   const isMe=m=>!!m.me, live=m=>m.on||(isMe(m)&&!!Y.run);
   const studying=members.filter(live).length;
-  const view=members.map((m,i)=>({m,i,t:m.sm+(m.me?runMs():0)})).sort((a,b)=>b.t-a.t);
+  const view=members.map((m,i)=>({m,i,t:liveMs(m)})).sort((a,b)=>b.t-a.t);
   let body;
   if(!on) body='<div class="empty">열품타를 연결하면 그룹이 보여요</div>';
   else if(err&&!members.length) body=`<div class="empty">${esc(err)}</div>`;
@@ -2393,7 +2402,6 @@ function renderPane(){
     $('yvAcctLabel').textContent='열품타 연결'; $('yvAcctCard').style.display='';
     const gu=googleUser();
     const soc=gu?`<button type="button" class="gbtn" id="ySocial" ${loading?'disabled':''}>${IC_GOOGLE}구글 계정으로 열품타 연결</button>
-      <p class="note" style="margin-top:10px">열품타를 구글(${esc(gu.email||'')})로 가입했다면 이걸로 바로 돼요.</p>
       <div class="orline"><span>또는 이메일로</span></div>`:'';
     p.innerHTML=`${soc}<form id="yForm">
       ${YPT_RELAY_URL?'':`<div class="field"><span class="ic">${IC_LINK}</span><input name="relay" placeholder="중계 서버 주소 (https://…workers.dev)" value="${esc(Y.relay||'')}" autocomplete="url" inputmode="url"></div>`}
@@ -2439,7 +2447,7 @@ const M=$('modal');
 function memberDetail(i){
   const m=members[i]; if(!m) return;
   const me=!!m.me;
-  const total=m.sm+(me?runMs():0);
+  const total=liveMs(m);
   const state=m.on?'공부 중':m.paused?'일시정지':'휴식';
   const sinceTxt=m.on&&m.since?`${Math.max(0,Math.floor((Date.now()-m.since)/60000))}분째`:'';
   $('mTitle').textContent=m.n;
@@ -2452,7 +2460,6 @@ function memberDetail(i){
     </div>
     <div class="mdstat"><span>오늘 공부 시간</span><b>${hms(total)}</b></div>
     ${m.on&&m.subj?`<div class="mdstat"><span>지금 과목</span><b>${esc(m.subj)}${sinceTxt?` · ${sinceTxt}`:''}</b></div>`:''}
-    <p class="note" style="margin:14px 2px 0">열품타가 그룹에서 알려 주는 건 여기까지예요. 지난 날짜별 기록은 열품타 앱에서 볼 수 있어요.</p>
     <div class="mfoot"><button type="button" class="pbtn" onclick="closeModal()">닫기</button></div>`;
   M.classList.add('open');
 }
@@ -2469,7 +2476,9 @@ document.addEventListener('click',e=>{
 /* 1초마다 시간 갱신, 1분마다 그룹, 5분마다 전체 */
 let tick=0;
 setInterval(()=>{
-  if(Y.run){const c=hms((info?info.sm:0)+runMs());$('homeStudy').textContent=c;$('yvStudy').textContent=c;$('yvSubs').innerHTML=subjectList();document.querySelectorAll('#yptMembers .mem.me .tm, #yvMembers .mem.me .tm').forEach(el=>{const i=+el.closest('.mem').dataset.mi;if(members[i])el.textContent=hms(members[i].sm+runMs())})}
+  if(Y.run){const c=hms((info?info.sm:0)+runMs());$('homeStudy').textContent=c;$('yvStudy').textContent=c;$('yvSubs').innerHTML=subjectList()}
+  if(!document.hidden&&(Y.run||members.some(m=>m.on)))
+    document.querySelectorAll('#yptMembers .mem.study, #yvMembers .mem.study').forEach(el=>{const m=members[+el.dataset.mi];if(m){const t=el.querySelector('.tm');if(t)t.textContent=hms(liveMs(m))}});
   if(!Y.jwt||document.hidden) return;
   if(++tick%300===0) refresh(); else if(tick%30===0) refresh({full:false});
 },1000);
