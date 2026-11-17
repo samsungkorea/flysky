@@ -2561,7 +2561,7 @@ async function loadGroups(){
 }
 async function loadMembers(){
   if(!Y.gid){members=[];return}
-  const gid=Y.gid;
+  const gid=Y.gid; membersAt=Date.now();   // 시도한 시각 (실패해도 다음 주기까지 기다림)
   const j=await call('GET',`/logs/group/members/v2?groupID=${gid}&countryID=${Y.coid||0}&isLooking=true&version=810046`);
   if(gid!==Y.gid) return;   // 그사이 다른 그룹을 골랐으면 버림
   const sbool=v=>v===true||v===1||v==='1'||v==='true';
@@ -2596,7 +2596,7 @@ function markMe(){
   L.forEach((m,i)=>m.me=i===me);
   if(me>=0&&L[me].n&&L[me].n!==Y.meName){Y.meName=L[me].n;saveY()}
 }
-let again=false, running=null;
+let again=false, running=null, membersAt=0;
 function refresh(o){if(!Y.jwt)return Promise.resolve(); if(loading){again=true;return running} return running=doRefresh(o)}
 async function doRefresh({full=true}={}){
   if(jwtExp(Y.jwt)&&jwtExp(Y.jwt)<Date.now()){expire();err=msg(new YErr('expired'));render();return}
@@ -2843,16 +2843,22 @@ document.addEventListener('click',e=>{
       const m=c.querySelector('.members'); if(m&&m.animate) m.animate([{opacity:.35},{opacity:1}],{duration:260,easing:'ease-out'})});
   });
 });
-/* 1초마다 시간 갱신, 1분마다 그룹, 5분마다 전체 */
+/* 1초마다 시간 갱신. 멤버 상태는 그룹 카드가 보이면 10초마다(아니면 1분), 전체는 5분마다 */
+const groupVisible=()=>['view-home','view-ypt'].some(id=>{const v=document.getElementById(id);return v&&v.classList.contains('on')});
 let tick=0;
 setInterval(()=>{
   if(Y.run){const c=hms((info?info.sm:0)+runMs());$('homeStudy').textContent=c;$('yvStudy').textContent=c;$('yvSubs').innerHTML=subjectList()}
   if(!document.hidden&&(Y.run||members.some(m=>m.on)))
     document.querySelectorAll('#yptMembers .mem.study, #yvMembers .mem.study').forEach(el=>{const m=members[+el.dataset.mi];if(m){const t=el.querySelector('.tm');if(t)t.textContent=hms(liveMs(m))}});
   if(!Y.jwt||document.hidden) return;
-  if(++tick%300===0) refresh(); else if(tick%30===0) refresh({full:false});
+  ++tick;
+  if(tick%300===0) refresh(); else if(Date.now()-membersAt>=(groupVisible()?10000:60000)) refresh({full:false});
 },1000);
-document.addEventListener('visibilitychange',()=>{if(!document.hidden&&Y.jwt&&info&&Date.now()-info.at>60000)refresh()});
+/* 앱으로 돌아오거나 홈 · 열품타 화면을 열면 바로 최신 상태로 */
+document.addEventListener('visibilitychange',()=>{if(document.hidden||!Y.jwt)return;
+  if(info&&Date.now()-info.at>60000) refresh(); else if(Date.now()-membersAt>3000) refresh({full:false})});
+['view-home','view-ypt'].forEach(id=>{const v=document.getElementById(id);if(v)new MutationObserver(()=>{
+  if(v.classList.contains('on')&&Y.jwt&&!document.hidden&&Date.now()-membersAt>3000) refresh({full:false})}).observe(v,{attributes:true,attributeFilter:['class']})});
 
 render();
 if(Y.jwt) refresh();
