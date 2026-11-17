@@ -29,9 +29,7 @@
   .nav-btn .tip{position:absolute;left:60px;background:var(--ink);color:#fff;font-size:12px;padding:5px 10px;border-radius:10px;white-space:nowrap;opacity:0;pointer-events:none;transition:.15s}
   @media (hover:hover) and (pointer:fine){.nav-btn:hover{background:var(--chip);color:var(--ink)}.nav-btn:hover .tip{opacity:1}}
   *{-webkit-tap-highlight-color:transparent}
-  /* 1) 아래로 당겨 새로고침 · 화면 끌림 막기 */
-  html{height:100%;overflow:hidden;overscroll-behavior:none}
-  body{height:100%;height:100dvh;overflow-y:auto;overflow-x:hidden;overscroll-behavior:none}
+  body{overflow-x:hidden}
   .side .spacer{flex:1}
   .nav-btn .flymark{display:none;width:34px;height:34px;stroke:none;fill:currentColor;color:var(--ink)}
   .nav-btn.fly .flymark{display:block}
@@ -173,7 +171,7 @@
   .grow.dragging .grip{cursor:grabbing;color:var(--ink)}
 
   /* Sheet */
-  body.nobg{overflow:hidden!important}
+  html.nobg{overflow:hidden}
   .scrim{position:fixed;inset:0;background:rgba(21,22,26,.35);backdrop-filter:blur(6px);display:none;align-items:center;justify-content:center;z-index:50;padding:20px}
   .scrim.open{display:flex}
   .sheet{background:#fff;border-radius:32px;width:100%;max-width:460px;padding:28px;max-height:90vh;overflow:auto}
@@ -265,7 +263,7 @@
 
   /* ===== Mobile ===== */
   @media (max-width:900px){
-    .app{flex-direction:column;padding:18px 16px 110px;gap:0}
+    .app{flex-direction:column;padding:18px 16px calc(110px + env(safe-area-inset-bottom));gap:0}
     .side{position:fixed;bottom:16px;left:16px;right:16px;top:auto;height:72px;min-height:0;width:auto;flex-direction:row;justify-content:space-around;padding:0 12px;z-index:10;box-shadow:0 10px 30px rgba(40,50,90,.15)}
     .side .spacer,.nav-btn .tip{display:none}
     .pop{left:auto;right:0;bottom:64px}
@@ -1164,7 +1162,7 @@
     const hb=document.querySelector('.side .nav-btn[data-v="home"]'); if(hb) hb.classList.toggle('fly',v!=='home');
     if(m) window.setTimerMode(m);
     history.replaceState(null,'',v==='home'?location.pathname:'#'+v);
-    window.scrollTo(0,0); const B=document.body; B.scrollTop=0; B.style.overflowY='hidden'; void B.offsetHeight; B.style.overflowY='';
+    window.scrollTo(0,0);
   }
   document.querySelectorAll('.side .nav-btn[data-v]').forEach(b=>b.addEventListener('click',()=>showView(b.dataset.v)));
 </script>
@@ -2625,62 +2623,9 @@ if(Y.run) setTimeout(()=>toast('열품타 기록이 켜진 채로 남아 있어�
 })();
 </script>
 <script>
-/* 맨 위·맨 아래에서 더 끌면 고무줄처럼 늘어났다가 튕겨 돌아오기 (스크롤 영역: body) */
-(function(){
-  const SPRING='transform .6s cubic-bezier(.22,1.35,.36,1)';
-  const B=document.body;
-  const blocked=()=>document.querySelector('.scrim.open, .login.open, #fsLayer.on, #pop.open');
-  const view=()=>document.querySelector('.view.on');
-  const atTop=()=>B.scrollTop<=0;
-  const atBot=()=>B.scrollTop+B.clientHeight>=B.scrollHeight-2;
-  const rubber=x=>{const h=window.innerHeight,c=.55;return (1-1/(Math.abs(x)*c/h+1))*h*Math.sign(x)};
-  let el=null, over=0, lx=0, ly=0, axis='', back=null;
-  const set=v=>{if(el)el.style.transform=v?`translate3d(0,${v}px,0)`:''};
-  const release=()=>{if(el&&over){el.style.transition=SPRING;set(0);const e=el;setTimeout(()=>{if(e.style.transform==='')e.style.transition=''},650)}over=0};
-  const grab=()=>{const v=view();if(v!==el){release();el=v}if(el)el.style.transition='none'};
-  addEventListener('touchstart',e=>{if(e.touches.length!==1||blocked())return;grab();lx=e.touches[0].clientX;ly=e.touches[0].clientY;axis=''},{passive:true});
-  addEventListener('touchmove',e=>{
-    if(!el||e.touches.length!==1)return;
-    const t=e.touches[0], dx=t.clientX-lx, dy=t.clientY-ly; lx=t.clientX; ly=t.clientY;
-    if(!axis){if(Math.abs(dx)+Math.abs(dy)<3)return;axis=Math.abs(dy)>=Math.abs(dx)?'y':'x'}
-    if(axis!=='y')return;
-    if(over>0||(dy>0&&atTop())) over=Math.max(0,over+dy);
-    else if(over<0||(dy<0&&atBot())) over=Math.min(0,over+dy);
-    else return;
-    set(rubber(over));
-  },{passive:true});
-  let touching=false;
-  addEventListener('touchstart',()=>{touching=true},{passive:true});
-  addEventListener('touchend',()=>{touching=false;release()},{passive:true});
-  addEventListener('touchcancel',()=>{touching=false;release()},{passive:true});
-  // 관성(손 뗀 뒤)으로 맨 위·맨 아래에 부딪히면 속도만큼 튕김
-  let pst=B.scrollTop, pt=performance.now(), vel=0;
-  B.addEventListener('scroll',()=>{
-    const st=B.scrollTop, t=performance.now(), max=B.scrollHeight-B.clientHeight;
-    const v=(st-pst)/Math.max(1,t-pt); vel=.6*v+.4*vel;
-    const hitTop=st<=0&&pst>0, hitBot=st>=max-1&&pst<max-1;
-    pst=st; pt=t;
-    if(touching||over||blocked()||!(hitTop||hitBot)||Math.abs(vel)<.25) return;
-    const v2=view(); if(!v2||!v2.animate) return;
-    const d=Math.min(70,Math.abs(vel)*28)*(hitTop?1:-1);
-    v2.animate([{transform:'translate3d(0,0,0)'},{transform:`translate3d(0,${d}px,0)`,offset:.32,easing:'cubic-bezier(.2,.7,.3,1)'},{transform:'translate3d(0,0,0)'}],
-      {duration:620,easing:'cubic-bezier(.3,1.25,.4,1)'});
-    vel=0;
-  },{passive:true});
-  addEventListener('wheel',e=>{
-    if(e.ctrlKey||blocked()||Math.abs(e.deltaY)<Math.abs(e.deltaX))return;
-    if(!(over||(e.deltaY<0&&atTop())||(e.deltaY>0&&atBot())))return;
-    grab(); over=Math.max(-240,Math.min(240,over-e.deltaY*.5)); set(rubber(over));
-    clearTimeout(back); back=setTimeout(release,110);
-  },{passive:true});
-})();
-</script>
-<script>
 /* 확대·축소 막기 */
 document.addEventListener('gesturestart',e=>e.preventDefault());
 document.addEventListener('gesturechange',e=>e.preventDefault());
-document.addEventListener('touchmove',e=>{if(e.touches.length>1)e.preventDefault()},{passive:false});
-document.addEventListener('wheel',e=>{if(e.ctrlKey)e.preventDefault()},{passive:false});
 document.addEventListener('keydown',e=>{if((e.ctrlKey||e.metaKey)&&['+','-','=','0'].includes(e.key))e.preventDefault()});
 </script>
 <script>
@@ -2696,9 +2641,12 @@ document.addEventListener('keydown',e=>{if((e.ctrlKey||e.metaKey)&&['+','-','=',
   ];
   const top=()=>LAYERS.find(l=>l.on());
   let pushed=false, selfBack=false, keepUrl='';
+  const lock=e=>{const sc=e.target.closest('.sheet, .srch, .pop');if(!sc||sc.scrollHeight<=sc.clientHeight)e.preventDefault()};
   function sync(){
     const open=!!top();
-    B.classList.toggle('nobg',open);
+    document.documentElement.classList.toggle('nobg',open);
+    /* iOS는 overflow:hidden만으로 안 막혀서, 팝업이 떠 있는 동안에만 팝업 바깥 드래그를 막음 */
+    if(open) addEventListener('touchmove',lock,{passive:false}); else removeEventListener('touchmove',lock,{passive:false});
     if(open&&!pushed){history.pushState({flyPopup:1},'',location.href);pushed=true}
     else if(!open&&pushed){pushed=false;selfBack=true;keepUrl=location.href;history.back()}  // 버튼으로 닫으면 쌓아 둔 기록 하나 되돌리기
   }
