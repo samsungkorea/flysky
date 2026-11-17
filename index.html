@@ -1938,6 +1938,8 @@ function msg(e){
   if(c==='113') return '이메일 또는 비밀번호가 맞지 않아요';
   if(c==='112'||c==='expired') return '로그인이 만료됐어요. 다시 로그인해 주세요';
   if(c==='origin') return '중계 서버가 이 사이트 주소를 허용하지 않아요';
+  if(c==='timeout') return '응답이 느려요. 잠시 뒤 다시 시도할게요';
+  if(c==='network') return '연결이 잠깐 끊겼어요. 잠시 뒤 다시 시도할게요';
   if(c==='nogoogle') return '먼저 Fly Sky에 구글로 로그인해 주세요';
   if(c==='nosocial') return '이 구글 계정으로 가입된 열품타가 없어요. 열품타를 이 구글 계정으로 가입했는지 확인해 주세요';
   if(c.startsWith('http_')) return `요청 실패 (HTTP ${c.slice(5)})`;
@@ -1950,7 +1952,10 @@ async function call(method,path,body,{auth=true,keepalive=false}={}){
   const base=relay(); if(!base) throw new YErr('relay');
   const h={'Content-Type':'application/json'};
   if(auth){if(!Y.jwt) throw new YErr('expired'); h.Authorization='JWT '+Y.jwt}
-  const r=await fetch(base+path,{method,headers:h,body:body?JSON.stringify(body):undefined,keepalive});
+  const ac=new AbortController(), to=setTimeout(()=>ac.abort(),15000);
+  let r; try{r=await fetch(base+path,{method,headers:h,body:body?JSON.stringify(body):undefined,keepalive,signal:ac.signal})}
+  catch(e){throw new YErr(e&&e.name==='AbortError'?'timeout':'network')}
+  finally{clearTimeout(to)}
   let j=null; try{j=await r.json()}catch(e){}
   if(r.status===403&&j&&j.error==='origin') throw new YErr('origin');
   if(auth&&(r.status===401||(j&&j.s===false&&String(j.c)==='112'))){expire();throw new YErr('expired')}
@@ -2045,11 +2050,15 @@ async function loadMembers(){
 async function refresh({full=true}={}){
   if(!Y.jwt||loading) return;
   if(jwtExp(Y.jwt)&&jwtExp(Y.jwt)<Date.now()){expire();err=msg(new YErr('expired'));render();return}
-  loading=true;
+  loading=true; render();
   try{
     if(full){await reloadInfo();await loadDay();await loadGroups()}
     await loadMembers(); err='';
-  }catch(e){err=msg(e)}
+  }catch(e){
+    const transient=e instanceof YErr&&['timeout','network','bad_json'].includes(e.message)||String(e.message||'').startsWith('http_5');
+    // 이미 받아 둔 데이터가 있고 일시적 오류면 조용히 넘어감 (다음 폴링에 복구)
+    if(!(transient&&info)) err=msg(e);
+  }
   loading=false; render();
 }
 
