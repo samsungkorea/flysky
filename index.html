@@ -1673,7 +1673,9 @@ let gExp=0, tokenClient=null, pending=null;
 const GCACHE='flysky:gcal';
 let gSyncedAt=0;
 const TZ=(()=>{try{return Intl.DateTimeFormat().resolvedOptions().timeZone||'Asia/Seoul'}catch(e){return 'Asia/Seoul'}})();
-function gValid(){if(gToken&&Date.now()>gExp)gToken=null;return !!gToken}
+function gValid(){if(gToken&&Date.now()>gExp){gToken=null;try{localStorage.removeItem('flysky:gtok')}catch(e){}}return !!gToken}
+function saveTok(t,ms){gToken=t;gExp=Date.now()+ms;try{localStorage.setItem('flysky:gtok',JSON.stringify({t,exp:gExp,sub:user&&user.sub}))}catch(e){}}
+function loadTok(){try{const o=JSON.parse(localStorage.getItem('flysky:gtok'));if(o&&o.t&&o.exp>Date.now()+60000&&(!user||!o.sub||o.sub===user.sub)){gToken=o.t;gExp=o.exp}}catch(e){}}
 function loadGIS(){return new Promise((res,rej)=>{if(window.google&&google.accounts&&google.accounts.oauth2)return res();const s=document.createElement('script');s.src='https://accounts.google.com/gsi/client';s.onload=res;s.onerror=rej;document.head.appendChild(s)})}
 function setupModal(){
   $('login').classList.remove('open');
@@ -1688,7 +1690,7 @@ function setupModal(){
 function requestToken(prompt){
   return loadGIS().then(()=>new Promise((res,rej)=>{
     if(!tokenClient) tokenClient=google.accounts.oauth2.initTokenClient({
-      client_id:GOOGLE_CLIENT_ID, scope:'openid email profile '+CAL_SCOPE,
+      client_id:GOOGLE_CLIENT_ID, scope:CAL_SCOPE,
       callback:r=>{const p=pending;pending=null;if(!p)return;r&&r.access_token?p.res(r):p.rej(r||{})},
       error_callback:e=>{const p=pending;pending=null;if(p)p.rej(e||{})}
     });
@@ -1696,8 +1698,8 @@ function requestToken(prompt){
     const o={prompt}; if(user&&user.email) o.login_hint=user.email;
     tokenClient.requestAccessToken(o);
   })).then(r=>{
-    gToken=r.access_token; gExp=Date.now()+((+r.expires_in||3600)-60)*1000;
-    if(!google.accounts.oauth2.hasGrantedAllScopes(r,CAL_SCOPE)) toast('캘린더 권한 없이 로그인했어요');
+    saveTok(r.access_token,((+r.expires_in||3600)-60)*1000);
+    if(!google.accounts.oauth2.hasGrantedAllScopes(r,CAL_SCOPE)) toast('캘린더 권한을 허용해 주세요');
     return r;
   });
 }
@@ -1725,7 +1727,7 @@ async function googleLogin(){
 function logout(){
   if(FB&&fbUser) FB.A.signOut(FB.auth).catch(()=>{});
   stopSync();
-  user=null; gToken=null; GEV=[]; gSyncedAt=0; localStorage.removeItem(GKEY); localStorage.removeItem(GUEST); localStorage.removeItem('flysky:gcal');
+  user=null; gToken=null; GEV=[]; gSyncedAt=0; localStorage.removeItem('flysky:gtok'); localStorage.removeItem(GKEY); localStorage.removeItem(GUEST); localStorage.removeItem('flysky:gcal');
   $('pop').classList.remove('open'); renderAccount(); renderCal(); renderHome();
   document.dispatchEvent(new CustomEvent('flysky:userchange'));
   $('gErr').textContent=''; $('login').classList.add('open');
@@ -1754,13 +1756,13 @@ $('popCal').onclick=()=>{$('pop').classList.remove('open');connectCalendar()};
 $('gLogin').onclick=googleLogin;
 $('gSkip').onclick=()=>{localStorage.setItem(GUEST,'1');$('login').classList.remove('open')};
 $('popLogout').onclick=()=>{if(user)logout();else{$('pop').classList.remove('open');$('gErr').textContent='';$('login').classList.add('open')}};
-window.__flyUser=user; loadGCache(); renderAccount();
+window.__flyUser=user; loadGCache(); loadTok(); renderAccount();
 if(GOOGLE_CLIENT_ID&&!user&&!localStorage.getItem(GUEST)) $('login').classList.add('open');
 if(GOOGLE_CLIENT_ID&&user) loadGIS().catch(()=>{});
 document.addEventListener('click',e=>{
-  if(!e.target.closest('[data-v="cal"]')||!user||!GOOGLE_CLIENT_ID||gValid()) return;
-  if(Date.now()-gSyncedAt<5*60*1000&&gSyncedAt) return;   // 방금 동기화했으면 생략
-  connectCalendar();
+  if(!e.target.closest('[data-v="cal"]')||!user||!GOOGLE_CLIENT_ID) return;
+  if(gValid()){ if(Date.now()-gSyncedAt>60*1000) fetchGoogle(); return }   // 창 없이 새로 불러오기
+  if(!gSyncedAt) connectCalendar();   // 이 기기에서 캘린더를 처음 열 때만 구글 창
 },true);
 function loadGCache(){try{const c=JSON.parse(localStorage.getItem(GCACHE));if(c&&c.sub===(user&&user.sub)){GEV=c.items||[];gSyncedAt=c.at||0}}catch(e){}}
 function saveGCache(){try{localStorage.setItem(GCACHE,JSON.stringify({sub:user&&user.sub,at:gSyncedAt,items:GEV}))}catch(e){}}
@@ -1978,7 +1980,7 @@ function fbLogin(){
   const go=()=>{const pv=new FB.A.GoogleAuthProvider();pv.addScope(CAL_SCOPE);pv.setCustomParameters({prompt:'select_account'});return FB.A.signInWithPopup(FB.auth,pv)};
   (FB?go():fbLoad().then(go)).then(res=>{
     const cred=FB.A.GoogleAuthProvider.credentialFromResult(res);
-    if(cred&&cred.accessToken){gToken=cred.accessToken;gExp=Date.now()+55*60*1000}
+    if(cred&&cred.accessToken) saveTok(cred.accessToken,55*60*1000);
     toast(`${res.user.displayName||res.user.email} 님, 반가워요`);
     if(gValid()) fetchGoogle();
   }).catch(e=>{$('gErr').textContent=fbErrMsg(e)});
@@ -2087,6 +2089,7 @@ $('hdBell').onclick=openBell;
 function renderAll(){renderHome();renderApps();renderMin();renderGoal();renderCal();renderBucket();renderBell()}
 renderAll();
 if(FIREBASE_CONFIG) fbStart();
+if(user&&gValid()) fetchGoogle();   // 권한이 살아 있으면 창 없이 최신 일정
 const h=location.hash.slice(1); if(['admit','cal','bucket','all','ypt'].includes(h)) showView(h);
 })();
 
