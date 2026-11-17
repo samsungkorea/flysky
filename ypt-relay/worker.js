@@ -12,6 +12,7 @@ const UPSTREAM = 'https://pi.tgclab.com';
 
 const ROUTES = [
   ['POST', '/user/sign-in-jwt'],
+  ['POST', '/user/social/sign-up-jwt'],
   ['POST', '/user/v2/reload/info'],
   ['POST', '/study/start'],
   ['POST', '/study/stop'],
