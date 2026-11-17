@@ -724,6 +724,18 @@ body.fs .app{padding:20px}
   .micw.open .nav-ext .ext:active{transform:scale(.9)}
 }
 </style>
+<style>
+/* 박스 호버 빛(애플펜슬 · 마우스) + 터치 눌림 */
+.card,.tile{--gx:50%;--gy:50%;--go:0;transition:transform .45s var(--spring),box-shadow .4s var(--soft),background-color .28s var(--soft)}
+.tile{position:relative;overflow:hidden}
+.card::after,.tile::after{content:"";position:absolute;inset:0;border-radius:inherit;pointer-events:none;
+  background:radial-gradient(240px circle at var(--gx) var(--gy),rgba(93,108,168,.14),rgba(93,108,168,0) 70%);
+  opacity:var(--go);transition:opacity .3s var(--soft)}
+.card.dark::after{background:radial-gradient(240px circle at var(--gx) var(--gy),rgba(255,255,255,.13),rgba(255,255,255,0) 70%)}
+.card.glow,.tile.glow{--go:1}
+.card.press,.tile.press{--go:1;transform:scale(.985);transition-duration:.18s;transition-delay:60ms}
+.card.press::after,.tile.press::after{transition-duration:.12s}
+</style>
 </head>
 <body>
 <svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false"><symbol id="fslogo" viewBox="0 0 808 380"><defs>
@@ -2772,6 +2784,32 @@ document.addEventListener('keydown',e=>{if((e.ctrlKey||e.metaKey)&&['+','-','=',
   });
   /* 첫 화면 */
   const v=document.querySelector('.view.on'); if(v) requestAnimationFrame(()=>enter(v));
+})();
+</script>
+<script>
+/* 박스 호버 빛 · 터치 눌림 */
+(function(){
+  const SEL='.card, .tile';
+  let cur=null, raf=0, px=0, py=0;
+  const pos=(el,x,y)=>{const r=el.getBoundingClientRect();el.style.setProperty('--gx',(x-r.left)+'px');el.style.setProperty('--gy',(y-r.top)+'px')};
+  const leave=()=>{if(cur){cur.classList.remove('glow');cur=null}};
+  addEventListener('pointermove',e=>{
+    if(e.pointerType==='touch') return;                 // 손가락은 누를 때만
+    const el=e.target.closest&&e.target.closest(SEL);
+    if(el!==cur){leave();if(el){cur=el;el.classList.add('glow')}}
+    if(!cur) return; px=e.clientX; py=e.clientY;
+    if(!raf) raf=requestAnimationFrame(()=>{raf=0;if(cur)pos(cur,px,py)});
+  },{passive:true});
+  document.addEventListener('pointerleave',leave);
+  addEventListener('pointerout',e=>{if(!e.relatedTarget)leave()},{passive:true});
+  let pressed=null;
+  const up=()=>{if(pressed){pressed.classList.remove('press');pressed=null}};
+  addEventListener('pointerdown',e=>{
+    const el=e.target.closest&&e.target.closest(SEL); if(!el) return;
+    pos(el,e.clientX,e.clientY); pressed=el; el.classList.add('press');
+  },{passive:true});
+  ['pointerup','pointercancel','dragstart'].forEach(t=>addEventListener(t,up,{passive:true}));
+  document.addEventListener('scroll',up,{passive:true,capture:true});
 })();
 </script>
 </body>
