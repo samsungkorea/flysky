@@ -707,6 +707,23 @@ html,body{height:100%;overflow:hidden;overscroll-behavior:none}   /* 당겨서 �
 @media (min-width:901px){.app{align-items:flex-start}.app>main{padding-bottom:28px}}
 body.fs .app{padding:20px}
 </style>
+<style>
+/* 면접 버튼 펼침 */
+.micw{display:flex;flex-direction:column;align-items:center}
+.micw .nav-ext{height:0;margin-top:0;overflow:hidden;transition:height .5s var(--spring),margin-top .5s var(--spring)}
+.micw .nav-ext .ext{opacity:0;transform:scale(.4);transition:opacity .25s var(--soft),transform .5s var(--spring),background-color .28s var(--soft),color .28s var(--soft)}
+.micw.open .nav-ext{height:48px;margin-top:10px}
+.micw.open .nav-ext .ext{opacity:1;transform:none;background:var(--accent);color:#fff}
+.micw.open>.nav-btn{background:var(--chip);color:var(--ink)}
+.micw.open>.nav-btn .tip{opacity:0!important}
+@media (max-width:900px){
+  .micw{position:relative}
+  .micw .nav-ext{position:absolute;bottom:calc(100% + 22px);left:50%;height:auto;margin:0;overflow:visible;pointer-events:none;transform:translateX(-50%)}
+  .micw.open .nav-ext{height:auto;margin:0;pointer-events:auto}
+  .micw .nav-ext .ext{width:44px;height:44px;box-shadow:0 8px 24px rgba(40,50,90,.25);background:#fff}
+  .micw.open .nav-ext .ext:active{transform:scale(.9)}
+}
+</style>
 </head>
 <body>
 <svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false"><symbol id="fslogo" viewBox="0 0 808 380"><defs>
@@ -728,7 +745,10 @@ body.fs .app{padding:20px}
     <button class="nav-btn" data-v="admit"><svg viewBox="0 0 24 24"><path d="M5 21V4M5 4h11l-2 4 2 4H5"/></svg><span class="tip">입시</span></button>
     <button class="nav-btn" data-v="cal"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="3"/><path d="M3 10h18M8 3v4M16 3v4"/></svg><span class="tip">캘린더</span></button>
     <button class="nav-btn" data-v="ypt"><svg viewBox="0 0 24 24"><path d="M6 9.6L16.2 11.2V12.8L6 14.4z" fill="currentColor" fill-opacity=".35" stroke="none"/><path d="M6 14.4L16.2 12.8V14.6L8 19.7Q6 20.6 6 18.7z" fill="currentColor" fill-opacity=".75" stroke="none"/><path d="M16.2 9.4L18.9 11.1q1 .9 0 1.8L16.2 14.6z" fill="currentColor" stroke="none"/><path d="M6 5.3v13.4a1.3 1.3 0 0 0 2 1.1L18.8 13a1.2 1.2 0 0 0 0-2L8 4.2a1.3 1.3 0 0 0-2 1.1z"/></svg><span class="tip">열품타</span></button>
-    <button class="nav-btn" data-act="interview"><svg viewBox="0 0 24 24"><path d="M12 3a3 3 0 0 1 3 3v5a3 3 0 0 1-6 0V6a3 3 0 0 1 3-3zM5 11a7 7 0 0 0 14 0M12 18v3"/></svg><span class="tip">면접 연습 ↗</span></button>
+    <div class="micw" id="micw">
+<button class="nav-btn" data-act="interview-menu" aria-expanded="false"><svg viewBox="0 0 24 24"><path d="M12 3a3 3 0 0 1 3 3v5a3 3 0 0 1-6 0V6a3 3 0 0 1 3-3zM5 11a7 7 0 0 0 14 0M12 18v3"/></svg><span class="tip">면접 연습</span></button>
+      <div class="nav-ext"><button class="nav-btn ext" data-act="interview-go" aria-label="면접 연습 사이트로 이동" tabindex="-1"><svg viewBox="0 0 24 24"><path d="M7 17L17 7M9 7h8v8"/></svg></button></div>
+    </div>
     <button class="nav-btn" data-v="all"><svg viewBox="0 0 24 24"><circle cx="5" cy="12" r="1.2"/><circle cx="12" cy="12" r="1.2"/><circle cx="19" cy="12" r="1.2"/></svg><span class="tip">모든 기능</span></button>
     <div class="spacer"></div>
     <div class="acct">
@@ -2083,6 +2103,14 @@ home.querySelectorAll('.chips .chip').forEach(ch=>ch.onclick=()=>{
   grid.querySelectorAll('[data-cat]').forEach(el=>el.classList.toggle('off',c!=='전체'&&el.dataset.cat!==c));
 });
 
+/* ============ 사이드바 면접 버튼: 누르면 아래에 '외부로 이동' 버튼이 펼쳐지고, 그걸 눌러야 이동 ============ */
+function micMenu(open){
+  const w=$('micw'), on=open===undefined?!w.classList.contains('open'):open;
+  w.classList.toggle('open',on);
+  w.querySelector('[data-act="interview-menu"]').setAttribute('aria-expanded',on);
+  w.querySelector('.ext').tabIndex=on?0:-1;
+}
+document.addEventListener('click',e=>{if(!e.target.closest('#micw')&&$('micw').classList.contains('open'))micMenu(false)},true);
 /* ============ 클릭 처리 ============ */
 document.addEventListener('click',e=>{
   const el=e.target.closest('[data-act]'); if(!el) return;
@@ -2103,6 +2131,8 @@ document.addEventListener('click',e=>{
   else if(act==='feat'){openFeat(FEATS[el.dataset.c].items[el.dataset.f])}
   else if(act==='go'){showView(el.dataset.v);if(el.dataset.t)setAdmitTab(el.dataset.t)}
   else if(act==='interview'){window.open(INTERVIEW_URL,'_blank','noopener')}
+  else if(act==='interview-menu'){micMenu()}
+  else if(act==='interview-go'){micMenu(false);window.open(INTERVIEW_URL,'_blank','noopener')}
 });
 
 /* ============ Firebase: 로그인 유지 + 모든 데이터 동기화 ============ */
