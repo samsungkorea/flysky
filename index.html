@@ -817,14 +817,15 @@ header.hhead .brand{font-size:54px;justify-self:start;margin-left:-5.5px;transfo
 }
 </style>
 <style>
-/* 열품타 기록 중: 프로필 사진 뒤 후광 (부드럽게 켜지고 꺼지며, 켜져 있는 동안 천천히 숨 쉼) */
-.side .acct>.avatar::before{content:"";position:absolute;inset:-5px;border-radius:50%;z-index:-1;pointer-events:none;
-  background:rgba(93,108,168,.45);
-  box-shadow:0 0 0 2px rgba(93,108,168,.35),0 0 16px 4px rgba(93,108,168,.65),0 0 30px 10px rgba(93,108,168,.3);
-  opacity:0;transform:scale(.7);transition:opacity .7s cubic-bezier(.22,1,.36,1),transform .9s cubic-bezier(.34,1.56,.64,1)}
-.side .acct>.avatar.rec::before{opacity:1;transform:scale(1);animation:flyHalo 2.8s ease-in-out .9s infinite}
-@keyframes flyHalo{0%,100%{scale:1;filter:brightness(1)}50%{scale:1.1;filter:brightness(1.12)}}
-@media (prefers-reduced-motion:reduce){.side .acct>.avatar.rec::before{animation:none}}
+/* 열품타 기록 중: 프로필 사진 둘레 후광 (사진 자체에 빛을 둘러서 어떤 브라우저에서도 가려지지 않음) */
+.side .acct>.avatar{box-shadow:0 0 0 0 rgba(93,108,168,0),0 0 0 0 rgba(93,108,168,0),0 0 0 0 rgba(93,108,168,0);
+  transition:box-shadow .8s cubic-bezier(.22,1,.36,1),transform .5s var(--spring,ease)}
+.side .acct>.avatar.rec{box-shadow:0 0 0 3px rgba(93,108,168,.55),0 0 16px 5px rgba(93,108,168,.55),0 0 34px 12px rgba(93,108,168,.25);
+  animation:flyHalo 2.8s ease-in-out 1s infinite}
+@keyframes flyHalo{
+  0%,100%{box-shadow:0 0 0 3px rgba(93,108,168,.55),0 0 16px 5px rgba(93,108,168,.55),0 0 34px 12px rgba(93,108,168,.25)}
+  50%{box-shadow:0 0 0 4px rgba(93,108,168,.65),0 0 22px 8px rgba(93,108,168,.7),0 0 44px 16px rgba(93,108,168,.32)}}
+@media (prefers-reduced-motion:reduce){.side .acct>.avatar.rec{animation:none}}
 </style>
 </head>
 <body>
