@@ -2453,6 +2453,9 @@ const h=location.hash.slice(1); if(['admit','cal','bucket','all','ypt'].includes
 (function(){
 const YPT_RELAY_URL='https://flysky-ypt.sm01025326079.workers.dev';   // 중계 서버 주소. 비워 두면 연결 화면에서 직접 입력
 const DEVICE_MODEL='FlySky Web';   // 공부 기록에 남는 기기 이름
+const DEV=(/iPad|Macintosh/.test(navigator.userAgent)&&'ontouchend' in document)?'iPad':/iPhone/.test(navigator.userAgent)?'iPhone':/Android/.test(navigator.userAgent)?'Android':'PC';
+/* 공부 기록 내역 (끊김 원인 추적용, 최근 40개) */
+function ylog(e,extra){try{Y.log=(Y.log||[]).slice(-39);Y.log.push(Object.assign({t:Date.now(),e,d:DEV},extra||{}));localStorage.setItem(YKEY,JSON.stringify(Y))}catch(x){}}
 const YKEY='flysky:ypt';
 
 const $=id=>document.getElementById(id);
@@ -2470,11 +2473,11 @@ if(Y.jwt&&!Y.authAt){Y.authAt=1;try{localStorage.setItem(YKEY,JSON.stringify(Y))
 if(Y.smKey){delete Y.smKey;try{localStorage.setItem(YKEY,JSON.stringify(Y))}catch(e){}}   // 예전 버전의 칸 자동 찾기 흔적 정리
 if(Y.run&&!Y.runAt){Y.runAt=1;try{localStorage.setItem(YKEY,JSON.stringify(Y))}catch(e){}}   // 예전에 연결해 둔 토큰도 다른 기기로 넘어가게
 document.addEventListener('flysky:yptprefs',()=>{try{const n=JSON.parse(localStorage.getItem(YKEY))||{};['gorder','gid','subj'].forEach(k=>{if(k in n)Y[k]=n[k]});
-  if((+n.runAt||0)>(+Y.runAt||0)){Y.run=n.run||null;Y.runAt=n.runAt;loadMembers().then(render,()=>{})}   // 다른 기기에서 기록 시작/정지
+  if((+n.runAt||0)>(+Y.runAt||0)){Y.run=n.run||null;Y.runAt=n.runAt;ylog(Y.run?'remote-start':'remote-stop');loadMembers().then(render,()=>{})}   // 다른 기기에서 기록 시작/정지
   if((+n.authAt||0)>(+Y.authAt||0)){                        // 다른 기기에서 열품타에 로그인/로그아웃함
     const was=Y.jwt; ['jwt','nick','uid','coid','email','relay','authAt'].forEach(k=>{if(k in n)Y[k]=n[k]});
     if(Y.jwt&&Y.jwt!==was){err='';info=null;groups=[];members=[];render();refresh({full:true});return}
-    if(!Y.jwt&&was){Y.run=null;Y.runAt=Date.now();info=null;groups=[];members=[];err=''}
+    if(!Y.jwt&&was){info=null;groups=[];members=[];err=''}   // 기록 중 상태는 지우지 않음
   }
   render()}catch(e){}});
 const relay=()=>(YPT_RELAY_URL||Y.relay||'').trim().replace(/\/+$/,'');
@@ -2512,7 +2515,18 @@ async function call(method,path,body,{auth=true,keepalive=false}={}){
   if(!j) throw new YErr('bad_json');
   return j;
 }
-function expire(){Y.jwt='';Y.authAt=Date.now();info=null;groups=[];members=[];saveY();render()}
+/* 토큰 만료: Google로 연결한 계정이면 조용히 다시 로그인 (기록 중 상태는 그대로 둠) */
+let reauth=null, reauthAt=0;
+function expire(){
+  if(!reauth&&Date.now()-reauthAt>5*60000&&googleUser()){
+    reauthAt=Date.now(); ylog('relogin-try');
+    reauth=socialLogin().then(()=>{saveY();ylog('relogin');err='';render();refresh({full:true})})
+      .catch(()=>{ylog('expired');doExpire()}).finally(()=>{reauth=null});
+    return;
+  }
+  if(!reauth) doExpire();
+}
+function doExpire(){Y.jwt='';Y.authAt=Date.now();info=null;groups=[];members=[];saveY();render()}
 
 /* ---------- API ---------- */
 function applyInfo(j){
@@ -2589,7 +2603,28 @@ async function loadMembers(){
   const j=await call('GET',`/logs/group/members/v2?groupID=${gid}&countryID=${Y.coid||0}&isLooking=true&version=810046`);
   if(gid!==Y.gid) return;   // 그사이 다른 그룹을 골랐으면 버림
   rawMembers=Array.isArray(j.ms)?j.ms:[]; rawAt=Date.now();
-  parseMembers(); markMe();
+  parseMembers(); markMe(); reconcile();
+}
+/* 서버와 대조: 내 실제 상태(그룹 데이터의 '나')와 Fly Sky의 기록 중 상태를 맞춤 */
+let miss=0, fixing=false;
+function reconcile(){
+  const me=members.find(m=>m.me); if(!me||fixing||pending||!Y.jwt) return;
+  const now=Date.now();
+  if(Y.run){
+    if(me.on){miss=0;
+      if(me.since>0&&me.since<=now&&Math.abs(me.since-Y.run.startedAt)>5000&&now-me.since<864e5){Y.run.startedAt=me.since;saveY()}   // 서버 시작 시각에 맞춤
+      return}
+    if(me.paused||now-Y.run.startedAt<60000) return;          // 일시정지거나 막 시작했으면 기다림
+    if(++miss<2) return;                                       // 두 번 연속 끊겨 있으면
+    const recent=(Y.log||[]).filter(x=>x.e==='auto-restart'&&now-x.t<30*60000);
+    if(recent.length&&now-recent[recent.length-1].t<5*60000) return;   // 5분 안에 또 재시작하지 않음
+    if(recent.length>=3){if(!reconcile.warned){reconcile.warned=1;toast('열품타 기록이 계속 끊겨요. 열품타 앱에서 상태를 확인해 주세요')}return}
+    miss=0; fixing=true; const subj=Y.run.subject;
+    ylog('server-stopped',{s:subj}); Y.run=null;
+    enqueue(()=>studyStart(subj,true)).finally(()=>{fixing=false});   // 바로 다시 시작
+  }else if(me.on&&me.since>0&&me.since<=now&&now-me.since<864e5){
+    Y.run={startedAt:me.since,subject:me.subj||curSubj()}; ylog('adopt',{s:Y.run.subject}); saveY();   // 열품타 앱 등에서 시작한 공부
+  }
 }
 let rawMembers=[], rawAt=0;
 const sbool=v=>v===true||v===1||v==='1'||v==='true';
@@ -2661,7 +2696,7 @@ document.addEventListener('click',async e=>{
 /* ---------- 공부 기록 (홈 '오늘 공부 시간'의 재생 버튼. 타이머와는 따로) ---------- */
 let q=Promise.resolve(), pending=0;
 const enqueue=f=>{pending++;render();return q=q.then(f,f).then(()=>{pending--;render()})};
-async function studyStart(subject){
+async function studyStart(subject,auto){
   if(!Y.jwt||Y.run) return;
   const subs=info?info.subjects:[];
   const s=subs.find(x=>x.t===subject)||subs[0];
@@ -2670,9 +2705,9 @@ async function studyStart(subject){
   try{
     const j=await call('POST','/study/start',{subject:title,deviceModel:DEVICE_MODEL,taskId:null});
     if(j.s!==true) throw new YErr(String(j.c||'start'));
-    Y.run={startedAt,subject:title}; Y.runAt=Date.now(); saveY();
+    Y.run={startedAt,subject:title}; Y.runAt=Date.now(); ylog(auto?'auto-restart':'start',{s:title}); saveY();
     if(j.dl&&info) info.sm=+j.dl.sm||info.sm;
-    toast(`열품타 기록 시작 · ${title}`);
+    toast(auto?`열품타 기록이 끊겨 있어서 바로 다시 시작했어요 · ${title}`:`열품타 기록 시작 · ${title}`);
     render(); loadMembers().then(render,()=>{});   // 그룹에도 바로 반영
   }catch(e){toast('열품타 기록을 시작하지 못했어요 · '+msg(e))}
   render();
@@ -2684,7 +2719,7 @@ async function studyStop(){
     const j=await call('POST','/study/stop',{startedAt,deviceModel:DEVICE_MODEL});
     if(j.s!==true) throw new YErr(String(j.c||'stop'));
     if(info) info.sm=j.dl?(+j.dl.sm||0):info.sm+(Date.now()-startedAt);
-    Y.run=null; Y.runAt=Date.now(); saveY(); toast('열품타에 기록했어요');
+    Y.run=null; Y.runAt=Date.now(); ylog('stop'); saveY(); toast('열품타에 기록했어요');
     loadDay().then(()=>loadMembers()).then(render,()=>render());
   }catch(e){toast('열품타 기록을 멈추지 못했어요 · '+msg(e))}
   render();
@@ -2854,6 +2889,7 @@ function memberDetail(i){
     </div>
     <div class="mdstat"><span>오늘 공부 시간</span><b>${hms(total)}</b></div>
     ${m.on&&m.subj?`<div class="mdstat"><span>지금 과목</span><b>${esc(m.subj)}${sinceTxt?` · ${sinceTxt}`:''}</b></div>`:''}
+    ${me&&(Y.log||[]).length?`<details class="mdraw"><summary>기록 내역</summary><pre>${esc((Y.log||[]).slice().reverse().map(x=>{const d=new Date(x.t);return `${d.getMonth()+1}/${d.getDate()} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}  ${({start:'시작','auto-restart':'끊김 → 자동 재시작',stop:'정지','remote-start':'다른 기기에서 시작','remote-stop':'다른 기기에서 정지','server-stopped':'서버에서 끊김 발견',adopt:'열품타 앱 기록 반영','relogin-try':'로그인 만료 → 재로그인 시도',relogin:'재로그인 성공',expired:'로그인 만료'})[x.e]||x.e}${x.s?' · '+x.s:''}  (${x.d})`}).join('\n'))}</pre></details>`:''}
     <details class="mdraw"><summary>서버 원본 데이터</summary><pre>${esc(JSON.stringify({member:m.raw,mine:me&&info?{daySm:info.sm,runMs:runMs()}:undefined},null,1))}</pre></details>
     <div class="mfoot"><button type="button" class="pbtn" onclick="closeModal()">닫기</button></div>`;
   M.classList.add('open');
