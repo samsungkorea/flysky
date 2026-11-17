@@ -584,6 +584,13 @@
 
   /* page header */
   .phead{display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:46px;margin:0 0 22px}
+  .yhead-r{display:inline-flex;align-items:center;gap:8px}
+  .yref{background:#fff}
+  .yref svg{width:20px;height:20px}
+  .yref.sm{width:32px;height:32px;background:var(--chip)}
+  .yref.sm svg{width:16px;height:16px}
+  .yref.spin svg{animation:yspin .8s linear infinite}
+  @keyframes yspin{to{transform:rotate(360deg)}}
   .phead h2{font-size:30px;font-weight:800;letter-spacing:-1px}
   .card>.label+.grades,.card>.label+.res,.card>.label+.rows,.card>.label+.evs{margin-top:14px}
 
@@ -880,7 +887,7 @@ body.fs .app{padding:20px}
 
       <!-- YPT group -->
       <section class="card group">
-        <div class="label">열품타 그룹 <span class="tag ypt ypt-off" id="yptNick" onclick="openSheet()"><span class="dot"></span>연결 안 됨</span></div>
+        <div class="label">열품타 그룹 <span class="yhead-r"><span class="tag ypt ypt-off" id="yptNick" onclick="openSheet()"><span class="dot"></span>연결 안 됨</span><button class="circle yref sm" data-act="ypt-refresh" aria-label="열품타 새로고침" title="새로고침"><svg viewBox="0 0 24 24"><path d="M20 12a8 8 0 1 1-2.34-5.66M20 4v4.5h-4.5"/></svg></button></span></div>
         <div class="top">
           <h3 id="yptGTitle">그룹</h3>
           <div class="seg" id="yptGSeg"></div>
@@ -1167,7 +1174,7 @@ body.fs .app{padding:20px}
 
   <!-- ===================== 열품타 ===================== -->
   <main id="view-ypt" class="view">
-    <header class="phead"><h2>열품타</h2><span class="tag ypt ypt-off" id="yvTag"><span class="dot"></span>연결 안 됨</span></header>
+    <header class="phead"><h2>열품타</h2><div class="yhead-r"><span class="tag ypt ypt-off" id="yvTag"><span class="dot"></span>연결 안 됨</span><button class="circle yref" id="yvRefresh" data-act="ypt-refresh" aria-label="열품타 새로고침" title="새로고침"><svg viewBox="0 0 24 24"><path d="M20 12a8 8 0 1 1-2.34-5.66M20 4v4.5h-4.5"/></svg></button></div></header>
     <div class="yptgrid">
       <div class="ycol">
         <section class="card timer yv-timer">
@@ -2524,10 +2531,9 @@ function markMe(){
   L.forEach((m,i)=>m.me=i===me);
   if(me>=0&&L[me].n&&L[me].n!==Y.meName){Y.meName=L[me].n;saveY()}
 }
-let again=false;
-async function refresh({full=true}={}){
-  if(!Y.jwt) return;
-  if(loading){again=true;return}
+let again=false, running=null;
+function refresh(o){if(!Y.jwt)return Promise.resolve(); if(loading){again=true;return running} return running=doRefresh(o)}
+async function doRefresh({full=true}={}){
   if(jwtExp(Y.jwt)&&jwtExp(Y.jwt)<Date.now()){expire();err=msg(new YErr('expired'));render();return}
   loading=true; render();
   try{
@@ -2539,8 +2545,21 @@ async function refresh({full=true}={}){
     if(!(transient&&info)) err=msg(e);
   }
   loading=false; render();
-  if(again){again=false;return refresh({full:false})}
+  if(again){again=false;return doRefresh({full:false})}
 }
+/* 새로고침 버튼: 서버 상태를 바로 전부 다시 불러옴 */
+document.addEventListener('click',async e=>{
+  const b=e.target.closest('[data-act="ypt-refresh"]'); if(!b) return;
+  if(!Y.jwt){showView('ypt');return}
+  const all=document.querySelectorAll('[data-act="ypt-refresh"]');
+  if(all[0].classList.contains('spin')) return;
+  all.forEach(x=>x.classList.add('spin')); const t0=Date.now();
+  if(loading) await running;                       // 진행 중이던 건 끝내고
+  await refresh({full:true});                      // 전체(내 정보 · 오늘 기록 · 그룹 · 멤버) 다시
+  await new Promise(r=>setTimeout(r,Math.max(0,600-(Date.now()-t0))));
+  all.forEach(x=>x.classList.remove('spin'));
+  toast(err?err:'열품타 최신 상태를 불러왔어요');
+});
 
 /* ---------- 공부 기록 (홈 '오늘 공부 시간'의 재생 버튼. 타이머와는 따로) ---------- */
 let q=Promise.resolve(), pending=0;
