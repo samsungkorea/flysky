@@ -24,11 +24,17 @@
     background:var(--card);border-radius:40px;display:flex;flex-direction:column;align-items:center;padding:14px 0;gap:10px}
   .side .logo{width:44px;height:44px;border-radius:50%;background:var(--ink);color:#fff;display:grid;place-items:center;font-weight:800;font-size:14px;margin-bottom:14px}
   .nav-btn{width:48px;height:48px;border-radius:50%;display:grid;place-items:center;color:var(--sub);position:relative;transition:.2s}
-  .nav-btn:hover{background:var(--chip);color:var(--ink)}
+
   .nav-btn.active{background:var(--ink);color:#fff}
   .nav-btn .tip{position:absolute;left:60px;background:var(--ink);color:#fff;font-size:12px;padding:5px 10px;border-radius:10px;white-space:nowrap;opacity:0;pointer-events:none;transition:.15s}
-  .nav-btn:hover .tip{opacity:1}
+  @media (hover:hover) and (pointer:fine){.nav-btn:hover{background:var(--chip);color:var(--ink)}.nav-btn:hover .tip{opacity:1}}
+  *{-webkit-tap-highlight-color:transparent}
+  /* 1) 아래로 당겨 새로고침 · 화면 끌림 막기 */
+  html,body{overscroll-behavior:none}
   .side .spacer{flex:1}
+  .nav-btn .flymark{display:none;width:30px;height:30px;stroke:none;color:var(--ink)}
+  .nav-btn.fly .flymark{display:block}
+  .nav-btn.fly .homeic{display:none}
   .avatar{width:48px;height:48px;border-radius:50%;background:linear-gradient(135deg,#adb6d9,#5d6ca8);display:grid;place-items:center;color:#fff;font-weight:700}
 
   /* ===== Main ===== */
@@ -40,7 +46,16 @@
   .brandmark{height:1em;width:auto;display:block}
   .brand i{font-weight:300;font-style:italic}
   .head-r{display:flex;justify-content:flex-end;gap:10px}
-  .circle{width:46px;height:46px;border-radius:50%;background:rgba(255,255,255,.55);display:grid;place-items:center}
+  .circle{width:46px;height:46px;border-radius:50%;background:rgba(255,255,255,.55);display:grid;place-items:center;position:relative}
+  .circle .bdot{position:absolute;top:11px;right:12px;width:8px;height:8px;border-radius:50%;background:var(--accent);box-shadow:0 0 0 2px #e6e9f3}
+  .srch{list-style:none;margin-top:6px;max-height:52vh;overflow:auto}
+  .srch li{display:flex;gap:12px;align-items:center;padding:12px 4px;border-bottom:1px solid var(--line);cursor:pointer}
+  .srch li:last-child{border-bottom:0}
+  .srch li.empty2{cursor:default;color:var(--sub);font-size:14px}
+  .srch .k{font-size:11px;color:var(--accent);background:var(--accent-soft);padding:3px 9px;border-radius:999px;flex-shrink:0;font-weight:600;min-width:52px;text-align:center}
+  .srch .k.now{background:var(--accent);color:#fff}
+  .srch b{font-weight:600;font-size:14px}
+  .srch small{display:block;color:var(--sub);font-size:12px;margin-top:2px}
 
   .chips{display:flex;gap:8px;margin-bottom:18px;flex-wrap:wrap}
   .chip{padding:11px 20px;border-radius:999px;background:rgba(255,255,255,.55);font-size:14px;font-weight:500}
@@ -560,6 +575,7 @@
   #fsLayer{position:fixed;inset:0;z-index:200;background:#eceef4;display:none;align-items:center;justify-content:center}
   #fsLayer.on{display:flex}
   #fsLayer #watch{height:94vh;width:auto;max-width:94vw;stroke:none;filter:drop-shadow(0 30px 40px rgba(20,22,30,.2))}
+  #fsLayer{cursor:pointer}#fsLayer #watch{cursor:default}
   #fsClose{position:fixed;top:20px;right:20px;width:48px;height:48px;border-radius:50%;background:rgba(255,255,255,.75);display:grid;place-items:center;opacity:.3;transition:.2s}
   #fsClose:hover{opacity:1}
   #fsClose svg{width:20px;height:20px}
@@ -605,12 +621,12 @@
 </defs><g fill="currentColor">
 <g transform="translate(50,40)"><use href="#lg-F" x="0"/><use href="#lg-l" x="136"/><use href="#lg-y" x="190"/></g>
 <g transform="translate(402,40)"><use href="#lg-S" x="0"/><use href="#lg-k" x="128"/><use href="#lg-y" x="250"/></g>
-</g></symbol></svg>
+</g></symbol><symbol id="fslogo-fly" viewBox="45 34 312 316"><g fill="currentColor" transform="translate(50,40)"><use href="#lg-F" x="0"/><use href="#lg-l" x="136"/><use href="#lg-y" x="190"/></g></symbol></svg>
 <div class="app">
 
   <!-- Sidebar -->
   <nav class="side">
-    <button class="nav-btn active" data-v="home"><svg viewBox="0 0 24 24"><path d="M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg><span class="tip">홈</span></button>
+    <button class="nav-btn active" data-v="home"><svg class="flymark" viewBox="45 34 312 316" aria-hidden="true"><use href="#fslogo-fly"/></svg><svg class="homeic" viewBox="0 0 24 24"><path d="M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg><span class="tip">홈</span></button>
     <button class="nav-btn" data-v="timer"><svg viewBox="0 0 24 24"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 2.5M9 2h6"/></svg><span class="tip">타이머</span></button>
     <button class="nav-btn" data-v="admit"><svg viewBox="0 0 24 24"><path d="M5 21V4M5 4h11l-2 4 2 4H5"/></svg><span class="tip">입시</span></button>
     <button class="nav-btn" data-v="cal"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="3"/><path d="M3 10h18M8 3v4M16 3v4"/></svg><span class="tip">캘린더</span></button>
@@ -633,10 +649,10 @@
   <main id="view-home" class="view on">
     <header>
       <div></div>
-      <h1 class="brand"><svg class="brandmark" viewBox="0 0 808 380" role="img" aria-label="Fly Sky"><use href="#fslogo"/></svg></h1>
+      <h1 class="brand" onclick="showView('home')" style="cursor:pointer"><svg class="brandmark" viewBox="0 0 808 380" role="img" aria-label="Fly Sky"><use href="#fslogo"/></svg></h1>
       <div class="head-r">
-        <button class="circle"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg></button>
-        <button class="circle"><svg viewBox="0 0 24 24"><path d="M6 16V11a6 6 0 1 1 12 0v5l2 2H4zM10 21h4"/></svg></button>
+        <button class="circle" id="hdSearch" aria-label="검색"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg></button>
+        <button class="circle" id="hdBell" aria-label="알림"><svg viewBox="0 0 24 24"><path d="M6 16V11a6 6 0 1 1 12 0v5l2 2H4zM10 21h4"/></svg><i class="bdot" id="bellDot" hidden></i></button>
       </div>
     </header>
 
@@ -1015,7 +1031,7 @@
       </div>
       <div class="ycol">
         <section class="card"><div class="label">과목별 오늘</div><ul class="ysubs" id="yvSubs"></ul></section>
-        <section class="card"><div class="label">계정</div><div id="yptPane" style="margin-top:14px"></div></section>
+        <section class="card" id="yvAcctCard"><div class="label" id="yvAcctLabel">열품타 연결</div><div id="yptPane" style="margin-top:14px"></div></section>
       </div>
     </div>
   </main>
@@ -1059,6 +1075,7 @@
   function showView(v,m){
     document.querySelectorAll('.view').forEach(x=>x.classList.toggle('on',x.id==='view-'+v));
     document.querySelectorAll('.side .nav-btn').forEach(b=>b.classList.toggle('active',b.dataset.v===v));
+    const hb=document.querySelector('.side .nav-btn[data-v="home"]'); if(hb) hb.classList.toggle('fly',v!=='home');
     if(m) window.setTimerMode(m);
     history.replaceState(null,'',v==='home'?location.pathname:'#'+v);
     window.scrollTo(0,0);
@@ -1278,7 +1295,7 @@ $('swWake').onclick=async e=>{
   catch(err){notify('이 브라우저에서는 지원하지 않아요',0)}
 };
 const fsLayer=document.createElement('div');fsLayer.id='fsLayer';
-fsLayer.innerHTML='<button id="fsClose" aria-label="닫기"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button>';
+fsLayer.addEventListener('click',e=>{if(!e.target.closest('#watch'))exitFs()});
 document.body.appendChild(fsLayer);
 const watchEl=$('watch'), watchHome=watchEl.parentNode; let fsLock=null;
 function enterFs(){
@@ -1291,11 +1308,13 @@ function exitFs(){
   if(!fsLayer.classList.contains('on')) return;
   watchHome.appendChild(watchEl);fsLayer.classList.remove('on');document.body.classList.remove('fsmode');
   if(document.fullscreenElement) document.exitFullscreen().catch(()=>{});
+  else if(document.webkitFullscreenElement&&document.webkitExitFullscreen) document.webkitExitFullscreen();
   if(fsLock){fsLock.release().catch(()=>{});fsLock=null}
 }
-$('fsOpen').onclick=enterFs; $('fsClose').onclick=exitFs;
+$('fsOpen').onclick=enterFs;
 document.addEventListener('keydown',e=>{if(e.key==='Escape')exitFs()});
 document.addEventListener('fullscreenchange',()=>{if(!document.fullscreenElement)exitFs()});
+document.addEventListener('webkitfullscreenchange',()=>{if(!document.webkitFullscreenElement&&!document.fullscreenElement)exitFs()});
 
 /* ---------- 루프 ---------- */
 function loop(){
@@ -1324,6 +1343,7 @@ if(location.hash==='#timer') showView('timer');
 /* ============ 설정 ============ */
 const INTERVIEW_URL='https://samsungkorea.github.io/yonsei-medical';
 const GOOGLE_CLIENT_ID='413706575405-n29a1j1dka1p9c98bhho2oq2rpodef9o.apps.googleusercontent.com';   // Google Cloud Console → OAuth 2.0 클라이언트 ID(웹). 공개돼도 되는 값
+const FIREBASE_CONFIG=null;   // Firebase 콘솔 → 프로젝트 설정 → 웹 앱의 firebaseConfig. 넣으면 로그인이 유지되고 모든 데이터가 기기끼리 동기화돼요
 const KEY='flysky:v1';
 
 /* ============ 유틸 ============ */
@@ -1385,7 +1405,7 @@ const SEED={
 let S;
 try{S=JSON.parse(localStorage.getItem(KEY))}catch(e){}
 if(!S||!S.ddays) S=JSON.parse(JSON.stringify(SEED));
-function save(){try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){} renderAll()}
+function save(){S._t=Date.now();try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){} renderAll(); schedulePush()}
 
 /* ============ 최저 ============ */
 const SUBN={kor:'국',math:'수',eng:'영',sci:'탐'}, SUBF={kor:'국어',math:'수학',eng:'영어',sci:'탐구'};
@@ -1432,19 +1452,24 @@ function openModal(title,body,{onSave,onDelete,saveText='저장'}={}){
 function closeModal(){M.classList.remove('open')}
 window.closeModal=closeModal;
 function openSettings(){
-  const theme=localStorage.getItem('flysky:theme')||'auto';
+  const yp=window.__ypt?window.__ypt.status():{on:false};
+  const t=syncAt?new Date(syncAt):null, when=t?`${t.getMonth()+1}/${t.getDate()} ${pad(t.getHours())}:${pad(t.getMinutes())}`:'';
+  const syncTxt=!FIREBASE_CONFIG?'꺼짐 · Firebase 설정이 필요해요':!fbUser?'Google로 로그인하면 켜져요':syncErr?syncErr:syncOn?`켜짐 · 마지막 동기화 ${when}`:'연결 중';
   openModal('설정',`
-    <div class="setrow"><div><b>계정</b><small>${user?esc(user.name||user.email):'로그인 안 됨'}</small></div>
+    <div class="setrow"><div><b>계정</b><small>${user?esc(user.name||user.email)+(user.email?' · '+esc(user.email):''):'로그인 안 됨'}</small></div>
       <button type="button" class="pbtn soft" id="setAcct">${user?'로그아웃':'로그인'}</button></div>
-    <div class="setrow"><div><b>데이터 저장</b><small>일정은 Google 캘린더(로그인 시)에, 나머지(D-day·원서·성적·버킷·열품타 설정)는 이 브라우저에 저장돼요. 기기끼리 자동 동기화는 안 돼요.</small></div></div>
-    <div class="setrow"><div><b>이 기기 데이터 초기화</b><small>이 브라우저에 저장된 Fly Sky 데이터를 모두 지워요. Google 캘린더의 실제 일정은 지워지지 않아요.</small></div>
-      <button type="button" class="pbtn del" id="setReset">초기화</button></div>
-    <div class="setrow"><div><b>Fly Sky</b><small>대입 준비용 개인 웹사이트 · samsungkorea.github.io/flysky</small></div></div>`);
+    <div class="setrow"><div><b>기기 간 동기화</b><small>${syncTxt}<br>원서·D-day·목표 대학·성적·버킷리스트·열품타 그룹 순서가 같은 Google 계정의 모든 기기에서 같아요. 일정은 Google 캘린더에 저장돼요.</small></div></div>
+    <div class="setrow"><div><b>열품타</b><small>${yp.on?'연결됨 · @'+esc(yp.nick||'열품타'):'연결 안 됨'}</small></div>
+      <button type="button" class="pbtn soft" id="setYpt">${yp.on?'연결 해제':'연결'}</button></div>
+    <div class="setrow"><div><b>이 기기 데이터 초기화</b><small>이 브라우저에 저장된 Fly Sky 데이터를 지워요. 동기화가 켜져 있으면 다시 로그인할 때 클라우드에서 가져올 수 있어요.</small></div>
+      <button type="button" class="pbtn del" id="setReset">초기화</button></div>`);
   const sa=document.getElementById('setAcct');
   if(sa) sa.onclick=()=>{closeModal();if(user)logout();else{document.getElementById('pop').classList.remove('open');document.getElementById('login').classList.add('open')}};
+  const sy=document.getElementById('setYpt');
+  if(sy) sy.onclick=()=>{if(yp.on){if(window.__ypt.disconnect()){closeModal();toast('열품타 연결을 해제했어요')}}else{closeModal();showView('ypt')}};
   const sr=document.getElementById('setReset');
   if(sr) sr.onclick=()=>{
-    if(!confirm('이 브라우저에 저장된 Fly Sky 데이터(일정 캐시·원서·성적·버킷·열품타 로그인 등)를 모두 지울까요?\n\nGoogle 캘린더의 실제 일정은 지워지지 않아요.'))return;
+    if(!confirm('이 브라우저에 저장된 Fly Sky 데이터를 모두 지울까요?\n\nGoogle 캘린더의 실제 일정과 클라우드에 동기화된 데이터는 지워지지 않아요.'))return;
     Object.keys(localStorage).filter(k=>k.startsWith('flysky')).forEach(k=>localStorage.removeItem(k));
     location.reload();
   };
@@ -1656,6 +1681,7 @@ function requestToken(prompt){
 const gErrMsg=e=>{const t=(e&&(e.type||e.error))||'';
   return t==='popup_closed'||t==='access_denied'?'로그인을 취소했어요':t==='popup_failed_to_open'?'팝업이 막혀 있어요. 팝업을 허용해 주세요':'Google 로그인에 실패했어요'};
 async function googleLogin(){
+  if(FIREBASE_CONFIG) return fbLogin();
   if(!GOOGLE_CLIENT_ID) return setupModal();
   $('gErr').textContent=''; const b=$('gLogin'); b.disabled=true;
   try{
@@ -1674,6 +1700,8 @@ async function googleLogin(){
   b.disabled=false;
 }
 function logout(){
+  if(FB&&fbUser) FB.A.signOut(FB.auth).catch(()=>{});
+  stopSync();
   user=null; gToken=null; GEV=[]; gSyncedAt=0; localStorage.removeItem(GKEY); localStorage.removeItem(GUEST); localStorage.removeItem('flysky:gcal');
   $('pop').classList.remove('open'); renderAccount(); renderCal(); renderHome();
   document.dispatchEvent(new CustomEvent('flysky:userchange'));
@@ -1815,14 +1843,20 @@ const IC={
   mic:'<path d="M12 3a3 3 0 0 1 3 3v5a3 3 0 0 1-6 0V6a3 3 0 0 1 3-3zM5 11a7 7 0 0 0 14 0M12 18v3"/>',
   cal:'<rect x="3" y="5" width="18" height="16" rx="3"/><path d="M3 10h18M8 3v4M16 3v4"/>',
   ypt:'<path d="M6 9.6L16.2 11.2V12.8L6 14.4z" fill="currentColor" fill-opacity=".35" stroke="none"/><path d="M6 14.4L16.2 12.8V14.6L8 19.7Q6 20.6 6 18.7z" fill="currentColor" fill-opacity=".75" stroke="none"/><path d="M16.2 9.4L18.9 11.1q1 .9 0 1.8L16.2 14.6z" fill="currentColor" stroke="none"/><path d="M6 5.3v13.4a1.3 1.3 0 0 0 2 1.1L18.8 13a1.2 1.2 0 0 0 0-2L8 4.2a1.3 1.3 0 0 0-2 1.1z"/>',
+  bars:'<path d="M4 20h16M7 16V10M12 16V5M17 16v-4"/>',
+  group:'<circle cx="9" cy="8" r="3.2"/><path d="M3 20a6 6 0 0 1 12 0M16 4.5a3 3 0 0 1 0 6M21 20a6 6 0 0 0-4-5.6"/>',
+  search:'<circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/>',
   list:'<path d="M9 6h11M9 12h11M9 18h11M4 6l1 1 2-2M4 12l1 1 2-2M4 18l1 1 2-2"/>'
 };
 const FEATS=[
   {cat:'공부',items:[
     {n:'수능 시계',ic:'clock',v:'timer',m:'exam'},
     {n:'스톱워치',ic:'sw',v:'timer',m:'sw'},
-    {n:'타이머',ic:'hour',v:'timer',m:'tm'},
-    {n:'열품타',ic:'ypt',v:'ypt'}]},
+    {n:'타이머',ic:'hour',v:'timer',m:'tm'}]},
+  {cat:'열품타',items:[
+    {n:'공부 기록',ic:'ypt',v:'ypt'},
+    {n:'과목별 기록',ic:'bars',v:'ypt',s:'yvSubs'},
+    {n:'그룹 순위',ic:'group',v:'ypt',s:'yvMembers'}]},
   {cat:'입시',items:[
     {n:'수시 원서',ic:'doc',v:'admit',t:'apps'},
     {n:'최저 계산기',ic:'calc',v:'admit',t:'min'},
@@ -1838,6 +1872,7 @@ function openFeat(f){
   if(f.url) return window.open(f.url,'_blank','noopener');
   if(f.act==='ypt') return window.openSheet&&openSheet();
   showView(f.v,f.m); if(f.t) setAdmitTab(f.t);
+  if(f.s) setTimeout(()=>{const el=document.getElementById(f.s);if(el)el.closest('.card').scrollIntoView({behavior:'smooth',block:'start'})},60);
 }
 
 /* ============ 홈 ============ */
@@ -1902,8 +1937,133 @@ document.addEventListener('click',e=>{
   else if(act==='interview'){window.open(INTERVIEW_URL,'_blank','noopener')}
 });
 
-function renderAll(){renderHome();renderApps();renderMin();renderGoal();renderCal();renderBucket()}
+/* ============ Firebase: 로그인 유지 + 모든 데이터 동기화 ============ */
+const FBV='https://www.gstatic.com/firebasejs/10.14.1/';
+let FB=null, fbUser=null, syncRef=null, syncOn=false, syncAt=0, upT=null, unsub=null, syncErr='';
+async function fbLoad(){
+  if(FB) return FB;
+  const [app,auth,fs]=await Promise.all([import(FBV+'firebase-app.js'),import(FBV+'firebase-auth.js'),import(FBV+'firebase-firestore.js')]);
+  const a=app.initializeApp(FIREBASE_CONFIG);
+  FB={auth:auth.getAuth(a),db:fs.getFirestore(a),A:auth,F:fs};
+  return FB;
+}
+const fbErrMsg=e=>{const c=(e&&e.code)||'';
+  return c.includes('popup-closed')||c.includes('cancelled-popup')?'로그인을 취소했어요':c.includes('popup-blocked')?'팝업이 막혀 있어요. 팝업을 허용해 주세요'
+    :c.includes('unauthorized-domain')?'Firebase에 이 사이트 주소가 등록되지 않았어요':'Google 로그인에 실패했어요'};
+function fbLogin(){
+  $('gErr').textContent='';
+  const go=()=>{const pv=new FB.A.GoogleAuthProvider();pv.addScope(CAL_SCOPE);pv.setCustomParameters({prompt:'select_account'});return FB.A.signInWithPopup(FB.auth,pv)};
+  (FB?go():fbLoad().then(go)).then(res=>{
+    const cred=FB.A.GoogleAuthProvider.credentialFromResult(res);
+    if(cred&&cred.accessToken){gToken=cred.accessToken;gExp=Date.now()+55*60*1000}
+    toast(`${res.user.displayName||res.user.email} 님, 반가워요`);
+    if(gValid()) fetchGoogle();
+  }).catch(e=>{$('gErr').textContent=fbErrMsg(e)});
+}
+function fbStart(){
+  fbLoad().then(()=>{
+    FB.A.onAuthStateChanged(FB.auth,u=>{
+      fbUser=u;
+      if(u){
+        const g=(u.providerData||[]).find(x=>x.providerId==='google.com')||{};
+        const nu={sub:g.uid||u.uid,name:u.displayName||g.displayName||'',email:u.email||g.email||'',picture:u.photoURL||g.photoURL||''};
+        const changed=!user||user.sub!==nu.sub;
+        user=nu; window.__flyUser=user; localStorage.setItem(GKEY,JSON.stringify(user)); localStorage.removeItem(GUEST);
+        $('login').classList.remove('open'); renderAccount();
+        if(changed){document.dispatchEvent(new CustomEvent('flysky:userchange'));GEV=[];gSyncedAt=0;loadGCache();renderCal();renderHome()}
+        startSync(u.uid);
+      }else{
+        stopSync();
+        if(user){user=null;window.__flyUser=null;localStorage.removeItem(GKEY);renderAccount();renderCal();renderHome()}
+        if(!localStorage.getItem(GUEST)) $('login').classList.add('open');
+      }
+    });
+  }).catch(()=>{syncErr='Firebase를 불러오지 못했어요'});
+}
+const stateBody=()=>{const o={...S};delete o._t;return JSON.stringify(o)};
+function yptPrefs(){try{const y=JSON.parse(localStorage.getItem('flysky:ypt'))||{};return {gorder:y.gorder||null,gid:y.gid||null,subj:y.subj||null}}catch(e){return {}}}
+function applyRemote(d){
+  try{const n=JSON.parse(d.state); if(!n||!Array.isArray(n.ddays)) return; S=n}catch(e){return}
+  S._t=+d.t||Date.now();
+  try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}
+  if(d.ypt){try{const y=JSON.parse(localStorage.getItem('flysky:ypt'))||{};Object.assign(y,d.ypt);localStorage.setItem('flysky:ypt',JSON.stringify(y))}catch(e){}
+    document.dispatchEvent(new CustomEvent('flysky:yptprefs'))}
+  syncAt=Date.now(); renderAll();
+}
+async function pushNow(){
+  if(!syncRef) return;
+  if(!S._t) S._t=Date.now();
+  await FB.F.setDoc(syncRef,{state:stateBody(),t:S._t,ypt:yptPrefs()});
+  syncAt=Date.now(); syncErr='';
+}
+function schedulePush(){ if(!syncOn) return; clearTimeout(upT); upT=setTimeout(()=>pushNow().catch(()=>{syncErr='클라우드에 저장하지 못했어요'}),700) }
+function stopSync(){ if(unsub){unsub();unsub=null} syncOn=false; syncRef=null }
+async function startSync(uid){
+  if(syncOn&&syncRef&&syncRef.id===uid) return;
+  stopSync();
+  syncRef=FB.F.doc(FB.db,'users',uid);
+  try{
+    const snap=await FB.F.getDoc(syncRef), r=snap.exists()?snap.data():null;
+    const first=localStorage.getItem('flysky:synced')!==uid;
+    if(r&&r.state){
+      const rt=+r.t||0, lt=+S._t||0;
+      if(first&&r.state!==stateBody()){
+        const when=new Date(rt), w=`${when.getMonth()+1}/${when.getDate()} ${pad(when.getHours())}:${pad(when.getMinutes())}`;
+        if(confirm(`클라우드에 저장된 데이터가 있어요 (${w} 저장).\n\n[확인] 클라우드 데이터를 이 기기로 가져와요.\n[취소] 이 기기 데이터로 클라우드를 덮어써요.`)) applyRemote(r);
+        else {S._t=Date.now();await pushNow()}
+      }else if(rt>lt) applyRemote(r);
+      else if(lt>rt) await pushNow();
+    }else await pushNow();
+    localStorage.setItem('flysky:synced',uid);
+    syncOn=true; syncAt=Date.now(); syncErr='';
+    unsub=FB.F.onSnapshot(syncRef,sn=>{if(sn.metadata&&sn.metadata.hasPendingWrites)return;const d=sn.data();if(d&&(+d.t||0)>(+S._t||0))applyRemote(d)});
+  }catch(e){syncErr=String(e&&e.code||'').includes('permission')?'Firestore 보안 규칙을 확인해 주세요':'동기화를 시작하지 못했어요'}
+}
+document.addEventListener('flysky:yptsave',()=>{if(!syncOn)return;S._t=Date.now();try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}schedulePush()});
+
+/* ============ 검색 ============ */
+function searchItems(q){
+  q=q.trim().toLowerCase().replace(/\s+/g,''); const R=[];
+  const hit=t=>String(t||'').toLowerCase().replace(/\s+/g,'').includes(q);
+  const goDate=d=>()=>{const x=parse(d);calY=x.getFullYear();calM=x.getMonth();sel=d;showView('cal');renderCal()};
+  FEATS.forEach(c=>c.items.forEach(f=>{if(!q||hit(f.n)||hit(c.cat))R.push({k:'기능',t:f.n,sub:c.cat,go:()=>openFeat(f)})}));
+  if(!q) return R;
+  allEvents().forEach(e=>{if(hit(e.title))R.push({k:typeName(e.type),t:e.title,sub:`${fmtLong(e.date)}${e.time?' · '+e.time:''}`,go:goDate(e.date)})});
+  S.apps.forEach(a=>{if(hit(a.univ)||hit(a.major)||hit(a.type)||hit(a.memo))R.push({k:'원서',t:`${a.univ} ${a.major}`,sub:`${a.type} · ${a.status}`,go:()=>{showView('admit');setAdmitTab('apps')}})});
+  S.goals.forEach(g=>{if(hit(g.univ)||hit(g.major))R.push({k:'목표',t:`${g.univ} ${g.major}`,sub:'목표 대학',go:()=>{showView('admit');setAdmitTab('goal')}})});
+  S.bucket.forEach(b=>{if(hit(b.text))R.push({k:'버킷',t:b.text,sub:b.cat,go:()=>showView('bucket')})});
+  return R.slice(0,40);
+}
+function openSearch(){
+  openModal('검색',`<div class="field"><span class="ic"><svg viewBox="0 0 24 24">${IC.search}</svg></span><input id="srchQ" placeholder="기능, 일정, 원서, D-day" autocomplete="off" enterkeyhint="search"></div><ul class="srch" id="srchRes"></ul>`);
+  let cur=[];
+  const draw=()=>{cur=searchItems($('srchQ').value);
+    $('srchRes').innerHTML=cur.length?cur.map((r,i)=>`<li data-i="${i}"><span class="k">${esc(r.k)}</span><div><b>${esc(r.t)}</b>${r.sub?`<small>${esc(r.sub)}</small>`:''}</div></li>`).join(''):'<li class="empty2">결과 없음</li>'};
+  $('srchQ').oninput=draw; draw();
+  $('srchRes').onclick=e=>{const li=e.target.closest('li[data-i]');if(!li)return;closeModal();cur[+li.dataset.i].go()};
+  $('mForm').onsubmit=e=>{e.preventDefault();if(cur[0]){closeModal();cur[0].go()}};
+  setTimeout(()=>$('srchQ').focus(),50);
+}
+$('hdSearch').onclick=openSearch;
+
+/* ============ 알림: 오늘 · 다가오는 7일 ============ */
+function upcoming(){
+  const L=allEvents().filter(e=>{const n=ddayN(e.date);return n>=0&&n<=7});
+  return L.sort((a,b)=>a.date.localeCompare(b.date)||(a.time||'00:00').localeCompare(b.time||'00:00'));
+}
+const soonSig=()=>upcoming().filter(e=>ddayN(e.date)<=1).map(e=>e.date+e.title).join('|');
+function renderBell(){const sig=soonSig();$('bellDot').hidden=!sig||localStorage.getItem('flysky:seen')===sig}
+function openBell(){
+  const L=upcoming(), lab=n=>n===0?'오늘':n===1?'내일':`D-${n}`;
+  openModal('알림',`<ul class="srch" id="bellList">${L.length?L.map((e,i)=>{const n=ddayN(e.date);return `<li data-i="${i}"><span class="k${n===0?' now':''}">${lab(n)}</span><div><b>${esc(e.title)}</b><small>${fmtLong(e.date)}${e.time?' · '+e.time:''} · ${typeName(e.type)}</small></div></li>`}).join(''):'<li class="empty2">앞으로 7일 동안 일정이 없어요</li>'}</ul>`);
+  $('bellList').onclick=ev=>{const li=ev.target.closest('li[data-i]');if(!li)return;const e=L[+li.dataset.i];closeModal();const x=parse(e.date);calY=x.getFullYear();calM=x.getMonth();sel=e.date;showView('cal');renderCal()};
+  localStorage.setItem('flysky:seen',soonSig()); renderBell();
+}
+$('hdBell').onclick=openBell;
+
+function renderAll(){renderHome();renderApps();renderMin();renderGoal();renderCal();renderBucket();renderBell()}
 renderAll();
+if(FIREBASE_CONFIG) fbStart();
 const h=location.hash.slice(1); if(['admit','cal','bucket','all','ypt'].includes(h)) showView(h);
 })();
 
@@ -1927,7 +2087,8 @@ function toast(m){const t=$('toast');t.textContent=m;t.classList.add('show');cle
 
 /* 상태: relay, jwt, email, nick, coid(국가 ID), gid(선택한 그룹), subj(고른 과목), run({startedAt, subject}) */
 let Y={}; try{Y=JSON.parse(localStorage.getItem(YKEY))||{}}catch(e){}
-const saveY=()=>{try{localStorage.setItem(YKEY,JSON.stringify(Y))}catch(e){}};
+const saveY=()=>{try{localStorage.setItem(YKEY,JSON.stringify(Y))}catch(e){} document.dispatchEvent(new CustomEvent('flysky:yptsave'))};
+document.addEventListener('flysky:yptprefs',()=>{try{const n=JSON.parse(localStorage.getItem(YKEY))||{};['gorder','gid','subj'].forEach(k=>{if(k in n)Y[k]=n[k]});render()}catch(e){}});
 const relay=()=>(YPT_RELAY_URL||Y.relay||'').trim().replace(/\/+$/,'');
 let info=null, groups=[], members=[], err='', loading=false;
 
@@ -2077,6 +2238,7 @@ async function studyStart(subject){
     Y.run={startedAt,subject:title}; saveY();
     if(j.dl&&info) info.sm=+j.dl.sm||info.sm;
     toast(`열품타 기록 시작 · ${title}`);
+    render(); loadMembers().then(render,()=>{});   // 그룹에도 바로 반영
   }catch(e){toast('열품타 기록을 시작하지 못했어요 · '+msg(e))}
   render();
 }
@@ -2138,15 +2300,17 @@ function fillStudy(ids,P){
   pb.setAttribute('aria-label',Y.run?'공부 기록 정지':'공부 기록 시작');
 }
 function groupParts(){
-  const on=!!Y.jwt, g=groups.find(x=>x.id===Y.gid), studying=members.filter(m=>m.on).length, og=orderedGroups();
+  const on=!!Y.jwt, g=groups.find(x=>x.id===Y.gid), og=orderedGroups();
+  const isMe=m=>!!(Y.nick&&m.n===Y.nick), live=m=>m.on||(isMe(m)&&!!Y.run);
+  const studying=members.filter(live).length;
   let body;
   if(!on) body='<div class="empty">열품타를 연결하면 그룹이 보여요</div>';
   else if(err&&!members.length) body=`<div class="empty">${esc(err)}</div>`;
   else if(!groups.length) body=`<div class="empty">${loading||!info?'불러오는 중':'가입한 그룹이 없어요'}</div>`;
   else body=members.map((m,i)=>{
-    const me=Y.nick&&m.n===Y.nick;
-    const label=m.on?'공부 중':m.paused?'일시정지':'휴식';
-    return `<div class="mem${me?' me':''}${m.on?' study':''}" data-mi="${i}"><span class="st${m.on?'':' off'}">${label}</span><div class="rk">${i+1}위${me?' · 나':''}</div>
+    const me=isMe(m), lv=live(m);
+    const label=lv?'공부 중':m.paused?'일시정지':'휴식';
+    return `<div class="mem${me?' me':''}${lv?' study':''}" data-mi="${i}"><span class="st${lv?'':' off'}">${label}</span><div class="rk">${i+1}위${me?' · 나':''}</div>
       <div class="av" style="background:${me?'linear-gradient(135deg,#adb6d9,#5d6ca8)':MEMC[i%MEMC.length]}">${esc(m.n.charAt(0)||'?')}</div>
       <div class="nm">${esc(m.n)}</div><div class="tm">${hms(m.sm+(me?runMs():0))}</div></div>`}).join('')||'<div class="empty">멤버가 없어요</div>';
   return {
@@ -2190,6 +2354,7 @@ const ARR='<span class="arr"><svg viewBox="0 0 24 24" style="width:18px;height:1
 function renderPane(){
   const p=$('yptPane'); if(!p) return;
   if(!Y.jwt){
+    $('yvAcctLabel').textContent='열품타 연결'; $('yvAcctCard').style.display='';
     const gu=googleUser();
     const soc=gu?`<button type="button" class="gbtn" id="ySocial" ${loading?'disabled':''}>${IC_GOOGLE}구글 계정으로 열품타 연결</button>
       <p class="note" style="margin-top:10px">열품타를 구글(${esc(gu.email||'')})로 가입했다면 이걸로 바로 돼요.</p>
@@ -2215,16 +2380,19 @@ function renderPane(){
     };
     return;
   }
-  const exp=jwtExp(Y.jwt), days=exp?Math.max(0,Math.ceil((exp-Date.now())/864e5)):null;
-  p.innerHTML=`<div class="connected"><div class="av">${esc((Y.nick||'?').charAt(0))}</div><div><p>@${esc(Y.nick||'열품타')}</p><small>● 연결됨${days!==null?` · 토큰 만료까지 ${days}일`:''}</small></div><button id="yOut">연결 해제</button></div>
-    ${Y.run?`<div class="connected"><div><p>기록 중 · ${esc(Y.run.subject)}</p><small id="yRunT">${hms(runMs())}</small></div><button id="yStop">정지</button></div>`:''}
-    <p class="yerr">${esc(err)}</p>
-    ${loading?'<p class="note" style="margin:2px 4px 14px">불러오는 중…</p>':''}
-    ${(()=>{const og=orderedGroups();return og.length>1?`<p class="note" style="margin:18px 4px 8px">홈에 보일 그룹 순서</p><div class="greorder">${og.map((x,i)=>`<div class="grow"><span>${esc(x.t)}</span><span class="gbtns"><button data-gmove="${x.id}" data-dir="-1" ${i===0?'disabled':''}>↑</button><button data-gmove="${x.id}" data-dir="1" ${i===og.length-1?'disabled':''}>↓</button></span></div>`).join('')}</div>`:''})()}`;
-  $('yOut').onclick=()=>{if(Y.run&&!confirm('열품타 기록이 켜져 있어요. 정지하지 않고 연결을 해제할까요?'))return;Y.jwt='';Y.run=null;info=null;groups=[];members=[];err='';saveY();render()};
+  const og0=orderedGroups();
+  $('yvAcctLabel').textContent='그룹 순서';
+  $('yvAcctCard').style.display=(og0.length>1||err)?'':'none';
+  p.innerHTML=`<p class="yerr">${esc(err)}</p>
+    ${(()=>{const og=og0;return og.length>1?`<div class="greorder">${og.map((x,i)=>`<div class="grow"><span>${esc(x.t)}</span><span class="gbtns"><button data-gmove="${x.id}" data-dir="-1" ${i===0?'disabled':''}>↑</button><button data-gmove="${x.id}" data-dir="1" ${i===og.length-1?'disabled':''}>↓</button></span></div>`).join('')}</div>`:''})()}`;
   p.querySelectorAll('[data-gmove]').forEach(btn=>btn.onclick=()=>moveGroup(+btn.dataset.gmove,+btn.dataset.dir));
-  if($('yStop')) $('yStop').onclick=()=>enqueue(studyStop);
 }
+/* 설정 창에서 쓰는 열품타 상태 · 연결 해제 */
+window.__ypt={
+  status:()=>({on:!!Y.jwt,nick:Y.nick||'',run:!!Y.run}),
+  disconnect:()=>{if(Y.run&&!confirm('열품타 기록이 켜져 있어요. 정지하지 않고 연결을 해제할까요?'))return false;
+    Y.jwt='';Y.run=null;info=null;groups=[];members=[];err='';saveY();render();return true}
+};
 function render(){renderHome();renderPane()}
 /* 구글 로그인/로그아웃하면 '구글으로 연결' 버튼을 다시 그림 (아직 열품타 연결 전일 때만) */
 document.addEventListener('flysky:userchange',()=>{if(!Y.jwt)renderPane()});
@@ -2264,9 +2432,9 @@ document.addEventListener('click',e=>{
 /* 1초마다 시간 갱신, 1분마다 그룹, 5분마다 전체 */
 let tick=0;
 setInterval(()=>{
-  if(Y.run){const c=hms((info?info.sm:0)+runMs());$('homeStudy').textContent=c;$('yvStudy').textContent=c;$('yvSubs').innerHTML=subjectList();const t=$('yRunT');if(t)t.textContent=hms(runMs())}
+  if(Y.run){const c=hms((info?info.sm:0)+runMs());$('homeStudy').textContent=c;$('yvStudy').textContent=c;$('yvSubs').innerHTML=subjectList();document.querySelectorAll('#yptMembers .mem.me .tm, #yvMembers .mem.me .tm').forEach(el=>{const i=+el.closest('.mem').dataset.mi;if(members[i])el.textContent=hms(members[i].sm+runMs())})}
   if(!Y.jwt||document.hidden) return;
-  if(++tick%300===0) refresh(); else if(tick%60===0) refresh({full:false});
+  if(++tick%300===0) refresh(); else if(tick%30===0) refresh({full:false});
 },1000);
 document.addEventListener('visibilitychange',()=>{if(!document.hidden&&Y.jwt&&info&&Date.now()-info.at>60000)refresh()});
 

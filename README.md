@@ -159,6 +159,35 @@
 
 ---
 
+## 6-1. Firebase 동기화 (모든 데이터 기기 간 연동)
+
+`index.html`의 `FIREBASE_CONFIG`에 값을 넣으면 켜짐. 비어 있으면 예전처럼 이 브라우저에만 저장.
+
+- 로그인: Firebase의 Google 로그인으로 바뀜 → **한 번 로그인하면 계속 유지** (새로 열 때마다 다시 로그인 안 함)
+- 동기화: 원서 · D-day · 목표 대학 · 성적 · 버킷리스트 · 이 기기에만 있는 일정 · 열품타 그룹 순서/과목 선택
+  - Firestore `users/{uid}` 문서 하나에 저장. 다른 기기에서 바꾸면 바로(실시간) 반영
+  - 처음 로그인하는 기기에 이미 데이터가 있고 클라우드와 다르면, 어느 쪽을 쓸지 한 번 물어봄
+  - 열품타 로그인(토큰)과 Google 캘린더 일정은 동기화하지 않음 (캘린더는 원래 Google에 저장됨)
+
+### 설정 순서
+1. https://console.firebase.google.com → **프로젝트 추가** → 이름 입력칸 아래의 **기존 Google Cloud 프로젝트에 추가**에서 `Fly Sky` 선택 (Analytics는 꺼도 됨)
+2. **Authentication** → 시작하기 → 로그인 방법 → **Google** 사용 설정 → 저장
+3. **Authentication → 설정 → 승인된 도메인** → `samsungkorea.github.io` 추가
+4. **Firestore Database** → 데이터베이스 만들기 → 위치 `asia-northeast3 (서울)` → 프로덕션 모드 → **규칙** 탭에 아래를 붙여넣고 게시
+   ```
+   rules_version = '2';
+   service cloud.firestore {
+     match /databases/{database}/documents {
+       match /users/{uid} {
+         allow read, write: if request.auth != null && request.auth.uid == uid;
+       }
+     }
+   }
+   ```
+5. **프로젝트 설정(톱니바퀴) → 내 앱 → 웹(</>)** → 앱 등록 → 나오는 `firebaseConfig` 값을 `FIREBASE_CONFIG`에 넣기 (공개돼도 되는 값)
+
+---
+
 ## 7. GitHub Pages
 
 1. 저장소 **Settings → Pages**
