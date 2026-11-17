@@ -18,6 +18,7 @@ const ROUTES = [
   ['POST', '/study/stop'],
   ['GET', '/group/groups/v2'],
   ['GET', '/logs/group/members/v2'],
+  ['GET', '/logs/day'],
 ];
 
 const DEFAULT_ORIGINS = 'https://samsungkorea.github.io';

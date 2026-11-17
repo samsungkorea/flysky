@@ -376,6 +376,12 @@
   .checks label{display:flex;align-items:center;gap:6px;background:var(--chip);border-radius:999px;padding:9px 14px;font-size:13px;font-weight:500;cursor:pointer}
   .checks input{accent-color:var(--accent);width:auto!important;padding:0!important}
   .dcount small.blk{display:block;margin:10px 0 0 2px;font-size:18px}
+  .setrow{display:flex;align-items:center;gap:14px;padding:16px 0;border-bottom:1px solid var(--line)}
+  .setrow:last-child{border-bottom:0}
+  .setrow>div{flex:1;min-width:0}
+  .setrow b{font-size:15px;font-weight:600}
+  .setrow small{display:block;font-size:12px;color:var(--sub);line-height:1.6;margin-top:4px}
+  .setrow .pbtn{flex-shrink:0}
   .mfoot{display:flex;gap:10px;margin-top:10px}
   .mfoot .pbtn{flex:1;justify-content:center;padding:15px}
   .mfoot .del{flex:0 0 auto;background:#f6e9e9;color:#a14848}
@@ -457,6 +463,17 @@
   .yv-timer{padding-top:26px}
   .members.ygrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));overflow:visible}
   .members.ygrid .mem{min-width:0}
+  .mem{cursor:pointer}
+  .mdetail{display:flex;align-items:center;gap:14px;margin-bottom:6px}
+  .mdav{width:52px;height:52px;border-radius:50%;display:grid;place-items:center;color:#fff;font-weight:700;font-size:20px;flex-shrink:0}
+  .mdname{font-size:17px;font-weight:700}
+  .mdsub{font-size:13px;color:var(--sub);margin-top:2px}
+  .st2{margin-left:auto;font-size:12px;padding:5px 11px;border-radius:999px;font-weight:600;background:var(--chip);color:var(--sub)}
+  .st2.on{background:var(--accent);color:#fff}
+  .st2.pause{background:var(--accent-soft);color:var(--accent)}
+  .mdstat{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 0;border-top:1px solid var(--line);margin-top:14px;font-size:14px}
+  .mdstat span{color:var(--sub)}
+  .mdstat b{font-size:18px;font-variant-numeric:tabular-nums}
   .ysubs{list-style:none;margin-top:14px}
   .ysubs li{display:grid;grid-template-columns:1fr auto;gap:6px 12px;padding:10px 0;border-bottom:1px solid var(--line);font-size:14px}
   .ysubs li:last-child{border-bottom:0}
@@ -607,7 +624,7 @@
         <div class="who"><div class="avatar" id="popAv">?</div><div><p id="popName">로그인 안 됨</p><small id="popMail"></small></div></div>
         <button class="item" id="popCal"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="3"/><path d="M3 10h18M8 3v4M16 3v4"/></svg><span>Google 캘린더 연결</span></button>
         <button class="item" onclick="openSheet()"><svg viewBox="0 0 24 24"><path d="M6 9.6L16.2 11.2V12.8L6 14.4z" fill="currentColor" fill-opacity=".35" stroke="none"/><path d="M6 14.4L16.2 12.8V14.6L8 19.7Q6 20.6 6 18.7z" fill="currentColor" fill-opacity=".75" stroke="none"/><path d="M16.2 9.4L18.9 11.1q1 .9 0 1.8L16.2 14.6z" fill="currentColor" stroke="none"/><path d="M6 5.3v13.4a1.3 1.3 0 0 0 2 1.1L18.8 13a1.2 1.2 0 0 0 0-2L8 4.2a1.3 1.3 0 0 0-2 1.1z"/></svg>열품타</button>
-        <button class="item"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1L7 17M17 7l2.1-2.1"/></svg>설정</button>
+        <button class="item" id="popSettings"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1L7 17M17 7l2.1-2.1"/></svg>설정</button>
         <button class="item" id="popLogout"><svg viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/></svg><span>로그아웃</span></button>
       </div>
     </div>
@@ -1414,6 +1431,26 @@ function openModal(title,body,{onSave,onDelete,saveText='저장'}={}){
 }
 function closeModal(){M.classList.remove('open')}
 window.closeModal=closeModal;
+function openSettings(){
+  const theme=localStorage.getItem('flysky:theme')||'auto';
+  openModal('설정',`
+    <div class="setrow"><div><b>계정</b><small>${user?esc(user.name||user.email):'로그인 안 됨'}</small></div>
+      <button type="button" class="pbtn soft" id="setAcct">${user?'로그아웃':'로그인'}</button></div>
+    <div class="setrow"><div><b>데이터 저장</b><small>일정은 Google 캘린더(로그인 시)에, 나머지(D-day·원서·성적·버킷·열품타 설정)는 이 브라우저에 저장돼요. 기기끼리 자동 동기화는 안 돼요.</small></div></div>
+    <div class="setrow"><div><b>이 기기 데이터 초기화</b><small>이 브라우저에 저장된 Fly Sky 데이터를 모두 지워요. Google 캘린더의 실제 일정은 지워지지 않아요.</small></div>
+      <button type="button" class="pbtn del" id="setReset">초기화</button></div>
+    <div class="setrow"><div><b>Fly Sky</b><small>대입 준비용 개인 웹사이트 · samsungkorea.github.io/flysky</small></div></div>`);
+  const sa=document.getElementById('setAcct');
+  if(sa) sa.onclick=()=>{closeModal();if(user)logout();else{document.getElementById('pop').classList.remove('open');document.getElementById('login').classList.add('open')}};
+  const sr=document.getElementById('setReset');
+  if(sr) sr.onclick=()=>{
+    if(!confirm('이 브라우저에 저장된 Fly Sky 데이터(일정 캐시·원서·성적·버킷·열품타 로그인 등)를 모두 지울까요?\n\nGoogle 캘린더의 실제 일정은 지워지지 않아요.'))return;
+    Object.keys(localStorage).filter(k=>k.startsWith('flysky')).forEach(k=>localStorage.removeItem(k));
+    location.reload();
+  };
+}
+const _ps=document.getElementById('popSettings');
+if(_ps) _ps.onclick=()=>{document.getElementById('pop').classList.remove('open');openSettings()};
 
 /* ============ 입시: 원서 ============ */
 const STAT=['준비 중','제출','1차 합격','최종 합격','불합격'];
@@ -1926,7 +1963,7 @@ function expire(){Y.jwt='';info=null;groups=[];members=[];saveY();render()}
 /* ---------- API ---------- */
 function applyInfo(j){
   const ss=(Array.isArray(j.ss)?j.ss:[]).filter(x=>!truthy(x.dl))
-    .map(x=>({t:String(x.tt??x.t??x.title??''),sm:+x.sm||0,or:+x.or||0})).filter(x=>x.t).sort((a,b)=>a.or-b.or);
+    .map(x=>({id:+(x.id??x.sid??x.subjectId??x.subjectID??x.si)||0,t:String(x.tt??x.t??x.title??''),sm:+x.sm||0,or:+x.or||0})).filter(x=>x.t).sort((a,b)=>a.or-b.or);
   info={sm:+(j.dl&&j.dl.sm)||0,subjects:ss,at:Date.now()};
   if(j.n) Y.nick=String(j.n);
   if(+j.coid) Y.coid=+j.coid;
@@ -1955,6 +1992,33 @@ async function reloadInfo(){
   if(j.s===false) throw new YErr(String(j.c||'reload'));
   applyInfo(j);
 }
+function logMs(e){
+  const direct=+(e.sm??e.studyMs??e.studyTime??e.ms??e.sd)||0; if(direct>0) return direct;
+  const st=+(e.startedAt??e.start??e.st??e.from)||0, en=+(e.endedAt??e.end??e.et??e.to)||0, d=en-st;
+  return (st>0&&d>0&&d<=864e5)?d:0;
+}
+async function loadDay(){
+  if(!Y.jwt||!info) return;
+  const now=new Date(), dstr=now.getFullYear()+'-'+pad(now.getMonth()+1)+'-'+pad(now.getDate());
+  let j; try{j=await call('GET','/logs/day?date='+dstr)}catch(e){return}
+  if(j&&j.s===false) return;
+  const byId={}, byTitle={}, titleByIndex={};
+  const sbs=Array.isArray(j.sbs)?j.sbs:[]; sbs.forEach((bk,i)=>{const t=bk&&(bk.t??bk.title);if(t)titleByIndex[i]=String(t)});
+  const addList=list=>(Array.isArray(list)?list:[]).forEach(e=>{
+    if(!e||typeof e!=='object')return; const ms=logMs(e); if(ms<=0)return;
+    const id=+(e.si??e.sid??e.subjectId??e.subjectID??e.id)||0;
+    let t=e.subject??e.subjectName??e.subjectTitle??e.title??e.tt??e.t; if(typeof e.sb==='string'&&!t)t=e.sb;
+    if(t==null||t===''){const idx=+(e.sbi??e.subjectIndex??(typeof e.sb==='number'?e.sb:NaN)); if(!isNaN(idx))t=titleByIndex[idx]}
+    if(id)byId[id]=(byId[id]||0)+ms;
+    if(t)byTitle[String(t)]=(byTitle[String(t)]||0)+ms;
+  });
+  const dl=j.dl&&typeof j.dl==='object'?j.dl:{};
+  addList(dl.ls); addList(j.ls); addList(j.ss); addList(j.ts);
+  let any=false;
+  info.subjects.forEach(sb=>{const v=(sb.id&&byId[sb.id]); const w=(v!=null?v:byTitle[sb.t]); if(w!=null){sb.sm=w;any=true}});
+  if(+dl.sm) info.sm=+dl.sm;
+  info.dayLoaded=any||Object.keys(byTitle).length>0||Object.keys(byId).length>0;
+}
 async function loadGroups(){
   const j=await call('GET','/group/groups/v2');
   const seen=new Set(); groups=[];
@@ -1972,7 +2036,10 @@ async function loadMembers(){
     const dl=m.dl&&typeof m.dl==='object'?m.dl:{};
     const paused=sbool(dl.ia??dl.ip??m.ia??m.ip);
     const studying=sbool(dl.is??m.is??m.isStudying)&&!paused;
-    return {n:String(m.n||''),sm:+(dl.sm??dl.tp??m.sm)||0,on:studying,paused};
+    let since=+(dl.ss??m.ss)||0; if(since>0&&since<1e11)since*=1000;   // 초 단위면 ms로
+    return {n:String(m.n||''),sm:+(dl.sm??dl.tp??m.sm)||0,on:studying,paused,
+      subj:(typeof dl.sn==='string'?dl.sn:typeof dl.sb==='string'?dl.sb:'')||'',
+      since, cat:String(m.ct||'')};
   }).sort((a,b)=>b.sm-a.sm);
 }
 async function refresh({full=true}={}){
@@ -1980,7 +2047,7 @@ async function refresh({full=true}={}){
   if(jwtExp(Y.jwt)&&jwtExp(Y.jwt)<Date.now()){expire();err=msg(new YErr('expired'));render();return}
   loading=true;
   try{
-    if(full){await reloadInfo();await loadGroups()}
+    if(full){await reloadInfo();await loadDay();await loadGroups()}
     await loadMembers(); err='';
   }catch(e){err=msg(e)}
   loading=false; render();
@@ -2012,7 +2079,7 @@ async function studyStop(){
     if(j.s!==true) throw new YErr(String(j.c||'stop'));
     if(info) info.sm=j.dl?(+j.dl.sm||0):info.sm+(Date.now()-startedAt);
     Y.run=null; saveY(); toast('열품타에 기록했어요');
-    loadMembers().then(render,()=>{});
+    loadDay().then(()=>loadMembers()).then(render,()=>render());
   }catch(e){toast('열품타 기록을 멈추지 못했어요 · '+msg(e))}
   render();
 }
@@ -2070,7 +2137,7 @@ function groupParts(){
   else body=members.map((m,i)=>{
     const me=Y.nick&&m.n===Y.nick;
     const label=m.on?'공부 중':m.paused?'일시정지':'휴식';
-    return `<div class="mem${me?' me':''}${m.on?' study':''}"><span class="st${m.on?'':' off'}">${label}</span><div class="rk">${i+1}위${me?' · 나':''}</div>
+    return `<div class="mem${me?' me':''}${m.on?' study':''}" data-mi="${i}"><span class="st${m.on?'':' off'}">${label}</span><div class="rk">${i+1}위${me?' · 나':''}</div>
       <div class="av" style="background:${me?'linear-gradient(135deg,#adb6d9,#5d6ca8)':MEMC[i%MEMC.length]}">${esc(m.n.charAt(0)||'?')}</div>
       <div class="nm">${esc(m.n)}</div><div class="tm">${hms(m.sm+(me?runMs():0))}</div></div>`}).join('')||'<div class="empty">멤버가 없어요</div>';
   return {
@@ -2143,16 +2210,42 @@ function renderPane(){
   p.innerHTML=`<div class="connected"><div class="av">${esc((Y.nick||'?').charAt(0))}</div><div><p>@${esc(Y.nick||'열품타')}</p><small>● 연결됨${days!==null?` · 토큰 만료까지 ${days}일`:''}</small></div><button id="yOut">연결 해제</button></div>
     ${Y.run?`<div class="connected"><div><p>기록 중 · ${esc(Y.run.subject)}</p><small id="yRunT">${hms(runMs())}</small></div><button id="yStop">정지</button></div>`:''}
     <p class="yerr">${esc(err)}</p>
-    <button class="cta" id="yRefresh">${loading?'불러오는 중':'새로고침'} ${ARR}</button>
+    ${loading?'<p class="note" style="margin:2px 4px 14px">불러오는 중…</p>':''}
     ${(()=>{const og=orderedGroups();return og.length>1?`<p class="note" style="margin:18px 4px 8px">홈에 보일 그룹 순서</p><div class="greorder">${og.map((x,i)=>`<div class="grow"><span>${esc(x.t)}</span><span class="gbtns"><button data-gmove="${x.id}" data-dir="-1" ${i===0?'disabled':''}>↑</button><button data-gmove="${x.id}" data-dir="1" ${i===og.length-1?'disabled':''}>↓</button></span></div>`).join('')}</div>`:''})()}`;
   $('yOut').onclick=()=>{if(Y.run&&!confirm('열품타 기록이 켜져 있어요. 정지하지 않고 연결을 해제할까요?'))return;Y.jwt='';Y.run=null;info=null;groups=[];members=[];err='';saveY();render()};
-  $('yRefresh').onclick=()=>refresh();
   p.querySelectorAll('[data-gmove]').forEach(btn=>btn.onclick=()=>moveGroup(+btn.dataset.gmove,+btn.dataset.dir));
   if($('yStop')) $('yStop').onclick=()=>enqueue(studyStop);
 }
 function render(){renderHome();renderPane()}
 /* 구글 로그인/로그아웃하면 '구글으로 연결' 버튼을 다시 그림 (아직 열품타 연결 전일 때만) */
 document.addEventListener('flysky:userchange',()=>{if(!Y.jwt)renderPane()});
+
+/* 멤버 눌러서 상세 보기 */
+const M=$('modal');
+function memberDetail(i){
+  const m=members[i]; if(!m) return;
+  const me=Y.nick&&m.n===Y.nick;
+  const total=m.sm+(me?runMs():0);
+  const state=m.on?'공부 중':m.paused?'일시정지':'휴식';
+  const sinceTxt=m.on&&m.since?`${Math.max(0,Math.floor((Date.now()-m.since)/60000))}분째`:'';
+  $('mTitle').textContent=m.n;
+  $('mForm').onsubmit=e=>{e.preventDefault();window.closeModal()};
+  $('mForm').innerHTML=`
+    <div class="mdetail">
+      <div class="mdav" style="background:${me?'linear-gradient(135deg,#adb6d9,#5d6ca8)':MEMC[i%MEMC.length]}">${esc(m.n.charAt(0)||'?')}</div>
+      <div><div class="mdname">${esc(m.n)}${me?' · 나':''}</div><div class="mdsub">${i+1}위${m.cat?' · '+esc(m.cat):''}</div></div>
+      <span class="st2 ${m.on?'on':m.paused?'pause':'off'}">${state}</span>
+    </div>
+    <div class="mdstat"><span>오늘 공부 시간</span><b>${hms(total)}</b></div>
+    ${m.on&&m.subj?`<div class="mdstat"><span>지금 과목</span><b>${esc(m.subj)}${sinceTxt?` · ${sinceTxt}`:''}</b></div>`:''}
+    <p class="note" style="margin:14px 2px 0">열품타가 그룹에서 알려 주는 건 여기까지예요. 지난 날짜별 기록은 열품타 앱에서 볼 수 있어요.</p>
+    <div class="mfoot"><button type="button" class="pbtn" onclick="closeModal()">닫기</button></div>`;
+  M.classList.add('open');
+}
+document.addEventListener('click',e=>{
+  const el=e.target.closest('#yptMembers .mem, #yvMembers .mem'); if(!el) return;
+  const i=+el.dataset.mi; if(!isNaN(i)) memberDetail(i);
+});
 
 /* 그룹 바꾸기 */
 document.addEventListener('click',e=>{
