@@ -642,15 +642,15 @@
 @keyframes flyPopOut{from{opacity:1;transform:none}to{opacity:0;transform:scale(.92) translate3d(0,6px,0)}}
 /* 뾰잉: 버튼 자리의 흐릿한 작은 방울 → 말랑하게 늘어나며 부풂 → 초점이 맞으며 자리 잡음 */
 @keyframes flyMorphIn{
-  0%{opacity:0;transform:scale(.16,.2);border-radius:50%;filter:blur(12px);animation-timing-function:cubic-bezier(.2,.8,.3,1)}
+  0%{opacity:0;transform:scale(.16,.2);border-radius:180px;filter:blur(12px);animation-timing-function:cubic-bezier(.2,.8,.3,1)}
   14%{opacity:1}
-  42%{transform:scale(.9,1.06);border-radius:38%;filter:blur(5px);animation-timing-function:cubic-bezier(.3,0,.4,1)}
+  42%{transform:scale(.9,1.06);border-radius:40px;filter:blur(5px);animation-timing-function:cubic-bezier(.3,0,.4,1)}
   62%{transform:scale(1.035,.975);filter:blur(1.2px);animation-timing-function:cubic-bezier(.4,0,.5,1)}
   80%{transform:scale(.99,1.012);filter:blur(0)}
   100%{opacity:1;transform:none;filter:blur(0)}}
 @keyframes flyMorphOut{
   from{opacity:1;transform:none;filter:blur(0)}
-  to{opacity:0;transform:scale(.18,.22);border-radius:50%;filter:blur(10px)}}
+  to{opacity:0;transform:scale(.18,.22);border-radius:180px;filter:blur(10px)}}
 @keyframes flyBlob{from{opacity:0;transform:translate(-50%,-50%) scale(.7)}to{opacity:1;transform:translate(-50%,-50%) scale(1)}}
 
 /* 화면 · 탭 · 필터 전환: 카드가 차례로 떠오름 */
@@ -658,9 +658,7 @@
 
 /* 모달 */
 .scrim.open{animation:flyFade .3s var(--soft) both}
-.scrim.open .sheet{animation:flyMorphIn .56s linear both}
 .scrim.closing:not(.open){display:flex;pointer-events:none;animation:flyFadeOut .22s ease both}
-.scrim.closing:not(.open) .sheet{animation:flyMorphOut .24s cubic-bezier(.4,0,.8,.4) both}
 /* 계정 창 */
 .pop{transform-origin:24px calc(100% - 24px)}
 .pop.open{animation:flyMorphIn .5s linear both}
@@ -2780,18 +2778,33 @@ document.addEventListener('keydown',e=>{if((e.ctrlKey||e.metaKey)&&['+','-','=',
   const closer=new MutationObserver(list=>{
     for(const m of list){
       const el=m.target, was=(m.oldValue||'').split(/\s+/), now=el.classList.contains('open');
-      if(was.includes('open')&&!now){el.classList.add('closing');clearTimeout(el._ct);el._ct=setTimeout(()=>el.classList.remove('closing'),320)}
+      if(was.includes('open')&&!now){el.classList.add('closing');if(el.id==='modal')unaim(el);clearTimeout(el._ct);el._ct=setTimeout(()=>el.classList.remove('closing'),320)}
       else if(now&&!was.includes('open')){el.classList.remove('closing');clearTimeout(el._ct);if(el.id==='modal')aim(el)}
     }
     /* 같은 순간에 닫혔다 다시 열리면(모달 내용 바뀜) 시트 등장 다시 재생 */
     list.forEach(m=>{const el=m.target;if(el.id==='modal'&&el.classList.contains('open')&&(m.oldValue||'').includes('open')){
-      const sh=el.querySelector('.sheet'); if(sh){sh.style.animation='none';void sh.offsetWidth;sh.style.animation=''}}});
+      aim(el)}});
   });
   /* 마지막으로 누른 곳 기억 → 모달이 그 자리에서 부풀고 그 자리로 들어감 */
   let lastX=null, lastY=null;
   addEventListener('pointerdown',e=>{lastX=e.clientX;lastY=e.clientY},{passive:true,capture:true});
-  function aim(sc){const sh=sc.querySelector('.sheet');if(!sh)return;
-    sh.style.transformOrigin=lastX==null?'50% 50%':`${Math.round(lastX-sh.offsetLeft)}px ${Math.round(lastY-sh.offsetTop)}px`}
+  /* 뾰잉: 누른 자리에서 작은 방울로 출발 → 날아오며 말랑하게 부풀고 초점이 맞음 (Safari에서도 확실하게 translate로 이동) */
+  const vec=sh=>{if(lastX==null)return [0,0];return [lastX-(sh.offsetLeft+sh.offsetWidth/2),lastY-(sh.offsetTop+sh.offsetHeight/2)]};
+  const E1='cubic-bezier(.2,.85,.3,1)',E2='cubic-bezier(.35,0,.45,1)';
+  function aim(sc){const sh=sc.querySelector('.sheet');if(!sh||!sh.animate)return;
+    const [dx,dy]=vec(sh); sh._v=[dx,dy]; if(sh._a)sh._a.cancel();
+    sh._a=sh.animate([
+      {opacity:0,transform:`translate(${dx}px,${dy}px) scale(.14,.17)`,filter:'blur(10px)',borderRadius:'260px',easing:E1},
+      {opacity:1,offset:.18,easing:E1},
+      {transform:`translate(${dx*.06}px,${dy*.06}px) scale(.93,1.05)`,filter:'blur(3px)',borderRadius:'56px',offset:.48,easing:E2},
+      {transform:'translate(0,0) scale(1.022,.985)',filter:'blur(.6px)',borderRadius:'34px',offset:.7,easing:E2},
+      {transform:'scale(.996,1.004)',filter:'blur(0px)',offset:.86},
+      {opacity:1,transform:'none',filter:'blur(0px)',borderRadius:'32px'}],{duration:520})}
+  function unaim(sc){const sh=sc.querySelector('.sheet');if(!sh||!sh.animate)return;
+    const [dx,dy]=sh._v||[0,0]; if(sh._a)sh._a.cancel();
+    sh._a=sh.animate([{opacity:1,transform:'none',filter:'blur(0px)'},
+      {opacity:0,transform:`translate(${dx}px,${dy}px) scale(.16,.2)`,filter:'blur(8px)',borderRadius:'260px'}],
+      {duration:240,easing:'cubic-bezier(.45,0,.8,.5)',fill:'forwards'});}   // 다음에 열 때 aim()이 지움
   ['modal','pop','login'].forEach(id=>{const el=document.getElementById(id);if(el)closer.observe(el,{attributes:true,attributeFilter:['class'],attributeOldValue:true})});
   /* 홈 필터 칩 */
   document.addEventListener('click',e=>{const c=e.target.closest('#view-home .chips .chip');if(c)setTimeout(()=>enter(document.querySelector('#view-home .grid')),0)});
