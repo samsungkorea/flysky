@@ -443,6 +443,9 @@
   .setrow b{font-size:15px;font-weight:600}
   .setrow small{display:block;font-size:12px;color:var(--sub);line-height:1.6;margin-top:4px}
   .setrow .pbtn{flex-shrink:0}
+  .mdraw{margin:6px 0 4px;font-size:12px;color:var(--sub)}
+  .mdraw summary{cursor:pointer;padding:6px 0}
+  .mdraw pre{max-height:220px;overflow:auto;background:var(--chip);border-radius:12px;padding:10px;font-size:11px;line-height:1.5;white-space:pre-wrap;word-break:break-all;color:var(--ink);user-select:text;-webkit-user-select:text}
   .setsw{width:46px;height:28px;border-radius:99px;background:#d9dce5;position:relative;flex-shrink:0;transition:background-color .25s}
   .setsw::after{content:"";position:absolute;top:3px;left:3px;width:22px;height:22px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.2);transition:transform .45s var(--spring,ease)}
   .setsw.on{background:var(--ink)}
@@ -2584,25 +2587,53 @@ async function loadMembers(){
   const gid=Y.gid; membersAt=Date.now();   // 시도한 시각 (실패해도 다음 주기까지 기다림)
   const j=await call('GET',`/logs/group/members/v2?groupID=${gid}&countryID=${Y.coid||0}&isLooking=true&version=810046`);
   if(gid!==Y.gid) return;   // 그사이 다른 그룹을 골랐으면 버림
-  const sbool=v=>v===true||v===1||v==='1'||v==='true';
-  const prev=new Map(members.map(m=>[m.n,m])), now=Date.now();
-  members=(Array.isArray(j.ms)?j.ms:[]).map(m=>{
+  rawMembers=Array.isArray(j.ms)?j.ms:[]; rawAt=Date.now();
+  parseMembers(); markMe();
+  if(detectKeys()){parseMembers();markMe()}   // 내 기록과 맞는 칸을 찾았으면 그 칸으로 다시 읽음
+}
+let rawMembers=[], rawAt=0;
+const sbool=v=>v===true||v===1||v==='1'||v==='true';
+const getPath=(o,p)=>p.split('.').reduce((a,k)=>a&&typeof a==='object'?a[k]:undefined,o);
+function parseMembers(){
+  const prev=new Map(members.map(m=>[m.n,m])), now=Date.now(), K=Y.smKey;
+  members=rawMembers.map(m=>{
     const dl=m.dl&&typeof m.dl==='object'?m.dl:{};
     const paused=sbool(dl.ia??dl.ip??m.ia??m.ip);
     const studying=sbool(dl.is??m.is??m.isStudying)&&!paused;
-    let since=+(dl.ss??m.ss)||0; if(since>0&&since<1e11)since*=1000;   // 초 단위면 ms로
-    return {n:String(m.n||''),ud:+(m.ud??m.userId)||0,sm:+(dl.sm??dl.tp??m.sm)||0,on:studying,paused,
+    let since=+(K&&K.ss?getPath(m,K.ss):(dl.ss??m.ss))||0; if(since>0&&since<1e11)since*=1000;   // 초 단위면 ms로
+    let sm=+(dl.sm??dl.tp??m.sm)||0, inc=false;
+    if(K&&K.path){const v=+getPath(m,K.path); if(!isNaN(v)){sm=v*K.unit; inc=!!K.inc}}
+    if(inc&&studying) since=rawAt;          // 이미 지금 공부까지 포함된 값이면, 불러온 뒤부터만 더함
+    return {n:String(m.n||''),ud:+(m.ud??m.userId)||0,sm,on:studying,paused,
       subj:(typeof dl.sn==='string'?dl.sn:typeof dl.sb==='string'?dl.sb:'')||'',
-      since, cat:String(m.ct||'')};
+      since, cat:String(m.ct||''), raw:m};
   }).map(m=>{
     if(m.on){const p=prev.get(m.n); m.seenAt=(p&&p.on&&p.sm===m.sm&&p.seenAt)?p.seenAt:now}
     return m;
   }).sort((a,b)=>b.sm-a.sm);
-  markMe();
+}
+/* 열품타 그룹 데이터에서 '오늘 누적 공부 시간'이 어느 칸인지 자동으로 찾기:
+   정확히 알고 있는 내 오늘 기록(info.sm)과 같은 값을 가진 칸을 '나' 항목에서 찾음 */
+function detectKeys(){
+  const me=members.find(m=>m.me); if(!me||!me.raw||!info||!(info.sm>=60000)) return false;
+  const flat=[]; (function walk(o,p,d){if(!o||typeof o!=='object'||d>2)return;
+    for(const k in o){const v=o[k],pp=p?p+'.'+k:k; if(typeof v==='object')walk(v,pp,d+1); else if(v!==''&&v!==null&&!isNaN(+v)&&+v>0)flat.push([pp,+v])}})(me.raw,'',0);
+  const run=Y.run?Date.now()-Y.run.startedAt:0, T=[[info.sm,false],[info.sm+run,true]];
+  let best=null;
+  for(const [path,v] of flat){ if(/^(ud|userId|id|gid|ct|coid)$/.test(path.split('.').pop())) continue;
+    for(const unit of [1,1000,60000]) for(const [t,inc] of T){const err=Math.abs(v*unit-t); const tol=Math.max(60000,t*.03);
+      if(err<=tol&&(!best||err<best.err)) best={path,unit,inc:inc&&run>60000,err}}}
+  let ss=null;
+  if(Y.run){for(const [path,v] of flat){for(const u of [1,1000]){if(Math.abs(v*u-Y.run.startedAt)<=120000){ss=path;break}} if(ss)break}}
+  if(!best) return false;
+  const K={path:best.path,unit:best.unit,inc:best.inc,ss:ss||(Y.smKey&&Y.smKey.ss)||null};
+  const same=Y.smKey&&Y.smKey.path===K.path&&Y.smKey.unit===K.unit&&Y.smKey.inc===K.inc&&Y.smKey.ss===K.ss;
+  if(!same){Y.smKey=K;saveY()}
+  return !same;
 }
 /* 그룹에서 '나' 찾기: 그룹 이름이 계정 닉네임과 다를 수 있어서 여러 단서를 씀 */
 function liveMs(m){
-  if(m.me&&Y.run) return m.sm+runMs();
+  if(m.me&&info&&info.sm>=0) return info.sm+runMs();   // 나는 내 정확한 기록으로
   if(!m.on) return m.sm;
   const now=Date.now(), st=(m.since>0&&m.since<=now&&now-m.since<864e5)?m.since:(m.seenAt||now);
   return m.sm+Math.max(0,now-st);
@@ -2835,6 +2866,7 @@ function memberDetail(i){
     </div>
     <div class="mdstat"><span>오늘 공부 시간</span><b>${hms(total)}</b></div>
     ${m.on&&m.subj?`<div class="mdstat"><span>지금 과목</span><b>${esc(m.subj)}${sinceTxt?` · ${sinceTxt}`:''}</b></div>`:''}
+    <details class="mdraw"><summary>서버 원본 데이터</summary><pre>${esc(JSON.stringify({member:m.raw,key:Y.smKey||null,mine:me&&info?{daySm:info.sm,runMs:runMs()}:undefined},null,1))}</pre></details>
     <div class="mfoot"><button type="button" class="pbtn" onclick="closeModal()">닫기</button></div>`;
   M.classList.add('open');
 }
