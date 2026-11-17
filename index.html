@@ -136,6 +136,16 @@
   .mem .st{position:absolute;top:16px;right:16px;font-size:11px;padding:4px 9px;border-radius:999px;background:var(--accent-soft);color:var(--accent);font-weight:600}
   .mem .st.off{background:var(--chip);color:var(--sub)}
   .mem.me .st{background:#fff;color:var(--accent)}
+  .mem.study{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent)}
+  .mem.study .av{box-shadow:0 0 0 3px var(--accent-soft)}
+  .mem.study .st{background:var(--accent);color:#fff}
+  .mem:not(.study):not(.me) .av{opacity:.45}
+  .mem:not(.study):not(.me) .nm,.mem:not(.study):not(.me) .tm{color:var(--sub)}
+  .greorder{margin-top:4px}
+  .grow{display:flex;align-items:center;justify-content:space-between;gap:10px;background:var(--chip);border-radius:14px;padding:10px 12px;margin-bottom:8px;font-size:14px}
+  .grow .gbtns{display:flex;gap:6px}
+  .grow .gbtns button{width:32px;height:32px;border-radius:10px;background:#fff;display:grid;place-items:center;font-size:16px;color:var(--ink)}
+  .grow .gbtns button:disabled{opacity:.35}
 
   /* Sheet */
   .scrim{position:fixed;inset:0;background:rgba(21,22,26,.35);backdrop-filter:blur(6px);display:none;align-items:center;justify-content:center;z-index:50;padding:20px}
@@ -1827,8 +1837,13 @@ async function loadGroups(){
 async function loadMembers(){
   if(!Y.gid){members=[];return}
   const j=await call('GET',`/logs/group/members/v2?groupID=${Y.gid}&countryID=${Y.coid||0}&isLooking=true&version=810046`);
-  members=(Array.isArray(j.ms)?j.ms:[]).map(m=>({n:String(m.n||''),sm:+((m.dl&&m.dl.sm)??m.sm)||0,on:truthy(m.im??m.is)}))
-    .sort((a,b)=>b.sm-a.sm);
+  const sbool=v=>v===true||v===1||v==='1'||v==='true';
+  members=(Array.isArray(j.ms)?j.ms:[]).map(m=>{
+    const dl=m.dl&&typeof m.dl==='object'?m.dl:{};
+    const paused=sbool(dl.ia??dl.ip??m.ia??m.ip);
+    const studying=sbool(dl.is??m.is??m.isStudying)&&!paused;
+    return {n:String(m.n||''),sm:+(dl.sm??dl.tp??m.sm)||0,on:studying,paused};
+  }).sort((a,b)=>b.sm-a.sm);
 }
 async function refresh({full=true}={}){
   if(!Y.jwt||loading) return;
@@ -1891,6 +1906,8 @@ window.addEventListener('pagehide',e=>{
 const COLORS=['var(--accent-deep)','var(--accent)','var(--accent-light)','#d8ddee'];
 const MEMC=['var(--accent-deep)','#8592c4','#9aa0b0','#3f4a6b','var(--accent)'];
 const runMs=()=>Y.run?Date.now()-Y.run.startedAt:0;
+function orderedGroups(){const ord=Y.gorder||[];return groups.slice().sort((a,b)=>{let ia=ord.indexOf(a.id),ib=ord.indexOf(b.id);if(ia<0)ia=1e9;if(ib<0)ib=1e9;return ia-ib||0})}
+function moveGroup(id,dir){const og=orderedGroups().map(g=>g.id),i=og.indexOf(id),j=i+dir;if(i<0||j<0||j>=og.length)return;[og[i],og[j]]=[og[j],og[i]];Y.gorder=og;saveY();render()}
 function curSubj(){const subs=info?info.subjects:[];return (subs.find(x=>x.t===Y.subj)||subs[0]||{t:''}).t}
 const IC_PLAY='<svg viewBox="0 0 24 24"><path d="M8 5.5v13l11-6.5z"/></svg>';
 const IC_PAUSE='<svg viewBox="0 0 24 24"><path d="M7 5h3.5v14H7zM13.5 5H17v14h-3.5z"/></svg>';
@@ -1914,14 +1931,16 @@ function renderHome(){
   const g=groups.find(x=>x.id===Y.gid);
   const studying=members.filter(m=>m.on).length;
   $('yptGTitle').innerHTML=g?`${esc(g.t)}<small>${members.length}명 중 ${studying}명 공부 중</small>`:'그룹';
-  $('yptGSeg').innerHTML=groups.length>1?groups.map(x=>`<button data-gid="${x.id}" class="${x.id===Y.gid?'on':''}">${esc(x.t)}</button>`).join(''):'';
+  const og=orderedGroups();
+  $('yptGSeg').innerHTML=og.length>1?og.map(x=>`<button data-gid="${x.id}" class="${x.id===Y.gid?'on':''}">${esc(x.t)}</button>`).join(''):'';
   let body;
   if(!on) body='<div class="empty">열품타를 연결하면 그룹이 보여요</div>';
   else if(err&&!members.length) body=`<div class="empty">${esc(err)}</div>`;
   else if(!groups.length) body=`<div class="empty">${loading||!info?'불러오는 중':'가입한 그룹이 없어요'}</div>`;
   else body=members.map((m,i)=>{
     const me=Y.nick&&m.n===Y.nick;
-    return `<div class="mem${me?' me':''}"><span class="st${m.on?'':' off'}">${m.on?'공부 중':'휴식'}</span><div class="rk">${i+1}위${me?' · 나':''}</div>
+    const label=m.on?'공부 중':m.paused?'일시정지':'휴식';
+    return `<div class="mem${me?' me':''}${m.on?' study':''}"><span class="st${m.on?'':' off'}">${label}</span><div class="rk">${i+1}위${me?' · 나':''}</div>
       <div class="av" style="background:${me?'linear-gradient(135deg,#adb6d9,#5d6ca8)':MEMC[i%MEMC.length]}">${esc(m.n.charAt(0)||'?')}</div>
       <div class="nm">${esc(m.n)}</div><div class="tm">${hms(m.sm+(me?runMs():0))}</div></div>`}).join('')||'<div class="empty">멤버가 없어요</div>';
   $('yptMembers').innerHTML=body;
@@ -1963,9 +1982,11 @@ function renderPane(){
   p.innerHTML=`<div class="connected"><div class="av">${esc((Y.nick||'?').charAt(0))}</div><div><p>@${esc(Y.nick||'열품타')}</p><small>● 연결됨${days!==null?` · 토큰 만료까지 ${days}일`:''}</small></div><button id="yOut">연결 해제</button></div>
     ${Y.run?`<div class="connected"><div><p>기록 중 · ${esc(Y.run.subject)}</p><small id="yRunT">${hms(runMs())}</small></div><button id="yStop">정지</button></div>`:''}
     <p class="yerr">${esc(err)}</p>
-    <button class="cta" id="yRefresh">${loading?'불러오는 중':'새로고침'} ${ARR}</button>`;
+    <button class="cta" id="yRefresh">${loading?'불러오는 중':'새로고침'} ${ARR}</button>
+    ${(()=>{const og=orderedGroups();return og.length>1?`<p class="note" style="margin:18px 4px 8px">홈에 보일 그룹 순서</p><div class="greorder">${og.map((x,i)=>`<div class="grow"><span>${esc(x.t)}</span><span class="gbtns"><button data-gmove="${x.id}" data-dir="-1" ${i===0?'disabled':''}>↑</button><button data-gmove="${x.id}" data-dir="1" ${i===og.length-1?'disabled':''}>↓</button></span></div>`).join('')}</div>`:''})()}`;
   $('yOut').onclick=()=>{if(Y.run&&!confirm('열품타 기록이 켜져 있어요. 정지하지 않고 연결을 해제할까요?'))return;Y.jwt='';Y.run=null;info=null;groups=[];members=[];err='';saveY();render()};
   $('yRefresh').onclick=()=>refresh();
+  p.querySelectorAll('[data-gmove]').forEach(btn=>btn.onclick=()=>moveGroup(+btn.dataset.gmove,+btn.dataset.dir));
   if($('yStop')) $('yStop').onclick=()=>enqueue(studyStop);
 }
 function render(){renderHome();renderPane()}
