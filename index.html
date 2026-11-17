@@ -646,7 +646,7 @@
 @keyframes flyBlob{from{opacity:0;transform:translate(-50%,-50%) scale(.7)}to{opacity:1;transform:translate(-50%,-50%) scale(1)}}
 
 /* 화면 · 탭 · 필터 전환: 카드가 차례로 떠오름 */
-.enter :is(.phead,main>header,.chips,.tmodes,.tabs2,.card,.cat>h4,.tile){animation:flyRise .7s var(--soft) both;animation-delay:calc(var(--i,0) * 45ms)}
+.enter :is(.phead,main>header,.chips,.tmodes,.tabs2,.card,.cat>h4,.tile){animation:flyRise .5s var(--soft) both;animation-delay:calc(var(--i,0) * 32ms)}
 
 /* 모달 */
 .scrim.open{animation:flyFade .3s var(--soft) both}
@@ -2733,10 +2733,14 @@ document.addEventListener('keydown',e=>{if((e.ctrlKey||e.metaKey)&&['+','-','=',
   const SEL=':is(.phead,main>header,.chips,.tmodes,.tabs2,.card,.cat>h4,.tile)';
   function enter(el){
     if(!el) return;
-    let k=0; el.querySelectorAll(SEL).forEach(x=>{if(x.offsetParent!==null&&!x.closest('.sheet'))x.style.setProperty('--i',Math.min(k++,10))});
+    let k=0; el.querySelectorAll(SEL).forEach(x=>{if(x.offsetParent!==null&&!x.closest('.sheet'))x.style.setProperty('--i',Math.min(k++,8))});
     el.classList.remove('enter'); void el.offsetWidth; el.classList.add('enter');
-    clearTimeout(el._et); el._et=setTimeout(()=>el.classList.remove('enter'),1300);
+    clearTimeout(el._et); el._et=setTimeout(()=>el.classList.remove('enter'),900);
   }
+  /* 아이패드 Safari: 등장 애니메이션 중에 스크롤하면 카드가 맨 위와 실제 위치 사이를 오가며 튐
+     → 손가락 · 트랙패드가 닿는 순간 등장 애니메이션을 바로 끝냄 */
+  const settle=()=>document.querySelectorAll('.enter').forEach(el=>{clearTimeout(el._et);el.classList.remove('enter')});
+  ['touchstart','wheel','pointerdown'].forEach(t=>addEventListener(t,settle,{passive:true,capture:true}));
   window.flyEnter=enter;
   /* 'on'이 붙는 순간(화면 · 입시 탭 · 타이머 모드) */
   const mo=new MutationObserver(list=>{
