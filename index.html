@@ -543,6 +543,8 @@
   .mdstat{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 0;border-top:1px solid var(--line);margin-top:14px;font-size:14px}
   .mdstat span{color:var(--sub)}
   .mdstat b{font-size:18px;font-variant-numeric:tabular-nums}
+  .mdstat b.sm{font-size:15px;font-weight:600;text-align:right}
+  .mdstat+.mdstat{margin-top:0}
   .ysubs{list-style:none;margin-top:14px}
   .ysubs li{display:grid;grid-template-columns:1fr auto;gap:6px 12px;padding:10px 0;border-bottom:1px solid var(--line);font-size:14px}
   .ysubs li:last-child{border-bottom:0}
@@ -2532,7 +2534,7 @@ function doExpire(){Y.jwt='';Y.authAt=Date.now();info=null;groups=[];members=[];
 function applyInfo(j){
   const ss=(Array.isArray(j.ss)?j.ss:[]).filter(x=>!truthy(x.dl))
     .map(x=>({id:+(x.id??x.sid??x.subjectId??x.subjectID??x.si)||0,t:String(x.tt??x.t??x.title??''),sm:+x.sm||0,or:+x.or||0})).filter(x=>x.t).sort((a,b)=>a.or-b.or);
-  info={sm:+(j.dl&&j.dl.sm)||0,subjects:ss,at:Date.now()};
+  info={sm:+(j.dl&&j.dl.sm)||0,subjects:ss,at:Date.now()}; liveFrom(j.dl);
   if(j.n) Y.nick=String(j.n);
   {const u=+(j.ud??(j.p&&j.p.ud))||0; if(u) Y.uid=u;}
   if(+j.coid) Y.coid=+j.coid;
@@ -2586,6 +2588,7 @@ async function loadDay(){
   let any=false;
   info.subjects.forEach(sb=>{const v=(sb.id&&byId[sb.id]); const w=(v!=null?v:byTitle[sb.t]); if(w!=null){sb.sm=w;any=true}});
   if(+dl.sm) info.sm=+dl.sm;
+  liveFrom(dl); reconcile();
   info.dayLoaded=any||Object.keys(byTitle).length>0||Object.keys(byId).length>0;
 }
 async function loadGroups(){
@@ -2607,8 +2610,14 @@ async function loadMembers(){
 }
 /* 서버와 대조: 내 실제 상태(그룹 데이터의 '나')와 Fly Sky의 기록 중 상태를 맞춤 */
 let miss=0, fixing=false;
+/* 내 정보(오늘 기록)에 들어 있는 지금 상태: 그룹을 안 골랐거나 내가 그 그룹에 없어도 알 수 있음 */
+function liveFrom(dl){if(!info||!dl||typeof dl!=='object'||!('is' in dl))return;
+  const st=typeof dl.st==='string'?Date.parse(dl.st):+dl.st||0;
+  info.live={on:sbool(dl.is)&&!sbool(dl.ia),paused:sbool(dl.ia),since:st>0?(st<1e11?st*1000:st):0,at:Date.now()}}
 function reconcile(){
-  const me=members.find(m=>m.me); if(!me||fixing||pending||!Y.jwt) return;
+  const g=members.find(m=>m.me), L=info&&info.live;
+  const me=g&&(!L||membersAt>=L.at)?g:(L?{on:L.on,paused:L.paused,since:L.since,subj:''}:g);   // 더 최근에 받은 쪽
+  if(!me||fixing||pending||!Y.jwt) return;
   const now=Date.now();
   if(Y.run){
     if(me.on){miss=0;
@@ -2875,22 +2884,35 @@ document.addEventListener('flysky:userchange',()=>{if(!Y.jwt)renderPane()});
 const M=$('modal');
 function memberDetail(i){
   const m=members[i]; if(!m) return;
-  const me=!!m.me;
+  const me=!!m.me, d=(m.raw&&m.raw.dl)||{}, now=Date.now();
   const total=liveMs(m);
   const state=m.on?'공부 중':m.paused?'일시정지':'휴식';
-  const sinceTxt=m.on&&m.since?`${Math.max(0,Math.floor((Date.now()-m.since)/60000))}분째`:'';
+  const T=v=>{const t=typeof v==='string'?Date.parse(v):+v;return t>0?t:0};
+  const clock=t=>{const x=new Date(t);return `${x.getHours()<12?'오전':'오후'} ${(x.getHours()%12)||12}:${pad(x.getMinutes())}`};
+  const dur=ms=>{const mm=Math.floor(ms/60000),h=Math.floor(mm/60);return h?`${h}시간 ${mm%60}분`:`${mm}분`};
+  const today=x=>{const a=new Date(x),b=new Date();return a.toDateString()===b.toDateString()};
+  const cur=m.on&&m.since>0?now-m.since:0;                       // 지금 이어서 공부 중인 시간
+  const first=T(d.ca), stop=T(d.sp), mm=Math.max(+d.mm||0,cur), added=+d.ad||0, join=T(m.raw&&m.raw.ja);
+  const rows=[
+    ['오늘 공부 시간',hms(total),1],
+    m.on&&cur>0?['지금 집중',`${dur(cur)}째${m.since?' · '+clock(m.since)+'부터':''}`]:null,
+    !m.on&&stop&&today(stop)?[m.paused?'일시정지':'쉬는 중',`${dur(now-stop)}째 · ${clock(stop)}부터`]:null,
+    mm>0?['최대 집중 시간',dur(mm)]:null,
+    first&&today(first)?['오늘 처음 시작',clock(first)]:null,
+    total>0&&first&&today(first)?['공부 비율',`${Math.min(100,Math.round(total/Math.max(1,now-first)*100))}% · 시작 후 ${dur(now-first)} 중`]:null,
+    added>0?['직접 추가한 시간',dur(added)]:null,
+    join?['그룹 가입',`${new Date(join).getFullYear()}. ${new Date(join).getMonth()+1}. ${new Date(join).getDate()}`]:null
+  ].filter(Boolean);
   $('mTitle').textContent=m.n;
   $('mForm').onsubmit=e=>{e.preventDefault();window.closeModal()};
   $('mForm').innerHTML=`
     <div class="mdetail">
       <div class="mdav" style="background:${me?'linear-gradient(135deg,#adb6d9,#5d6ca8)':MEMC[i%MEMC.length]}">${esc(m.n.charAt(0)||'?')}</div>
-      <div><div class="mdname">${esc(m.n)}${me?' · 나':''}</div><div class="mdsub">${i+1}위${m.cat?' · '+esc(m.cat):''}</div></div>
+      <div><div class="mdname">${esc(m.n)}${me?' · 나':''}</div><div class="mdsub">${members.indexOf(m)>=0?[...members].sort((a,b)=>liveMs(b)-liveMs(a)).indexOf(m)+1:i+1}위${m.cat?' · '+esc(m.cat):''}</div></div>
       <span class="st2 ${m.on?'on':m.paused?'pause':'off'}">${state}</span>
     </div>
-    <div class="mdstat"><span>오늘 공부 시간</span><b>${hms(total)}</b></div>
-    ${m.on&&m.subj?`<div class="mdstat"><span>지금 과목</span><b>${esc(m.subj)}${sinceTxt?` · ${sinceTxt}`:''}</b></div>`:''}
-    ${me&&(Y.log||[]).length?`<details class="mdraw"><summary>기록 내역</summary><pre>${esc((Y.log||[]).slice().reverse().map(x=>{const d=new Date(x.t);return `${d.getMonth()+1}/${d.getDate()} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}  ${({start:'시작','auto-restart':'끊김 → 자동 재시작',stop:'정지','remote-start':'다른 기기에서 시작','remote-stop':'다른 기기에서 정지','server-stopped':'서버에서 끊김 발견',adopt:'열품타 앱 기록 반영','relogin-try':'로그인 만료 → 재로그인 시도',relogin:'재로그인 성공',expired:'로그인 만료'})[x.e]||x.e}${x.s?' · '+x.s:''}  (${x.d})`}).join('\n'))}</pre></details>`:''}
-    <details class="mdraw"><summary>서버 원본 데이터</summary><pre>${esc(JSON.stringify({member:m.raw,mine:me&&info?{daySm:info.sm,runMs:runMs()}:undefined},null,1))}</pre></details>
+    ${rows.map(([k,v,big])=>`<div class="mdstat"><span>${k}</span><b${big?'':' class="sm"'}>${esc(v)}</b></div>`).join('')}
+    ${me&&(Y.log||[]).length?`<details class="mdraw"><summary>기록 내역</summary><pre>${esc((Y.log||[]).slice().reverse().map(x=>{const t=new Date(x.t);return `${t.getMonth()+1}/${t.getDate()} ${pad(t.getHours())}:${pad(t.getMinutes())}:${pad(t.getSeconds())}  ${({start:'시작','auto-restart':'끊김 → 자동 재시작',stop:'정지','remote-start':'다른 기기에서 시작','remote-stop':'다른 기기에서 정지','server-stopped':'서버에서 끊김 발견',adopt:'열품타 앱 기록 반영','relogin-try':'로그인 만료 → 재로그인 시도',relogin:'재로그인 성공',expired:'로그인 만료'})[x.e]||x.e}${x.s?' · '+x.s:''}  (${x.d})`}).join('\n'))}</pre></details>`:''}
     <div class="mfoot"><button type="button" class="pbtn" onclick="closeModal()">닫기</button></div>`;
   M.classList.add('open');
 }
