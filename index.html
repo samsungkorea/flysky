@@ -4,6 +4,12 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <title>Fly Sky</title>
+<!-- 홈 화면에 추가한 웹앱: 상태바 띠 없이 화면 맨 위까지 (iPadOS는 상태바 글자 자체는 숨길 수 없어서 투명 위에 겹쳐 보임) -->
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Fly Sky">
+<meta name="theme-color" content="#c9cfe2">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
 <style>
   :root{
@@ -782,6 +788,12 @@ header.hhead{grid-template-columns:1fr auto;min-height:46px;margin:0 0 22px}
 header.hhead{margin-bottom:14px}
 header.hhead .brand{font-size:54px;justify-self:start;margin-left:-5.5px;transform:translateY(4px)}
 @media (max-width:900px){header.hhead{margin-bottom:22px}header.hhead .brand{font-size:44px;margin-left:-4.5px;transform:translateY(3px)}}
+</style>
+<style>
+/* 웹앱에서 상태바 아래로 내용이 올라가므로, 상태바(안전 영역)만큼만 띄움 */
+.app{padding-top:max(28px,calc(env(safe-area-inset-top) + 14px))}
+@media (min-width:901px){.side{top:max(28px,calc(env(safe-area-inset-top) + 10px))}}
+@media (max-width:900px){.app{padding-top:max(18px,calc(env(safe-area-inset-top) + 8px))}}
 </style>
 </head>
 <body>
