@@ -32,7 +32,7 @@
   /* 1) 아래로 당겨 새로고침 · 화면 끌림 막기 */
   html,body{overscroll-behavior:none}
   .side .spacer{flex:1}
-  .nav-btn .flymark{display:none;width:30px;height:30px;stroke:none;color:var(--ink)}
+  .nav-btn .flymark{display:none;width:34px;height:34px;stroke:none;fill:currentColor;color:var(--ink)}
   .nav-btn.fly .flymark{display:block}
   .nav-btn.fly .homeic{display:none}
   .avatar{width:48px;height:48px;border-radius:50%;background:linear-gradient(135deg,#adb6d9,#5d6ca8);display:grid;place-items:center;color:#fff;font-weight:700}
@@ -166,6 +166,10 @@
   .grow .gbtns{display:flex;gap:6px}
   .grow .gbtns button{width:32px;height:32px;border-radius:10px;background:#fff;display:grid;place-items:center;font-size:16px;color:var(--ink)}
   .grow .gbtns button:disabled{opacity:.35}
+  .grow .grip{width:36px;height:32px;display:grid;place-items:center;color:var(--sub);cursor:grab;touch-action:none;flex-shrink:0;margin-right:-6px}
+  .grow .grip svg{width:20px;height:20px}
+  .grow.dragging{background:#fff;box-shadow:0 8px 24px rgba(30,40,80,.18);position:relative;z-index:2}
+  .grow.dragging .grip{cursor:grabbing;color:var(--ink)}
 
   /* Sheet */
   .scrim{position:fixed;inset:0;background:rgba(21,22,26,.35);backdrop-filter:blur(6px);display:none;align-items:center;justify-content:center;z-index:50;padding:20px}
@@ -604,6 +608,7 @@
   /* fixed sidebar + no zoom */
   html{touch-action:pan-x pan-y;-webkit-text-size-adjust:100%;text-size-adjust:100%}
   .side{position:fixed;top:28px;left:max(28px,calc(50vw - 652px))}
+  @media (min-width:901px){.side{height:calc(100vh - 56px);height:calc(100svh - 56px);min-height:0;overflow:hidden}}
   .app>main{margin-left:104px}
   @media (max-width:900px){
     .side{left:16px;top:auto}
@@ -621,12 +626,12 @@
 </defs><g fill="currentColor">
 <g transform="translate(50,40)"><use href="#lg-F" x="0"/><use href="#lg-l" x="136"/><use href="#lg-y" x="190"/></g>
 <g transform="translate(402,40)"><use href="#lg-S" x="0"/><use href="#lg-k" x="128"/><use href="#lg-y" x="250"/></g>
-</g></symbol><symbol id="fslogo-fly" viewBox="45 34 312 316"><g fill="currentColor" transform="translate(50,40)"><use href="#lg-F" x="0"/><use href="#lg-l" x="136"/><use href="#lg-y" x="190"/></g></symbol></svg>
+</g></symbol></svg>
 <div class="app">
 
   <!-- Sidebar -->
   <nav class="side">
-    <button class="nav-btn active" data-v="home"><svg class="flymark" viewBox="45 34 312 316" aria-hidden="true"><use href="#fslogo-fly"/></svg><svg class="homeic" viewBox="0 0 24 24"><path d="M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg><span class="tip">홈</span></button>
+    <button class="nav-btn active" data-v="home"><svg class="flymark" viewBox="40 30 320 320" aria-hidden="true"><g fill="currentColor" stroke="none"><g transform="translate(50,40)"><path d="M14,0 L46,0 L46,195 Q46,214 60,220 L2,220 Q14,214 14,195 Z"/><path d="M46,0 L112,0 Q128,2 126,22 Q122,40 116,46 Q114,30 100,30 L46,30 Z"/><path d="M46,95 C72,92 102,98 120,122 C102,113 82,118 70,130 C64,125 56,122 46,122 Z"/></g><g transform="translate(186,40)"><path d="M0,10 L34,0 L34,195 Q34,214 46,220 L-10,220 Q0,214 0,195 Z"/></g><g transform="translate(240,40)"><path d="M0,50 L32,50 L32,150 Q32,178 58,180 L78,180 Q46,200 22,192 Q0,182 0,150 Z"/><path d="M72,50 L106,50 L106,200 Q106,282 50,300 Q30,306 16,300 Q62,284 72,228 Z"/></g></g></svg><svg class="homeic" viewBox="0 0 24 24"><path d="M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg><span class="tip">홈</span></button>
     <button class="nav-btn" data-v="timer"><svg viewBox="0 0 24 24"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 2.5M9 2h6"/></svg><span class="tip">타이머</span></button>
     <button class="nav-btn" data-v="admit"><svg viewBox="0 0 24 24"><path d="M5 21V4M5 4h11l-2 4 2 4H5"/></svg><span class="tip">입시</span></button>
     <button class="nav-btn" data-v="cal"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="3"/><path d="M3 10h18M8 3v4M16 3v4"/></svg><span class="tip">캘린더</span></button>
@@ -1461,7 +1466,7 @@ function openSettings(){
     <div class="setrow"><div><b>기기 간 동기화</b><small>${syncTxt}<br>원서·D-day·목표 대학·성적·버킷리스트·열품타 그룹 순서가 같은 Google 계정의 모든 기기에서 같아요. 일정은 Google 캘린더에 저장돼요.</small></div></div>
     <div class="setrow"><div><b>열품타</b><small>${yp.on?'연결됨 · @'+esc(yp.nick||'열품타'):'연결 안 됨'}</small></div>
       <button type="button" class="pbtn soft" id="setYpt">${yp.on?'연결 해제':'연결'}</button></div>
-    ${yp.on&&window.__ypt.groups().length>1?`<div class="setrow" style="display:block"><b>열품타 그룹 순서</b><small style="margin-bottom:10px">홈과 열품타 화면의 그룹 버튼 순서예요.</small><div class="greorder" id="setGroups"></div></div>`:''}
+    ${yp.on&&window.__ypt.groups().length>1?`<div class="setrow" style="display:block"><b>열품타 그룹 순서</b><small style="margin-bottom:10px">≡를 끌어서 순서를 바꿔요.</small><div class="greorder" id="setGroups"></div></div>`:''}
     <div class="setrow"><div><b>이 기기 데이터 초기화</b><small>이 브라우저에 저장된 Fly Sky 데이터를 지워요. 동기화가 켜져 있으면 다시 로그인할 때 클라우드에서 가져올 수 있어요.</small></div>
       <button type="button" class="pbtn del" id="setReset">초기화</button></div>`);
   const sa=document.getElementById('setAcct');
@@ -1469,8 +1474,22 @@ function openSettings(){
   const sy=document.getElementById('setYpt');
   if(sy) sy.onclick=()=>{if(yp.on){if(window.__ypt.disconnect()){closeModal();toast('열품타 연결을 해제했어요')}}else{closeModal();showView('ypt')}};
   const sg=document.getElementById('setGroups');
-  const drawG=()=>{const og=window.__ypt.groups();sg.innerHTML=og.map((x,i)=>`<div class="grow"><span>${esc(x.t)}</span><span class="gbtns"><button type="button" data-gmove="${x.id}" data-dir="-1" ${i===0?'disabled':''}>↑</button><button type="button" data-gmove="${x.id}" data-dir="1" ${i===og.length-1?'disabled':''}>↓</button></span></div>`).join('')};
-  if(sg){drawG();sg.onclick=e=>{const btn=e.target.closest('[data-gmove]');if(!btn)return;window.__ypt.move(+btn.dataset.gmove,+btn.dataset.dir);drawG()}}
+  const GRIP='<svg viewBox="0 0 24 24"><path d="M4 8h16M4 12h16M4 16h16"/></svg>';
+  if(sg){
+    sg.innerHTML=window.__ypt.groups().map(x=>`<div class="grow" data-id="${x.id}"><span>${esc(x.t)}</span><span class="grip" aria-label="끌어서 순서 바꾸기">${GRIP}</span></div>`).join('');
+    sg.onpointerdown=e=>{
+      const h=e.target.closest('.grip'); if(!h) return;
+      e.preventDefault(); const row=h.closest('.grow'); row.classList.add('dragging');
+      const mv=ev=>{
+        const others=[...sg.querySelectorAll('.grow')].filter(r=>r!==row);
+        const k=others.findIndex(r=>{const bx=r.getBoundingClientRect();return ev.clientY<bx.top+bx.height/2});
+        if(k<0){if(sg.lastElementChild!==row)sg.appendChild(row)} else if(others[k]!==row.nextElementSibling) sg.insertBefore(row,others[k]);
+      };
+      const up=()=>{window.removeEventListener('pointermove',mv);window.removeEventListener('pointerup',up);window.removeEventListener('pointercancel',up);
+        row.classList.remove('dragging'); window.__ypt.setOrder([...sg.querySelectorAll('.grow')].map(r=>+r.dataset.id))};
+      window.addEventListener('pointermove',mv); window.addEventListener('pointerup',up); window.addEventListener('pointercancel',up);
+    };
+  }
   const sr=document.getElementById('setReset');
   if(sr) sr.onclick=()=>{
     if(!confirm('이 브라우저에 저장된 Fly Sky 데이터를 모두 지울까요?\n\nGoogle 캘린더의 실제 일정과 클라우드에 동기화된 데이터는 지워지지 않아요.'))return;
@@ -2407,6 +2426,7 @@ window.__ypt={
   status:()=>({on:!!Y.jwt,nick:Y.nick||'',run:!!Y.run}),
   groups:()=>orderedGroups().map(g=>({id:g.id,t:g.t})),
   move:(id,dir)=>moveGroup(id,dir),
+  setOrder:ids=>{Y.gorder=ids.slice();saveY();render()},
   disconnect:()=>{if(Y.run&&!confirm('열품타 기록이 켜져 있어요. 정지하지 않고 연결을 해제할까요?'))return false;
     Y.jwt='';Y.run=null;info=null;groups=[];members=[];err='';saveY();render();return true}
 };
