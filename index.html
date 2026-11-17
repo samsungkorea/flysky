@@ -1761,8 +1761,7 @@ if(GOOGLE_CLIENT_ID&&!user&&!localStorage.getItem(GUEST)) $('login').classList.a
 if(GOOGLE_CLIENT_ID&&user) loadGIS().catch(()=>{});
 document.addEventListener('click',e=>{
   if(!e.target.closest('[data-v="cal"]')||!user||!GOOGLE_CLIENT_ID) return;
-  if(gValid()){ if(Date.now()-gSyncedAt>60*1000) fetchGoogle(); return }   // 창 없이 새로 불러오기
-  if(!gSyncedAt) connectCalendar();   // 이 기기에서 캘린더를 처음 열 때만 구글 창
+  if(gValid()&&Date.now()-gSyncedAt>60*1000) fetchGoogle();   // 권한이 살아 있을 때만 창 없이 새로 불러오기
 },true);
 function loadGCache(){try{const c=JSON.parse(localStorage.getItem(GCACHE));if(c&&c.sub===(user&&user.sub)){GEV=c.items||[];gSyncedAt=c.at||0}}catch(e){}}
 function saveGCache(){try{localStorage.setItem(GCACHE,JSON.stringify({sub:user&&user.sub,at:gSyncedAt,items:GEV}))}catch(e){}}
