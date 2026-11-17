@@ -739,14 +739,15 @@ body.fs .app{padding:20px}
 .tile{position:relative;overflow:hidden}
 .card::after,.tile::after{content:"";position:absolute;inset:0;border-radius:inherit;pointer-events:none;
   background:radial-gradient(240px circle at var(--gx) var(--gy),rgba(93,108,168,.14),rgba(93,108,168,0) 70%);
-  opacity:var(--go);transition:opacity .3s var(--soft)}
+  opacity:var(--go);transition:opacity .7s cubic-bezier(.25,.6,.3,1)}   /* 사라질 땐 천천히 페이드아웃 */
 .card.dark::after{background:radial-gradient(240px circle at var(--gx) var(--gy),rgba(255,255,255,.13),rgba(255,255,255,0) 70%)}
 .card.glow,.tile.glow{--go:1}
 /* 펜 · 마우스 쪽을 바라보듯 살짝 기울기 */
 .card,.tile{--rx:0deg;--ry:0deg}
 .card.glow,.tile.glow{transform:perspective(1100px) rotateX(var(--rx)) rotateY(var(--ry));transition:transform .35s var(--soft),box-shadow .4s var(--soft),background-color .28s var(--soft)}
-.card.press,.tile.press{--go:1;transform:perspective(1100px) rotateX(var(--rx)) rotateY(var(--ry)) scale(.985);transition-duration:.18s;transition-delay:60ms}
-.card.press::after,.tile.press::after{transition-duration:.12s}
+.card.lit,.tile.lit{--go:1}
+.card.lit::after,.tile.lit::after{transition-duration:.12s}
+.card.press,.tile.press{transform:perspective(1100px) rotateX(var(--rx)) rotateY(var(--ry)) scale(.985);transition-duration:.18s;transition-delay:60ms}
 </style>
 </head>
 <body>
@@ -2838,10 +2839,12 @@ document.addEventListener('keydown',e=>{if((e.ctrlKey||e.metaKey)&&['+','-','=',
   document.addEventListener('pointerleave',leave);
   addEventListener('pointerout',e=>{if(!e.relatedTarget)leave()},{passive:true});
   let pressed=null;
-  const up=()=>{if(pressed){pressed.classList.remove('press');pressed=null}};
+  let t0=0;
+  const up=()=>{if(!pressed)return;const el=pressed;pressed=null;el.classList.remove('press');
+    clearTimeout(el._lt);el._lt=setTimeout(()=>el.classList.remove('lit'),Math.max(0,160-(performance.now()-t0)))};   // 짧게 톡 쳐도 빛이 보였다가 서서히 사라짐
   addEventListener('pointerdown',e=>{
     const el=e.target.closest&&e.target.closest(SEL); if(!el) return;
-    pos(el,e.clientX,e.clientY); pressed=el; el.classList.add('press');
+    pos(el,e.clientX,e.clientY); pressed=el; t0=performance.now(); clearTimeout(el._lt); el.classList.add('press','lit');
   },{passive:true});
   ['pointerup','pointercancel','dragstart'].forEach(t=>addEventListener(t,up,{passive:true}));
   document.addEventListener('scroll',up,{passive:true,capture:true});
