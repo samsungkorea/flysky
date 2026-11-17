@@ -191,6 +191,24 @@
   .gbtn svg{width:20px;height:20px;stroke:none}
   .lcard .fine{font-size:12px;color:var(--sub);text-align:center;margin-top:18px;line-height:1.6}
 
+  .avatar>b{display:grid;place-items:center;width:100%;height:100%}
+  .avatar img{width:100%;height:100%;border-radius:50%;object-fit:cover}
+  .pop .who p,.pop .who small{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:170px}
+  .lcard .skip{display:block;margin:14px auto 0;font-size:13px;color:var(--sub);text-decoration:underline}
+  .lcard .err{font-size:13px;color:#b5485a;text-align:center;margin-top:12px;min-height:1px}
+  .lcard .err:empty{display:none}
+  .ypt-off .dot{background:#9aa0b0;box-shadow:none}
+  .members .empty{color:var(--sub);font-size:14px;padding:18px 4px}
+  .tgl{display:flex;align-items:center;justify-content:space-between;background:var(--chip);border-radius:18px;padding:14px 16px;margin-bottom:10px;font-size:14px;width:100%;text-align:left}
+  .tgl i{width:42px;height:24px;border-radius:999px;background:#c9ccd6;position:relative;flex-shrink:0;transition:.2s}
+  .tgl i::after{content:"";position:absolute;top:3px;left:3px;width:18px;height:18px;border-radius:50%;background:#fff;transition:.2s}
+  .tgl.on i{background:var(--accent)}
+  .tgl.on i::after{left:21px}
+  .ybtns{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:6px}
+  .ybtns button{padding:13px;border-radius:999px;background:var(--chip);font-size:14px;font-weight:600}
+  .yerr{font-size:13px;color:#b5485a;margin:4px 4px 12px}
+  .yerr:empty{display:none}
+
   /* ===== Mobile ===== */
   @media (max-width:900px){
     .app{flex-direction:column;padding:18px 16px 110px;gap:0}
@@ -283,8 +301,8 @@
   #view-timer .laps li{display:flex;justify-content:space-between;padding:12px 4px;border-bottom:1px solid var(--line);font-size:14px;font-variant-numeric:tabular-nums}
   #view-timer .laps li span:first-child{color:var(--sub)}
   #view-timer .empty{font-size:13px;color:var(--sub);padding:14px 4px}
-  #view-timer .toast{position:fixed;left:50%;top:24px;transform:translate(-50%,-120px);background:var(--ink);color:#fff;padding:14px 22px;border-radius:999px;font-size:15px;font-weight:600;transition:.35s;z-index:99;box-shadow:0 10px 30px rgba(0,0,0,.2)}
-  #view-timer .toast.show{transform:translate(-50%,0)}
+  .toast{position:fixed;left:50%;top:24px;transform:translate(-50%,-120px);background:var(--ink);color:#fff;padding:14px 22px;border-radius:999px;font-size:15px;font-weight:600;transition:.35s;z-index:150;max-width:calc(100vw - 40px);box-shadow:0 10px 30px rgba(0,0,0,.2)}
+  .toast.show{transform:translate(-50%,0)}
   body.fs .side,body.fs header,body.fs .tmodes,body.fs #ctrlCard,body.fs #schedCard{display:none}
   body.fs .app{max-width:none;height:100vh;padding:20px}
   body.fs .tgrid{height:100%;grid-template-columns:1.3fr 1fr;align-items:center}
@@ -526,13 +544,13 @@
     <button class="nav-btn" data-v="all"><svg viewBox="0 0 24 24"><circle cx="5" cy="12" r="1.2"/><circle cx="12" cy="12" r="1.2"/><circle cx="19" cy="12" r="1.2"/></svg><span class="tip">모든 기능</span></button>
     <div class="spacer"></div>
     <div class="acct">
-      <div class="avatar" onclick="document.getElementById('pop').classList.toggle('open')">민<span class="g"><svg viewBox="0 0 48 48"><path fill="#4285F4" d="M45 24.5c0-1.6-.1-3.1-.4-4.5H24v8.5h11.8c-.5 2.7-2.1 5-4.4 6.6v5.5h7.1C42.6 36.8 45 31.2 45 24.5z"/><path fill="#34A853" d="M24 46c5.9 0 10.9-2 14.5-5.4l-7.1-5.5c-2 1.3-4.5 2.1-7.4 2.1-5.7 0-10.5-3.8-12.2-9H4.5v5.7C8.1 41 15.5 46 24 46z"/><path fill="#FBBC05" d="M11.8 28.2c-.4-1.3-.7-2.7-.7-4.2s.3-2.9.7-4.2v-5.7H4.5C3 17.1 2 20.4 2 24s1 6.9 2.5 9.9l7.3-5.7z"/><path fill="#EA4335" d="M24 10.8c3.2 0 6.1 1.1 8.4 3.3l6.3-6.3C34.9 4.2 29.9 2 24 2 15.5 2 8.1 7 4.5 14.1l7.3 5.7c1.7-5.2 6.5-9 12.2-9z"/></svg></span></div>
+      <div class="avatar" id="acctAv" onclick="document.getElementById('pop').classList.toggle('open')"><b id="acctIni">?</b><span class="g"><svg viewBox="0 0 48 48"><path fill="#4285F4" d="M45 24.5c0-1.6-.1-3.1-.4-4.5H24v8.5h11.8c-.5 2.7-2.1 5-4.4 6.6v5.5h7.1C42.6 36.8 45 31.2 45 24.5z"/><path fill="#34A853" d="M24 46c5.9 0 10.9-2 14.5-5.4l-7.1-5.5c-2 1.3-4.5 2.1-7.4 2.1-5.7 0-10.5-3.8-12.2-9H4.5v5.7C8.1 41 15.5 46 24 46z"/><path fill="#FBBC05" d="M11.8 28.2c-.4-1.3-.7-2.7-.7-4.2s.3-2.9.7-4.2v-5.7H4.5C3 17.1 2 20.4 2 24s1 6.9 2.5 9.9l7.3-5.7z"/><path fill="#EA4335" d="M24 10.8c3.2 0 6.1 1.1 8.4 3.3l6.3-6.3C34.9 4.2 29.9 2 24 2 15.5 2 8.1 7 4.5 14.1l7.3 5.7c1.7-5.2 6.5-9 12.2-9z"/></svg></span></div>
       <div class="pop" id="pop">
-        <div class="who"><div class="avatar">민</div><div><p>김민준</p><small>minjun.kim@gmail.com</small></div></div>
-        <button class="item"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="3"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>Google 캘린더 연동됨</button>
+        <div class="who"><div class="avatar" id="popAv">?</div><div><p id="popName">로그인 안 됨</p><small id="popMail"></small></div></div>
+        <button class="item" id="popCal"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="3"/><path d="M3 10h18M8 3v4M16 3v4"/></svg><span>Google 캘린더 연결</span></button>
         <button class="item" onclick="openSheet()"><svg viewBox="0 0 24 24"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 2.5M9 2h6"/></svg>열품타 연동 관리</button>
         <button class="item"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1L7 17M17 7l2.1-2.1"/></svg>설정</button>
-        <button class="item" onclick="document.getElementById('login').classList.add('open');document.getElementById('pop').classList.remove('open')"><svg viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/></svg>로그아웃</button>
+        <button class="item" id="popLogout"><svg viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/></svg><span>로그아웃</span></button>
       </div>
     </div>
   </nav>
@@ -603,20 +621,10 @@
       <section class="card timer">
         <div class="left">
           <div class="label">오늘 공부 시간</div>
-        <span class="tag ypt ypt-corner" onclick="openSheet()"><span class="dot"></span>열품타 연동됨</span>
-          <div class="clock">04:32:18</div>
-          <div class="subj">
-            <span style="flex:3;background:var(--accent-deep)"></span>
-            <span style="flex:4;background:var(--accent)"></span>
-            <span style="flex:2;background:var(--accent-light)"></span>
-            <span style="flex:1.5;background:#d8ddee"></span>
-          </div>
-          <div class="legend">
-            <span><i style="background:var(--accent-deep)"></i>국어</span>
-            <span><i style="background:var(--accent)"></i>수학</span>
-            <span><i style="background:var(--accent-light)"></i>지구과학Ⅰ</span>
-            <span><i style="background:#d8ddee"></i>영어</span>
-          </div>
+        <span class="tag ypt ypt-corner ypt-off" id="yptTag" onclick="openSheet()"><span class="dot"></span>열품타 연결</span>
+          <div class="clock" id="homeStudy">00:00:00</div>
+          <div class="subj" id="homeSubj"><span style="flex:1;background:#d8ddee"></span></div>
+          <div class="legend" id="homeLegend"></div>
           <div class="modes">
             <span class="tag on">스톱워치</span><span class="tag">타이머</span><span class="tag">뽀모도로</span>
           </div>
@@ -626,18 +634,12 @@
 
       <!-- YPT group -->
       <section class="card group">
-        <div class="label">열품타 그룹 <span class="tag ypt" onclick="openSheet()"><span class="dot"></span>@minjun_med</span></div>
+        <div class="label">열품타 그룹 <span class="tag ypt ypt-off" id="yptNick" onclick="openSheet()"><span class="dot"></span>연결 안 됨</span></div>
         <div class="top">
-          <h3>의대가즈아 스터디<small>8명 중 5명 공부 중</small></h3>
-          <div class="seg"><button class="on">오늘</button><button>이번 주</button><button>전체 랭킹</button></div>
+          <h3 id="yptGTitle">그룹</h3>
+          <div class="seg" id="yptGSeg"></div>
         </div>
-        <div class="members">
-          <div class="mem"><span class="st">공부 중</span><div class="rk">1위</div><div class="av" style="background:var(--accent-deep)">서</div><div class="nm">서연</div><div class="tm">06:12:40</div></div>
-          <div class="mem me"><span class="st">공부 중</span><div class="rk">2위 · 나</div><div class="av" style="background:linear-gradient(135deg,#adb6d9,#5d6ca8)">민</div><div class="nm">민준</div><div class="tm">04:32:18</div></div>
-          <div class="mem"><span class="st">공부 중</span><div class="rk">3위</div><div class="av" style="background:#8592c4">지</div><div class="nm">지호</div><div class="tm">04:05:51</div></div>
-          <div class="mem"><span class="st off">휴식</span><div class="rk">4위</div><div class="av" style="background:#9aa0b0">하</div><div class="nm">하은</div><div class="tm">03:40:02</div></div>
-          <div class="mem"><span class="st">공부 중</span><div class="rk">5위</div><div class="av" style="background:#3f4a6b">도</div><div class="nm">도윤</div><div class="tm">02:58:33</div></div>
-        </div>
+        <div class="members" id="yptMembers"><div class="empty">열품타를 연결하면 그룹이 보여요</div></div>
       </section>
 
     </div>
@@ -938,7 +940,9 @@
   <div class="lcard">
     <h1 class="brand">Fly Sky</h1>
     <div class="dd"><b>D-2</b><span>2027학년도 수능까지</span></div>
-    <button class="gbtn" onclick="document.getElementById('login').classList.remove('open')"><svg viewBox="0 0 48 48"><path fill="#4285F4" d="M45 24.5c0-1.6-.1-3.1-.4-4.5H24v8.5h11.8c-.5 2.7-2.1 5-4.4 6.6v5.5h7.1C42.6 36.8 45 31.2 45 24.5z"/><path fill="#34A853" d="M24 46c5.9 0 10.9-2 14.5-5.4l-7.1-5.5c-2 1.3-4.5 2.1-7.4 2.1-5.7 0-10.5-3.8-12.2-9H4.5v5.7C8.1 41 15.5 46 24 46z"/><path fill="#FBBC05" d="M11.8 28.2c-.4-1.3-.7-2.7-.7-4.2s.3-2.9.7-4.2v-5.7H4.5C3 17.1 2 20.4 2 24s1 6.9 2.5 9.9l7.3-5.7z"/><path fill="#EA4335" d="M24 10.8c3.2 0 6.1 1.1 8.4 3.3l6.3-6.3C34.9 4.2 29.9 2 24 2 15.5 2 8.1 7 4.5 14.1l7.3 5.7c1.7-5.2 6.5-9 12.2-9z"/></svg>Google로 계속하기</button>
+    <button class="gbtn" id="gLogin"><svg viewBox="0 0 48 48"><path fill="#4285F4" d="M45 24.5c0-1.6-.1-3.1-.4-4.5H24v8.5h11.8c-.5 2.7-2.1 5-4.4 6.6v5.5h7.1C42.6 36.8 45 31.2 45 24.5z"/><path fill="#34A853" d="M24 46c5.9 0 10.9-2 14.5-5.4l-7.1-5.5c-2 1.3-4.5 2.1-7.4 2.1-5.7 0-10.5-3.8-12.2-9H4.5v5.7C8.1 41 15.5 46 24 46z"/><path fill="#FBBC05" d="M11.8 28.2c-.4-1.3-.7-2.7-.7-4.2s.3-2.9.7-4.2v-5.7H4.5C3 17.1 2 20.4 2 24s1 6.9 2.5 9.9l7.3-5.7z"/><path fill="#EA4335" d="M24 10.8c3.2 0 6.1 1.1 8.4 3.3l6.3-6.3C34.9 4.2 29.9 2 24 2 15.5 2 8.1 7 4.5 14.1l7.3 5.7c1.7-5.2 6.5-9 12.2-9z"/></svg>Google로 계속하기</button>
+    <p class="err" id="gErr"></p>
+    <button class="skip" id="gSkip">로그인 없이 계속</button>
   </div>
 </div>
 
@@ -950,13 +954,7 @@
       <button class="on" data-p="p1">열품타 로그인</button><button data-p="p2">스크린샷</button><button data-p="p3">직접 입력</button>
     </div>
 
-    <div class="pane on" id="p1">
-      <div class="connected"><div class="av">민</div><div><p>@minjun_med</p><small>● 연결됨 · 토큰 만료까지 13일</small></div><button>연결 해제</button></div>
-      <div class="field"><span class="ic"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M16 12v1.5a2.5 2.5 0 0 0 5 0V12a9 9 0 1 0-3.5 7.1"/></svg></span><input placeholder="열품타 이메일"></div>
-      <div class="field"><span class="ic"><svg viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg></span><input type="password" placeholder="비밀번호"></div>
-      <p class="note">비밀번호는 저장하지 않아요.</p>
-      <button class="cta">다시 로그인 <span class="arr"><svg viewBox="0 0 24 24" style="width:18px;height:18px"><path d="M9 6l6 6-6 6"/></svg></span></button>
-    </div>
+    <div class="pane on" id="p1"><div id="yptPane"></div></div>
 
     <div class="pane" id="p2">
       <div class="drop"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="3"/><circle cx="9" cy="10" r="2"/><path d="M21 16l-5-5-9 9"/></svg><b>기록 화면 캡처 올리기</b></div>
@@ -1140,12 +1138,13 @@ function fmtSW(ms){const s=ms/1000;return `${fmtHMS(s)}<small>.${Math.floor(ms%1
 $('swStart').onclick=()=>{
   if(sw.running){sw.acc+=performance.now()-sw.t0;sw.running=false}else{sw.t0=performance.now();sw.running=true}
   $('swStart').textContent=sw.running?'정지':'계속';
+  document.dispatchEvent(new CustomEvent('flysky:sw',{detail:{running:sw.running,subject:$('swSubjTag').textContent}}));
 };
 $('swLap').onclick=()=>{
   const t=swEl(); if(!t) return;
   sw.laps.unshift([t-sw.lastLap,t]); sw.lastLap=t; renderLaps();
 };
-$('swReset').onclick=()=>{sw={running:false,acc:0,t0:0,laps:[],lastLap:0};$('swStart').textContent='시작';renderLaps()};
+$('swReset').onclick=()=>{if(sw.running)document.dispatchEvent(new CustomEvent('flysky:sw',{detail:{running:false}}));sw={running:false,acc:0,t0:0,laps:[],lastLap:0};$('swStart').textContent='시작';renderLaps()};
 function renderLaps(){
   $('laps').innerHTML=sw.laps.length?sw.laps.map((l,i)=>`<li><span>랩 ${sw.laps.length-i}</span><span>+${fmtHMS(l[0]/1000)}</span><span>${fmtHMS(l[1]/1000)}</span></li>`).join(''):'<li class="empty">기록 없음</li>';
 }
@@ -1253,7 +1252,7 @@ if(location.hash==='#timer') showView('timer');
 (function(){
 /* ============ 설정 ============ */
 const INTERVIEW_URL='https://samsungkorea.github.io/yonsei-medical';
-const GOOGLE_CLIENT_ID='';   // Google Cloud Console → OAuth 2.0 클라이언트 ID(웹)를 넣으면 캘린더 연동이 켜져요
+const GOOGLE_CLIENT_ID='';   // Google Cloud Console → OAuth 2.0 클라이언트 ID(웹)를 넣으면 Google 로그인 · 캘린더 연동이 켜져요
 const KEY='flysky:v1';
 
 /* ============ 유틸 ============ */
@@ -1494,44 +1493,105 @@ function editEvent(id,date){
     `,{
     onSave:fd=>{
       const v={title:fd.get('title').trim(),date:fd.get('date'),time:fd.get('time')};
-      if(e) Object.assign(e,v); else {S.events.push({id:uid(),...v}); if(gToken) pushGoogle(v)}
+      if(e) Object.assign(e,v); else {S.events.push({id:uid(),...v}); if(gValid()) pushGoogle(v)}
       sel=v.date; save();
     },
     onDelete:e?()=>{S.events=S.events.filter(x=>x!==e);save()}:null
   });
 }
-$('calPrev').onclick=()=>{calM--;if(calM<0){calM=11;calY--}renderCal();if(gToken)fetchGoogle()};
-$('calNext').onclick=()=>{calM++;if(calM>11){calM=0;calY++}renderCal();if(gToken)fetchGoogle()};
+$('calPrev').onclick=()=>{calM--;if(calM<0){calM=11;calY--}renderCal();if(gValid())fetchGoogle()};
+$('calNext').onclick=()=>{calM++;if(calM>11){calM=0;calY++}renderCal();if(gValid())fetchGoogle()};
 $('calToday').onclick=()=>{calY=T.getFullYear();calM=T.getMonth();sel=TS;renderCal()};
 $('calAdd').onclick=()=>editEvent(null,sel);
 
-/* Google 캘린더 */
-function loadGIS(){return new Promise((res,rej)=>{if(window.google&&google.accounts)return res();const s=document.createElement('script');s.src='https://accounts.google.com/gsi/client';s.onload=res;s.onerror=rej;document.head.appendChild(s)})}
-$('gConnect').onclick=()=>{
-  if(gToken){fetchGoogle();return}
-  if(!GOOGLE_CLIENT_ID){
-    openModal('Google 캘린더 연결',`<p style="font-size:14px;line-height:1.8;color:var(--sub)">
-      코드 맨 위 <b style="color:var(--ink)">GOOGLE_CLIENT_ID</b>에 OAuth 클라이언트 ID를 넣어야 연결돼요.<br>
-      1. Google Cloud Console에서 Calendar API 사용 설정<br>
-      2. OAuth 동의 화면 → 테스트 사용자에 내 Gmail 추가<br>
-      3. OAuth 클라이언트 ID(웹) 만들고, 사이트 주소를 JavaScript 원본에 등록<br>
-      파일로 직접 열면(file://) 동작하지 않아요.</p>`);
-    return;
-  }
-  loadGIS().then(()=>{
-    google.accounts.oauth2.initTokenClient({client_id:GOOGLE_CLIENT_ID,scope:'https://www.googleapis.com/auth/calendar.events',
-      callback:r=>{if(r.access_token){gToken=r.access_token;fetchGoogle()}}}).requestAccessToken();
-  }).catch(()=>toast('Google 로그인 스크립트를 불러오지 못했어요'));
-};
+/* ============ Google 로그인 · 캘린더 ============ */
+const GKEY='flysky:user', GUEST='flysky:guest';
+const CAL_SCOPE='https://www.googleapis.com/auth/calendar.events';
+let user=null; try{user=JSON.parse(localStorage.getItem(GKEY))}catch(e){}
+let gExp=0, tokenClient=null, pending=null;
+function gValid(){if(gToken&&Date.now()>gExp)gToken=null;return !!gToken}
+function loadGIS(){return new Promise((res,rej)=>{if(window.google&&google.accounts&&google.accounts.oauth2)return res();const s=document.createElement('script');s.src='https://accounts.google.com/gsi/client';s.onload=res;s.onerror=rej;document.head.appendChild(s)})}
+function setupModal(){
+  $('login').classList.remove('open');
+  openModal('Google 로그인 설정',`<p style="font-size:14px;line-height:1.8;color:var(--sub)">
+    코드 맨 위 <b style="color:var(--ink)">GOOGLE_CLIENT_ID</b>에 OAuth 클라이언트 ID를 넣어야 동작해요.<br>
+    1. Google Cloud Console에서 Calendar API 사용 설정<br>
+    2. OAuth 동의 화면 → 테스트 사용자에 내 Gmail 추가<br>
+    3. OAuth 클라이언트 ID(웹) 만들고, 사이트 주소를 JavaScript 원본에 등록<br>
+    파일로 직접 열면(file://) 동작하지 않아요.</p>`);
+}
+/* 토큰 하나로 로그인 정보 + 캘린더 권한을 같이 받음. 버튼을 누를 때만 호출(팝업) */
+function requestToken(prompt){
+  return loadGIS().then(()=>new Promise((res,rej)=>{
+    if(!tokenClient) tokenClient=google.accounts.oauth2.initTokenClient({
+      client_id:GOOGLE_CLIENT_ID, scope:'openid email profile '+CAL_SCOPE,
+      callback:r=>{const p=pending;pending=null;if(!p)return;r&&r.access_token?p.res(r):p.rej(r||{})},
+      error_callback:e=>{const p=pending;pending=null;if(p)p.rej(e||{})}
+    });
+    pending={res,rej};
+    const o={prompt}; if(user&&user.email) o.login_hint=user.email;
+    tokenClient.requestAccessToken(o);
+  })).then(r=>{
+    gToken=r.access_token; gExp=Date.now()+((+r.expires_in||3600)-60)*1000;
+    if(!google.accounts.oauth2.hasGrantedAllScopes(r,CAL_SCOPE)) toast('캘린더 권한 없이 로그인했어요');
+    return r;
+  });
+}
+const gErrMsg=e=>{const t=(e&&(e.type||e.error))||'';
+  return t==='popup_closed'||t==='access_denied'?'로그인을 취소했어요':t==='popup_failed_to_open'?'팝업이 막혀 있어요. 팝업을 허용해 주세요':'Google 로그인에 실패했어요'};
+async function googleLogin(){
+  if(!GOOGLE_CLIENT_ID) return setupModal();
+  $('gErr').textContent=''; const b=$('gLogin'); b.disabled=true;
+  try{
+    await requestToken(user?'':'select_account');
+    const r=await fetch('https://www.googleapis.com/oauth2/v3/userinfo',{headers:{Authorization:'Bearer '+gToken}});
+    if(!r.ok) throw {type:'userinfo'};
+    const j=await r.json();
+    user={sub:j.sub,name:j.name||'',email:j.email||'',picture:j.picture||''};
+    localStorage.setItem(GKEY,JSON.stringify(user)); localStorage.removeItem(GUEST);
+    $('login').classList.remove('open'); renderAccount();
+    toast(`${user.name||user.email} 님, 반가워요`);
+    if(gValid()) fetchGoogle();
+  }catch(e){$('gErr').textContent=gErrMsg(e)}
+  b.disabled=false;
+}
+function logout(){
+  user=null; gToken=null; GEV=[]; localStorage.removeItem(GKEY); localStorage.removeItem(GUEST);
+  $('pop').classList.remove('open'); renderAccount(); renderCal(); renderHome();
+  $('gErr').textContent=''; $('login').classList.add('open');
+}
+function renderAccount(){
+  const ini=user?esc((user.name||user.email||'?').trim().charAt(0).toUpperCase()):'?';
+  const av=user&&user.picture?`<img src="${esc(user.picture)}" alt="" referrerpolicy="no-referrer">`:ini;
+  $('acctIni').innerHTML=av; $('popAv').innerHTML=av;
+  $('popName').textContent=user?(user.name||'Google 계정'):'로그인 안 됨';
+  $('popMail').textContent=user?user.email:'';
+  $('popLogout').querySelector('span').textContent=user?'로그아웃':'로그인';
+  $('popCal').querySelector('span').textContent=gValid()?'Google 캘린더 연동됨':'Google 캘린더 연결';
+  if(!gValid()){$('gStatus').innerHTML=`Google 캘린더<small>${user?'연결하려면 눌러 주세요':'연결 안 됨'}</small>`;$('gConnect').textContent='연결'}
+}
+async function connectCalendar(){
+  if(!GOOGLE_CLIENT_ID) return setupModal();
+  if(gValid()) return fetchGoogle();
+  try{await requestToken(''); renderAccount(); fetchGoogle()}catch(e){toast(gErrMsg(e))}
+}
+$('gConnect').onclick=connectCalendar;
+$('popCal').onclick=()=>{$('pop').classList.remove('open');connectCalendar()};
+$('gLogin').onclick=googleLogin;
+$('gSkip').onclick=()=>{localStorage.setItem(GUEST,'1');$('login').classList.remove('open')};
+$('popLogout').onclick=()=>{if(user)logout();else{$('pop').classList.remove('open');$('gErr').textContent='';$('login').classList.add('open')}};
+renderAccount();
+if(GOOGLE_CLIENT_ID&&!user&&!localStorage.getItem(GUEST)) $('login').classList.add('open');
 async function fetchGoogle(){
   const a=new Date(calY,calM-1,1), b=new Date(calY,calM+2,1);
   try{
     const r=await fetch(`https://www.googleapis.com/calendar/v3/calendars/primary/events?singleEvents=true&orderBy=startTime&maxResults=250&timeMin=${a.toISOString()}&timeMax=${b.toISOString()}`,{headers:{Authorization:'Bearer '+gToken}});
+    if(r.status===401){gToken=null;renderAccount();toast('Google 연결이 만료됐어요. 다시 연결해 주세요');return}
     if(!r.ok) throw 0;
     const j=await r.json();
     GEV=(j.items||[]).map(e=>{const st=e.start.dateTime||e.start.date;return{date:st.slice(0,10),time:e.start.dateTime?st.slice(11,16):'',title:e.summary||'(제목 없음)'}});
     $('gStatus').innerHTML=`Google 캘린더<small>연결됨 · ${GEV.length}개</small>`;$('gConnect').textContent='새로고침';
-    renderCal();renderHome();
+    renderCal();renderHome();renderAccount();
   }catch(e){toast('Google 일정을 불러오지 못했어요')}
 }
 async function pushGoogle(v){
@@ -1662,6 +1722,228 @@ renderAll();
 const h=location.hash.slice(1); if(['admit','cal','bucket','all'].includes(h)) showView(h);
 })();
 
+</script>
+<script>
+/* ==================== 열품타 연동 ====================
+   열품타는 공식 API가 없어서, 앱이 쓰는 서버(pi.tgclab.com)를 중계 서버를 거쳐 호출해요.
+   중계 서버 코드: ypt-relay/worker.js (README의 '열품타 중계 서버' 참고) */
+(function(){
+const YPT_RELAY_URL='';            // 중계 서버 주소. 비워 두면 연결 화면에서 직접 입력
+const DEVICE_MODEL='FlySky Web';   // 공부 기록에 남는 기기 이름
+const YKEY='flysky:ypt';
+
+const $=id=>document.getElementById(id);
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const pad=n=>String(n).padStart(2,'0');
+const hms=ms=>{const s=Math.max(0,Math.floor(ms/1000));return pad(Math.floor(s/3600))+':'+pad(Math.floor(s%3600/60))+':'+pad(s%60)};
+const truthy=v=>v===true||v===1||v==='1'||v==='true';
+let toastT;
+function toast(m){const t=$('toast');t.textContent=m;t.classList.add('show');clearTimeout(toastT);toastT=setTimeout(()=>t.classList.remove('show'),3000)}
+
+/* 상태: relay, jwt, email, nick, coid(국가 ID), gid(선택한 그룹), sync(스톱워치 연동), run({startedAt, subject}) */
+let Y={}; try{Y=JSON.parse(localStorage.getItem(YKEY))||{}}catch(e){}
+if(Y.sync===undefined) Y.sync=true;
+const saveY=()=>{try{localStorage.setItem(YKEY,JSON.stringify(Y))}catch(e){}};
+const relay=()=>(YPT_RELAY_URL||Y.relay||'').trim().replace(/\/+$/,'');
+let info=null, groups=[], members=[], err='', loading=false;
+
+class YErr extends Error{}
+function msg(e){
+  const c=e&&e.message||'';
+  if(c==='relay') return '중계 서버 주소를 먼저 넣어 주세요';
+  if(c==='113') return '이메일 또는 비밀번호가 맞지 않아요';
+  if(c==='112'||c==='expired') return '로그인이 만료됐어요. 다시 로그인해 주세요';
+  if(c==='origin') return '중계 서버가 이 사이트 주소를 허용하지 않아요';
+  if(c.startsWith('http_')) return `요청 실패 (HTTP ${c.slice(5)})`;
+  if(e instanceof YErr) return `열품타 오류 (${c})`;
+  return '중계 서버에 연결하지 못했어요';
+}
+function jwtExp(t){try{const p=JSON.parse(atob(t.split('.')[1].replace(/-/g,'+').replace(/_/g,'/')));return p.exp?p.exp*1000:0}catch(e){return 0}}
+
+async function call(method,path,body,{auth=true,keepalive=false}={}){
+  const base=relay(); if(!base) throw new YErr('relay');
+  const h={'Content-Type':'application/json'};
+  if(auth){if(!Y.jwt) throw new YErr('expired'); h.Authorization='JWT '+Y.jwt}
+  const r=await fetch(base+path,{method,headers:h,body:body?JSON.stringify(body):undefined,keepalive});
+  let j=null; try{j=await r.json()}catch(e){}
+  if(r.status===403&&j&&j.error==='origin') throw new YErr('origin');
+  if(auth&&(r.status===401||(j&&j.s===false&&String(j.c)==='112'))){expire();throw new YErr('expired')}
+  if(!r.ok) throw new YErr('http_'+r.status);
+  if(!j) throw new YErr('bad_json');
+  return j;
+}
+function expire(){Y.jwt='';info=null;groups=[];members=[];saveY();render()}
+
+/* ---------- API ---------- */
+function applyInfo(j){
+  const ss=(Array.isArray(j.ss)?j.ss:[]).filter(x=>!truthy(x.dl))
+    .map(x=>({t:String(x.tt??x.t??x.title??''),sm:+x.sm||0,or:+x.or||0})).filter(x=>x.t).sort((a,b)=>a.or-b.or);
+  info={sm:+(j.dl&&j.dl.sm)||0,subjects:ss,at:Date.now()};
+  if(j.n) Y.nick=String(j.n);
+  if(+j.coid) Y.coid=+j.coid;
+  saveY();
+}
+async function login(email,password){
+  const j=await call('POST','/user/sign-in-jwt',{email,password,loginProvider:'Email',new:true,getx:true,language:'ko'},{auth:false});
+  if(j.s!==true||!j.jwt) throw new YErr(String(j.c||'unknown'));
+  Y.jwt=String(j.jwt); Y.email=email; applyInfo(j);
+}
+async function reloadInfo(){
+  const j=await call('POST','/user/v2/reload/info',{pv:0,cd:{su:null,sbu:null,cu:null,eu:null,du:null,tu:null}});
+  if(j.s===false) throw new YErr(String(j.c||'reload'));
+  applyInfo(j);
+}
+async function loadGroups(){
+  const j=await call('GET','/group/groups/v2');
+  const seen=new Set(); groups=[];
+  ['gs','ms','cs','ps'].forEach(k=>(Array.isArray(j[k])?j[k]:[]).forEach(g=>{
+    const id=+(g.id??g.gd), t=String(g.t||'');
+    if(id&&t&&!seen.has(id)){seen.add(id);groups.push({id,t,mc:+g.mc||0})}
+  }));
+  if(!groups.some(g=>g.id===Y.gid)){Y.gid=groups.length?groups[0].id:0;saveY()}
+}
+async function loadMembers(){
+  if(!Y.gid){members=[];return}
+  const j=await call('GET',`/logs/group/members/v2?groupID=${Y.gid}&countryID=${Y.coid||0}&isLooking=true&version=810046`);
+  members=(Array.isArray(j.ms)?j.ms:[]).map(m=>({n:String(m.n||''),sm:+((m.dl&&m.dl.sm)??m.sm)||0,on:truthy(m.im??m.is)}))
+    .sort((a,b)=>b.sm-a.sm);
+}
+async function refresh({full=true}={}){
+  if(!Y.jwt||loading) return;
+  if(jwtExp(Y.jwt)&&jwtExp(Y.jwt)<Date.now()){expire();err=msg(new YErr('expired'));render();return}
+  loading=true;
+  try{
+    if(full){await reloadInfo();await loadGroups()}
+    await loadMembers(); err='';
+  }catch(e){err=msg(e)}
+  loading=false; render();
+}
+
+/* ---------- 스톱워치 연동 (요청은 순서대로 처리) ---------- */
+let q=Promise.resolve();
+const enqueue=f=>q=q.then(f,f);
+async function studyStart(subject){
+  if(!Y.jwt||!Y.sync||Y.run) return;
+  const subs=info?info.subjects:[];
+  const s=subs.find(x=>x.t===subject)||subs[0];
+  const title=s?s.t:(subject||'공부');
+  const startedAt=Date.now();
+  try{
+    const j=await call('POST','/study/start',{subject:title,deviceModel:DEVICE_MODEL,taskId:null});
+    if(j.s!==true) throw new YErr(String(j.c||'start'));
+    Y.run={startedAt,subject:title}; saveY();
+    if(j.dl&&info) info.sm=+j.dl.sm||info.sm;
+    toast(`열품타 기록 시작 · ${title}`);
+  }catch(e){toast('열품타 기록을 시작하지 못했어요 · '+msg(e))}
+  render();
+}
+async function studyStop(){
+  if(!Y.run) return;
+  const {startedAt}=Y.run;
+  try{
+    const j=await call('POST','/study/stop',{startedAt,deviceModel:DEVICE_MODEL});
+    if(j.s!==true) throw new YErr(String(j.c||'stop'));
+    if(info) info.sm=j.dl?(+j.dl.sm||0):info.sm+(Date.now()-startedAt);
+    Y.run=null; saveY(); toast('열품타에 기록했어요');
+    loadMembers().then(render,()=>{});
+  }catch(e){toast('열품타 기록을 멈추지 못했어요 · '+msg(e))}
+  render();
+}
+document.addEventListener('flysky:sw',e=>{
+  const d=e.detail||{};
+  enqueue(()=>d.running?studyStart(d.subject):studyStop());
+});
+/* 탭을 닫을 때 기록 중이면 정지 요청 */
+window.addEventListener('pagehide',e=>{
+  if(e.persisted||!Y.run||!Y.jwt||!relay()) return;
+  try{fetch(relay()+'/study/stop',{method:'POST',keepalive:true,headers:{'Content-Type':'application/json',Authorization:'JWT '+Y.jwt},
+    body:JSON.stringify({startedAt:Y.run.startedAt,deviceModel:DEVICE_MODEL})});Y.run=null;saveY()}catch(x){}
+});
+
+/* ---------- 화면 ---------- */
+const COLORS=['var(--accent-deep)','var(--accent)','var(--accent-light)','#d8ddee'];
+const MEMC=['var(--accent-deep)','#8592c4','#9aa0b0','#3f4a6b','var(--accent)'];
+const runMs=()=>Y.run?Date.now()-Y.run.startedAt:0;
+function setTag(el,on,text){el.classList.toggle('ypt-off',!on);el.innerHTML=`<span class="dot"></span>${esc(text)}`}
+
+function renderHome(){
+  const on=!!Y.jwt;
+  setTag($('yptTag'),on,!on?'열품타 연결':Y.run?'열품타 기록 중':'열품타 연동됨');
+  setTag($('yptNick'),on,on?'@'+(Y.nick||'열품타'):'연결 안 됨');
+  $('homeStudy').textContent=hms((info?info.sm:0)+runMs());
+  const subs=(info?info.subjects:[]).filter(x=>x.sm>0).sort((a,b)=>b.sm-a.sm).slice(0,4);
+  $('homeSubj').innerHTML=subs.length?subs.map((x,i)=>`<span style="flex:${x.sm};background:${COLORS[i]}"></span>`).join(''):'<span style="flex:1;background:#d8ddee"></span>';
+  $('homeLegend').innerHTML=subs.map((x,i)=>`<span><i style="background:${COLORS[i]}"></i>${esc(x.t)}</span>`).join('');
+
+  const g=groups.find(x=>x.id===Y.gid);
+  const studying=members.filter(m=>m.on).length;
+  $('yptGTitle').innerHTML=g?`${esc(g.t)}<small>${members.length}명 중 ${studying}명 공부 중</small>`:'그룹';
+  $('yptGSeg').innerHTML=groups.length>1?groups.map(x=>`<button data-gid="${x.id}" class="${x.id===Y.gid?'on':''}">${esc(x.t)}</button>`).join(''):'';
+  let body;
+  if(!on) body='<div class="empty">열품타를 연결하면 그룹이 보여요</div>';
+  else if(err&&!members.length) body=`<div class="empty">${esc(err)}</div>`;
+  else if(!groups.length) body=`<div class="empty">${loading||!info?'불러오는 중':'가입한 그룹이 없어요'}</div>`;
+  else body=members.map((m,i)=>{
+    const me=Y.nick&&m.n===Y.nick;
+    return `<div class="mem${me?' me':''}"><span class="st${m.on?'':' off'}">${m.on?'공부 중':'휴식'}</span><div class="rk">${i+1}위${me?' · 나':''}</div>
+      <div class="av" style="background:${me?'linear-gradient(135deg,#adb6d9,#5d6ca8)':MEMC[i%MEMC.length]}">${esc(m.n.charAt(0)||'?')}</div>
+      <div class="nm">${esc(m.n)}</div><div class="tm">${hms(m.sm+(me?runMs():0))}</div></div>`}).join('')||'<div class="empty">멤버가 없어요</div>';
+  $('yptMembers').innerHTML=body;
+}
+const IC_MAIL='<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M16 12v1.5a2.5 2.5 0 0 0 5 0V12a9 9 0 1 0-3.5 7.1"/></svg>';
+const IC_LOCK='<svg viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>';
+const IC_LINK='<svg viewBox="0 0 24 24"><path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"/></svg>';
+const ARR='<span class="arr"><svg viewBox="0 0 24 24" style="width:18px;height:18px"><path d="M9 6l6 6-6 6"/></svg></span>';
+function renderPane(){
+  const p=$('yptPane'); if(!p) return;
+  if(!Y.jwt){
+    p.innerHTML=`<form id="yForm">
+      ${YPT_RELAY_URL?'':`<div class="field"><span class="ic">${IC_LINK}</span><input name="relay" placeholder="중계 서버 주소 (https://…workers.dev)" value="${esc(Y.relay||'')}" autocomplete="url" inputmode="url"></div>`}
+      <div class="field"><span class="ic">${IC_MAIL}</span><input name="email" type="email" placeholder="열품타 이메일" value="${esc(Y.email||'')}" autocomplete="username" required></div>
+      <div class="field"><span class="ic">${IC_LOCK}</span><input name="pw" type="password" placeholder="비밀번호" autocomplete="current-password" required></div>
+      <p class="yerr">${esc(err)}</p>
+      <p class="note">비밀번호는 저장하지 않아요. 이메일로 가입한 계정만 돼요.</p>
+      <button class="cta" ${loading?'disabled':''}>${loading?'연결 중':'로그인'} ${ARR}</button></form>`;
+    $('yForm').onsubmit=async e=>{
+      e.preventDefault(); const f=new FormData(e.target);
+      if(!YPT_RELAY_URL) Y.relay=String(f.get('relay')||'').trim();
+      Y.email=String(f.get('email')).trim(); saveY(); loading=true; err=''; renderPane();
+      try{await login(Y.email,String(f.get('pw')));loading=false;toast('열품타에 연결했어요');await refresh()}
+      catch(x){loading=false;err=msg(x);render()}
+    };
+    return;
+  }
+  const exp=jwtExp(Y.jwt), days=exp?Math.max(0,Math.ceil((exp-Date.now())/864e5)):null;
+  p.innerHTML=`<div class="connected"><div class="av">${esc((Y.nick||'?').charAt(0))}</div><div><p>@${esc(Y.nick||'열품타')}</p><small>● 연결됨${days!==null?` · 토큰 만료까지 ${days}일`:''}</small></div><button id="yOut">연결 해제</button></div>
+    <button class="tgl${Y.sync?' on':''}" id="ySync">스톱워치와 같이 기록<i></i></button>
+    ${Y.run?`<div class="connected"><div><p>기록 중 · ${esc(Y.run.subject)}</p><small id="yRunT">${hms(runMs())}</small></div><button id="yStop">정지</button></div>`:''}
+    <p class="yerr">${esc(err)}</p>
+    <button class="cta" id="yRefresh">${loading?'불러오는 중':'새로고침'} ${ARR}</button>`;
+  $('yOut').onclick=()=>{if(Y.run&&!confirm('열품타 기록이 켜져 있어요. 정지하지 않고 연결을 해제할까요?'))return;Y.jwt='';Y.run=null;info=null;groups=[];members=[];err='';saveY();render()};
+  $('ySync').onclick=()=>{Y.sync=!Y.sync;saveY();renderPane()};
+  $('yRefresh').onclick=()=>refresh();
+  if($('yStop')) $('yStop').onclick=()=>enqueue(studyStop);
+}
+function render(){renderHome();renderPane()}
+
+/* 그룹 바꾸기 */
+document.addEventListener('click',e=>{
+  const b=e.target.closest('#yptGSeg button[data-gid]'); if(!b) return;
+  Y.gid=+b.dataset.gid; saveY(); members=[]; render(); refresh({full:false});
+});
+/* 1초마다 시간 갱신, 1분마다 그룹, 5분마다 전체 */
+let tick=0;
+setInterval(()=>{
+  if(Y.run){$('homeStudy').textContent=hms((info?info.sm:0)+runMs());const t=$('yRunT');if(t)t.textContent=hms(runMs())}
+  if(!Y.jwt||document.hidden) return;
+  if(++tick%300===0) refresh(); else if(tick%60===0) refresh({full:false});
+},1000);
+document.addEventListener('visibilitychange',()=>{if(!document.hidden&&Y.jwt&&info&&Date.now()-info.at>60000)refresh()});
+
+render();
+if(Y.jwt) refresh();
+if(Y.run) setTimeout(()=>toast('열품타 기록이 켜진 채로 남아 있어요. 연동 관리에서 정지할 수 있어요'),800);
+})();
 </script>
 <script>
 /* 확대·축소 막기 */
