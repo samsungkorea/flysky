@@ -771,6 +771,12 @@ body.fs .app{padding:20px;height:auto}
 .card.lit::after,.tile.lit::after{transition-duration:.12s}
 .card.press,.tile.press{transform:perspective(1100px) rotateX(var(--rx)) rotateY(var(--ry)) scale(.985);transition-duration:.18s;transition-delay:60ms}
 </style>
+<style>
+/* 홈 상단: 로고를 다른 화면 제목(.phead h2) 자리에 맞춰 왼쪽 정렬 */
+header.hhead{grid-template-columns:1fr auto;min-height:46px;margin:0 0 22px}
+header.hhead .brand{font-size:40px;justify-self:start;margin-left:-4px;transform:translateY(2px)}
+@media (max-width:900px){header.hhead .brand{font-size:34px;margin-left:-3.5px}}
+</style>
 </head>
 <body>
 <svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false"><symbol id="fslogo" viewBox="0 0 808 380"><defs>
@@ -812,8 +818,7 @@ body.fs .app{padding:20px;height:auto}
   </nav>
 
   <main id="view-home" class="view on">
-    <header>
-      <div></div>
+    <header class="hhead">
       <h1 class="brand" onclick="showView('home')" style="cursor:pointer"><svg class="brandmark" viewBox="0 0 808 380" role="img" aria-label="Fly Sky"><use href="#fslogo"/></svg></h1>
       <div class="head-r">
         <button class="circle" id="hdSearch" aria-label="검색"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg></button>
