@@ -2859,5 +2859,76 @@ document.addEventListener('keydown',e=>{if((e.ctrlKey||e.metaKey)&&['+','-','=',
   document.addEventListener('scroll',up,{passive:true,capture:true});
 })();
 </script>
+<script>
+/* ================= 부드러운 전환: 선택 표시 미끄러지기 · 카드 높이 · 내용 바뀜 ================= */
+(function(){
+  const reduce=matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const SPRING='cubic-bezier(.3,1.32,.42,1)', SOFT='cubic-bezier(.22,1,.36,1)';
+  let lastAct=0;
+  ['pointerdown','click','keydown'].forEach(t=>addEventListener(t,()=>{lastAct=performance.now()},{capture:true,passive:true}));
+  const recent=(ms)=>performance.now()-lastAct<ms;
+
+  /* 1) 선택 표시(탭 · 칩 · 그룹 · 과목 · 메뉴)가 새 자리로 미끄러져 감 */
+  const GROUPS=[
+    {btn:'.side .nav-btn[data-v]',cont:b=>b.closest('.side'),on:c=>c.querySelector('.nav-btn.active')},
+    {btn:'.chips .chip, .tmodes .tmode, .tabs2 button, .seg button, .modes .tag, .tabs button',cont:b=>b.parentElement,on:c=>c.querySelector(':scope > .on')}
+  ];
+  let pend=null;
+  addEventListener('pointerdown',e=>{
+    pend=null; if(reduce) return;
+    for(const g of GROUPS){const b=e.target.closest&&e.target.closest(g.btn); if(!b) continue;
+      const c=g.cont(b), o=c&&g.on(c); if(!o||o===b) return;
+      pend={g,c,id:c.id,o,r:o.getBoundingClientRect()}; return}
+  },{capture:true,passive:true});
+  addEventListener('click',()=>{const P=pend; pend=null; if(!P) return;
+    setTimeout(()=>{
+      const c=P.c.isConnected?P.c:(P.id&&document.getElementById(P.id)); if(!c) return;
+      const n=P.g.on(c); if(!n) return; const r=n.getBoundingClientRect(), a=P.r;
+      if(!r.width||Math.abs(r.left-a.left)+Math.abs(r.top-a.top)<2) return;
+      const kill=x=>{x.style.transition='none';void x.offsetWidth};
+      if(P.o&&P.o.isConnected) kill(P.o); kill(n);
+      const cs=getComputedStyle(n), gh=document.createElement('div');
+      gh.innerHTML=n.innerHTML; gh.querySelectorAll('.tip').forEach(x=>x.remove());
+      Object.assign(gh.style,{position:'fixed',zIndex:45,pointerEvents:'none',margin:0,boxSizing:'border-box',
+        display:'flex',alignItems:'center',justifyContent:'center',overflow:'hidden',whiteSpace:'nowrap',
+        background:cs.backgroundColor,color:cs.color,borderRadius:cs.borderRadius,border:cs.border,boxShadow:cs.boxShadow,
+        font:cs.font,letterSpacing:cs.letterSpacing,padding:cs.padding});
+      document.body.appendChild(gh); n.style.visibility='hidden';
+      const box=x=>({left:x.left+'px',top:x.top+'px',width:x.width+'px',height:x.height+'px'});
+      const an=gh.animate([box(a),box(r)],{duration:460,easing:SPRING});
+      const done=()=>{n.style.visibility='';gh.remove();n.style.transition='';if(P.o)P.o.style.transition=''}; an.onfinish=done; an.oncancel=done;
+      addEventListener('scroll',()=>an.cancel(),{once:true,capture:true,passive:true});
+    },0);
+  },{capture:false});
+
+  /* 2) 누른 뒤 카드 높이가 바뀌면 탁 바뀌지 않고 스프링으로 늘고 줄어듦 */
+  const H=new WeakMap();
+  const ro=new ResizeObserver(es=>{for(const e of es){const el=e.target, h=el.offsetHeight, o=H.get(el); H.set(el,h);
+    if(reduce||o==null||Math.abs(h-o)<6||!recent(3000)||el.closest('.enter')||(el._ha&&el._ha.playState==='running')) continue;
+    el._ha=el.animate([{height:o+'px'},{height:h+'px'}],{duration:540,easing:SPRING});
+  }});
+  const watch=()=>document.querySelectorAll('.app .card').forEach(c=>{if(!c._ro){c._ro=1;ro.observe(c)}});
+  watch();
+
+  /* 3) 누른 뒤 카드 안 내용이 새로 그려지면 살며시 나타남 */
+  const SKIP='#calDays, #yvSubs, .scrim, .clock, #homeStudy, #yvStudy';
+  new MutationObserver(list=>{
+    for(const m of list){if(m.type!=='childList'||!m.removedNodes.length) continue;
+      const cards=n=>n.nodeType!==1?[]:n.matches('.card')?[n]:[...n.querySelectorAll('.card')];
+      const old=[...m.removedNodes].flatMap(cards).map(c=>H.get(c)), neu=[...m.addedNodes].flatMap(cards);
+      neu.forEach((c,i)=>{if(old[i]!=null&&!H.has(c))H.set(c,old[i])});
+    }
+    watch(); if(reduce||!recent(3000)) return;
+    const tg=new Set();
+    for(const m of list){if(m.type!=='childList'||!m.addedNodes.length) continue;
+      const t=m.target; if(!(t instanceof Element)||!t.closest('.app .card')||t.closest(SKIP)||t.closest('.enter')) continue;
+      if([...m.addedNodes].filter(n=>n.nodeType===1).length<1) continue; tg.add(t)}
+    [...tg].filter(t=>![...tg].some(o=>o!==t&&o.contains(t))).forEach(t=>{
+      if(t._fa&&t._fa.playState==='running') return;
+      t._fa=t.animate([{opacity:.0,transform:'translate3d(0,6px,0)'},{opacity:1,transform:'none'}],{duration:340,easing:SOFT});
+    });
+  }).observe(document.querySelector('.app'),{childList:true,subtree:true});
+})();
+</script>
 </body>
 </html>
