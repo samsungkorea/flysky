@@ -1419,10 +1419,10 @@ $('tmStart').onclick=()=>{
 $('tmReset').onclick=()=>{tm.acc=0;tm.running=false;tm.done=false;$('tmStart').textContent='시작'};
 document.querySelectorAll('#tmPresets .chip').forEach(c=>c.onclick=()=>{
   document.querySelectorAll('#tmPresets .chip').forEach(x=>x.classList.remove('on')); c.classList.add('on');
-  tm={total:c.dataset.min*60,running:false,acc:0,t0:0,done:false};$('tmStart').textContent='시작';$('tmTag').textContent=c.dataset.n;
+  tm={total:c.dataset.min*60,running:false,acc:0,t0:0,done:false};$('tmStart').textContent='시작';$('tmTag').textContent=c.dataset.n;setPref('tmMin',+c.dataset.min);
 });
 document.querySelectorAll('[data-add]').forEach(c=>c.onclick=()=>{
-  tm.total=Math.max(60,tm.total+c.dataset.add*60); tm.done=false;
+  tm.total=Math.max(60,tm.total+c.dataset.add*60); tm.done=false; setPref('tmMin',tm.total/60);
   document.querySelectorAll('#tmPresets .chip').forEach(x=>x.classList.remove('on')); $('tmTag').textContent='';
 });
 
@@ -1435,7 +1435,7 @@ document.querySelectorAll('#view-timer .tmode').forEach(b=>b.onclick=()=>{
 });
 document.querySelectorAll('#view-timer .seg button').forEach(b=>b.onclick=()=>{
   document.querySelectorAll('#view-timer .seg button').forEach(x=>x.classList.remove('on')); b.classList.add('on');
-  clockSrc=b.dataset.c; $('mockBox').classList.toggle('hide',clockSrc!=='mock');
+  clockSrc=b.dataset.c; $('mockBox').classList.toggle('hide',clockSrc!=='mock'); setPref('clock',clockSrc);
   lastIdx=-2; alerted={}; updateLabels();
 });
 function updateLabels(){
@@ -1444,21 +1444,42 @@ function updateLabels(){
   $('stTag').textContent=isMock?(mock.running?'모의 수능 진행 중':'모의 수능 · 일시정지'):'';
   $('liveDot').style.background=isMock&&!mock.running?'#9a9ca4':'';
 }
-startSel.onchange=()=>{mock={running:false,base:P[startSel.value].S,acc:0,t0:0};$('mockPlay').textContent='시작';lastIdx=-2;alerted={};updateLabels()};
+startSel.onchange=()=>{setPref('mockStart',startSel.value);mock={running:false,base:P[startSel.value].S,acc:0,t0:0};$('mockPlay').textContent='시작';lastIdx=-2;alerted={};updateLabels()};
 $('mockPlay').onclick=()=>{
   if(mock.running){mock.acc+=performance.now()-mock.t0;mock.running=false}else{mock.t0=performance.now();mock.running=true;beep(0)}
   $('mockPlay').textContent=mock.running?'일시정지':'계속'; updateLabels();
 };
 $('mockReset').onclick=()=>{startSel.onchange()};
 
-$('swSound').onclick=e=>{soundOn=!soundOn;e.currentTarget.classList.toggle('on',soundOn)};
-let wakeLock=null;
-$('swWake').onclick=async e=>{
-  const el=e.currentTarget;
-  if(wakeLock){wakeLock.release();wakeLock=null;el.classList.remove('on');return}
-  try{wakeLock=await navigator.wakeLock.request('screen');el.classList.add('on');wakeLock.onrelease=()=>{wakeLock=null;el.classList.remove('on')}}
-  catch(err){notify('이 브라우저에서는 지원하지 않아요',0)}
+$('swSound').onclick=e=>{soundOn=!soundOn;e.currentTarget.classList.toggle('on',soundOn);setPref('sound',soundOn)};
+/* 화면 꺼짐 방지: 켜 둔 설정은 기억 · 동기화하고, 화면이 다시 보이면 자동으로 다시 켬 */
+let wakeLock=null, wakeWant=false;
+async function wakeOn(manual){
+  if(wakeLock) return true;
+  try{wakeLock=await navigator.wakeLock.request('screen');$('swWake').classList.add('on');
+    wakeLock.onrelease=()=>{wakeLock=null;if(!wakeWant)$('swWake').classList.remove('on')};return true}
+  catch(err){if(manual)notify('이 브라우저에서는 지원하지 않아요',0);return false}
+}
+function wakeOff(){wakeWant=false;if(wakeLock){wakeLock.release();wakeLock=null}$('swWake').classList.remove('on')}
+document.addEventListener('visibilitychange',()=>{if(!document.hidden&&wakeWant)wakeOn()});
+$('swWake').onclick=async()=>{
+  if(wakeWant||wakeLock){wakeOff();setPref('wake',false);return}
+  wakeWant=true; $('swWake').classList.add('on'); setPref('wake',true);
+  if(!navigator.wakeLock||!(await wakeOn(true))){wakeWant=false;$('swWake').classList.remove('on');setPref('wake',false)}
 };
+function setPref(k,v){if(window.flyPref)window.flyPref.set(k,v)}
+function applyPrefs(){
+  const p=window.flyPref?window.flyPref.get():{};
+  if(typeof p.sound==='boolean'){soundOn=p.sound;$('swSound').classList.toggle('on',soundOn)}
+  if((p.clock==='real'||p.clock==='mock')&&p.clock!==clockSrc){const b=document.querySelector(`#view-timer .seg button[data-c="${p.clock}"]`);if(b)b.click()}
+  if(p.mockStart!=null&&!mock.running&&startSel.value!==String(p.mockStart)&&P[p.mockStart]){startSel.value=p.mockStart;startSel.onchange()}
+  if(p.tmMin&&!tm.running&&!tm.acc&&tm.total!==p.tmMin*60){tm.total=p.tmMin*60;tm.done=false;
+    let n='';document.querySelectorAll('#tmPresets .chip').forEach(x=>{const on=+x.dataset.min===p.tmMin;x.classList.toggle('on',on);if(on)n=x.dataset.n});$('tmTag').textContent=n}
+  if(p.wake===true&&!wakeWant&&navigator.wakeLock){wakeWant=true;$('swWake').classList.add('on');
+    wakeOn().then(ok=>{if(!ok)addEventListener('pointerdown',()=>{if(wakeWant)wakeOn()},{once:true,capture:true})})}   // 브라우저가 터치 후에만 허락하면 첫 터치 때 켬
+  else if(p.wake===false&&(wakeWant||wakeLock)) wakeOff();
+}
+document.addEventListener('flysky:prefs',applyPrefs);
 const fsLayer=document.createElement('div');fsLayer.id='fsLayer';
 fsLayer.addEventListener('click',e=>{if(!e.target.closest('#watch'))exitFs()});
 document.body.appendChild(fsLayer);
@@ -1573,6 +1594,8 @@ const SEED={
 let S;
 try{S=JSON.parse(localStorage.getItem(KEY))}catch(e){}
 if(!S||!S.ddays) S=JSON.parse(JSON.stringify(SEED));
+/* 기기 간 동기화되는 설정 (타이머 설정 등 다른 스크립트에서도 씀) */
+window.flyPref={get:()=>S.prefs||{},set:(k,v)=>{S.prefs=S.prefs||{};if(S.prefs[k]===v)return;S.prefs[k]=v;save()}};
 function save(){S._t=Date.now();try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){} renderAll(); schedulePush()}
 
 /* ============ 최저 ============ */
@@ -2287,7 +2310,7 @@ function applyRemote(d){
   try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}
   if(d.ypt){try{const y=JSON.parse(localStorage.getItem('flysky:ypt'))||{};Object.assign(y,d.ypt);localStorage.setItem('flysky:ypt',JSON.stringify(y))}catch(e){}
     document.dispatchEvent(new CustomEvent('flysky:yptprefs'))}
-  syncAt=Date.now(); renderAll(); renderAccount();
+  syncAt=Date.now(); renderAll(); renderAccount(); document.dispatchEvent(new CustomEvent('flysky:prefs'));
 }
 async function pushNow(){
   if(!syncRef) return;
@@ -2351,17 +2374,18 @@ function upcoming(){
   return L.sort((a,b)=>a.date.localeCompare(b.date)||(a.time||'00:00').localeCompare(b.time||'00:00'));
 }
 const soonSig=()=>upcoming().filter(e=>ddayN(e.date)<=1).map(e=>e.date+e.title).join('|');
-function renderBell(){const sig=soonSig();$('bellDot').hidden=!sig||localStorage.getItem('flysky:seen')===sig}
+function renderBell(){const sig=soonSig();$('bellDot').hidden=!sig||(S.prefs&&S.prefs.seen||localStorage.getItem('flysky:seen'))===sig}
 function openBell(){
   const L=upcoming(), lab=n=>n===0?'오늘':n===1?'내일':`D-${n}`;
   openModal('알림',`<ul class="srch" id="bellList">${L.length?L.map((e,i)=>{const n=ddayN(e.date);return `<li data-i="${i}"><span class="k${n===0?' now':''}">${lab(n)}</span><div><b>${esc(e.title)}</b><small>${fmtLong(e.date)}${e.time?' · '+e.time:''} · ${typeName(e.type)}</small></div></li>`}).join(''):'<li class="empty2">앞으로 7일 동안 일정이 없어요</li>'}</ul>`);
   $('bellList').onclick=ev=>{const li=ev.target.closest('li[data-i]');if(!li)return;const e=L[+li.dataset.i];closeModal();const x=parse(e.date);calY=x.getFullYear();calM=x.getMonth();sel=e.date;showView('cal');renderCal()};
-  localStorage.setItem('flysky:seen',soonSig()); renderBell();
+  window.flyPref.set('seen',soonSig()); renderBell();
 }
 $('hdBell').onclick=openBell;
 
 function renderAll(){applyLogo();renderHome();renderApps();renderMin();renderGoal();renderCal();renderBucket();renderBell()}
 renderAll();
+document.dispatchEvent(new CustomEvent('flysky:prefs'));
 if(FIREBASE_CONFIG) fbStart();
 if(user&&gValid()) fetchGoogle();   // 권한이 살아 있으면 창 없이 최신 일정
 const h=location.hash.slice(1); if(['admit','cal','bucket','all','ypt'].includes(h)) showView(h);
