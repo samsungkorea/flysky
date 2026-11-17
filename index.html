@@ -249,6 +249,9 @@
     .grid{grid-template-columns:1fr}
     .group{grid-column:1}
     .mem{min-width:140px}
+    .yptgrid{grid-template-columns:1fr}
+    .side{padding:0 8px}
+    .nav-btn,.side .acct>.avatar{width:40px;height:40px}
     .stack,.timer,.hero{grid-column:1;grid-row:auto}
     .hero{flex-direction:column;min-height:0}
     .hero .date{width:auto;min-height:220px}
@@ -449,6 +452,21 @@
   .evs .et small{font-size:12px;color:var(--sub)}
   .legend2{display:flex;gap:14px;flex-wrap:wrap;font-size:12px;color:var(--sub);margin-top:16px}
   .legend2 i{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:5px;background:var(--accent)}
+  .yptgrid{display:grid;grid-template-columns:1.5fr 1fr;gap:20px;align-items:start}
+  .ycol{display:flex;flex-direction:column;gap:20px;min-width:0}
+  .yv-timer{padding-top:26px}
+  .members.ygrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));overflow:visible}
+  .members.ygrid .mem{min-width:0}
+  .ysubs{list-style:none;margin-top:14px}
+  .ysubs li{display:grid;grid-template-columns:1fr auto;gap:6px 12px;padding:10px 0;border-bottom:1px solid var(--line);font-size:14px}
+  .ysubs li:last-child{border-bottom:0}
+  .ysubs b{font-weight:600}
+  .ysubs .t{font-variant-numeric:tabular-nums;font-weight:600}
+  .ysubs .bar{grid-column:1 / -1;height:6px;border-radius:999px;background:var(--chip);overflow:hidden}
+  .ysubs .bar i{display:block;height:100%;border-radius:999px;background:var(--accent)}
+  .ysubs li.run b::after{content:"기록 중";margin-left:8px;font-size:11px;color:#fff;background:var(--accent);padding:2px 8px;border-radius:999px;font-weight:600}
+  .ysubs .empty2{color:var(--sub);display:block;border:0}
+  @media (max-width:900px){.yptgrid{grid-template-columns:1fr}}
   .gcard{display:flex;align-items:center;gap:14px}
   .gmig{display:flex;align-items:center;gap:12px;margin-top:16px;padding-top:16px;border-top:1px solid var(--line)}
   .gmig p{flex:1;font-size:14px;font-weight:600}
@@ -579,6 +597,7 @@
     <button class="nav-btn" data-v="timer"><svg viewBox="0 0 24 24"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 2.5M9 2h6"/></svg><span class="tip">타이머</span></button>
     <button class="nav-btn" data-v="admit"><svg viewBox="0 0 24 24"><path d="M5 21V4M5 4h11l-2 4 2 4H5"/></svg><span class="tip">입시</span></button>
     <button class="nav-btn" data-v="cal"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="3"/><path d="M3 10h18M8 3v4M16 3v4"/></svg><span class="tip">캘린더</span></button>
+    <button class="nav-btn" data-v="ypt"><svg viewBox="0 0 24 24"><path d="M6 9.6L16.2 11.2V12.8L6 14.4z" fill="currentColor" fill-opacity=".35" stroke="none"/><path d="M6 14.4L16.2 12.8V14.6L8 19.7Q6 20.6 6 18.7z" fill="currentColor" fill-opacity=".75" stroke="none"/><path d="M16.2 9.4L18.9 11.1q1 .9 0 1.8L16.2 14.6z" fill="currentColor" stroke="none"/><path d="M6 5.3v13.4a1.3 1.3 0 0 0 2 1.1L18.8 13a1.2 1.2 0 0 0 0-2L8 4.2a1.3 1.3 0 0 0-2 1.1z"/></svg><span class="tip">열품타</span></button>
     <button class="nav-btn" data-act="interview"><svg viewBox="0 0 24 24"><path d="M12 3a3 3 0 0 1 3 3v5a3 3 0 0 1-6 0V6a3 3 0 0 1 3-3zM5 11a7 7 0 0 0 14 0M12 18v3"/></svg><span class="tip">면접 연습 ↗</span></button>
     <button class="nav-btn" data-v="all"><svg viewBox="0 0 24 24"><circle cx="5" cy="12" r="1.2"/><circle cx="12" cy="12" r="1.2"/><circle cx="19" cy="12" r="1.2"/></svg><span class="tip">모든 기능</span></button>
     <div class="spacer"></div>
@@ -587,7 +606,7 @@
       <div class="pop" id="pop">
         <div class="who"><div class="avatar" id="popAv">?</div><div><p id="popName">로그인 안 됨</p><small id="popMail"></small></div></div>
         <button class="item" id="popCal"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="3"/><path d="M3 10h18M8 3v4M16 3v4"/></svg><span>Google 캘린더 연결</span></button>
-        <button class="item" onclick="openSheet()"><svg viewBox="0 0 24 24"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 2.5M9 2h6"/></svg>열품타 연동 관리</button>
+        <button class="item" onclick="openSheet()"><svg viewBox="0 0 24 24"><path d="M6 9.6L16.2 11.2V12.8L6 14.4z" fill="currentColor" fill-opacity=".35" stroke="none"/><path d="M6 14.4L16.2 12.8V14.6L8 19.7Q6 20.6 6 18.7z" fill="currentColor" fill-opacity=".75" stroke="none"/><path d="M16.2 9.4L18.9 11.1q1 .9 0 1.8L16.2 14.6z" fill="currentColor" stroke="none"/><path d="M6 5.3v13.4a1.3 1.3 0 0 0 2 1.1L18.8 13a1.2 1.2 0 0 0 0-2L8 4.2a1.3 1.3 0 0 0-2 1.1z"/></svg>열품타</button>
         <button class="item"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1L7 17M17 7l2.1-2.1"/></svg>설정</button>
         <button class="item" id="popLogout"><svg viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/></svg><span>로그아웃</span></button>
       </div>
@@ -956,6 +975,34 @@
     <div class="bkgrid" id="bkGrid"></div>
   </main>
 
+  <!-- ===================== 열품타 ===================== -->
+  <main id="view-ypt" class="view">
+    <header class="phead"><h2>열품타</h2><span class="tag ypt ypt-off" id="yvTag"><span class="dot"></span>연결 안 됨</span></header>
+    <div class="yptgrid">
+      <div class="ycol">
+        <section class="card timer yv-timer">
+          <div class="left">
+            <div class="label">오늘 공부 시간</div>
+            <div class="clock" id="yvStudy">00:00:00</div>
+            <div class="subj" id="yvSubj"><span style="flex:1;background:#d8ddee"></span></div>
+            <div class="legend" id="yvLegend"></div>
+            <div class="modes" id="yvSubjPick"></div>
+          </div>
+          <button class="play" id="yvPlay" aria-label="공부 기록 시작"><svg viewBox="0 0 24 24"><path d="M8 5.5v13l11-6.5z"/></svg></button>
+        </section>
+        <section class="card group">
+          <div class="label">그룹</div>
+          <div class="top"><h3 id="yvGTitle">그룹</h3><div class="seg" id="yvGSeg"></div></div>
+          <div class="members ygrid" id="yvMembers"></div>
+        </section>
+      </div>
+      <div class="ycol">
+        <section class="card"><div class="label">과목별 오늘</div><ul class="ysubs" id="yvSubs"></ul></section>
+        <section class="card"><div class="label">계정</div><div id="yptPane" style="margin-top:14px"></div></section>
+      </div>
+    </div>
+  </main>
+
   <!-- ===================== 모든 기능 ===================== -->
   <main id="view-all" class="view">
     <header class="phead"><h2>모든 기능</h2></header>
@@ -984,40 +1031,10 @@
   </div>
 </div>
 
-<!-- YPT sheet -->
-<div class="scrim" id="scrim" onclick="if(event.target===this)closeSheet()">
-  <div class="sheet">
-    <div class="hd"><h2>공부 기록 가져오기</h2><button class="circle" style="background:var(--chip)" onclick="closeSheet()"><svg viewBox="0 0 24 24" style="width:18px;height:18px"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>
-    <div class="tabs">
-      <button class="on" data-p="p1">열품타 로그인</button><button data-p="p2">스크린샷</button><button data-p="p3">직접 입력</button>
-    </div>
-
-    <div class="pane on" id="p1"><div id="yptPane"></div></div>
-
-    <div class="pane" id="p2">
-      <div class="drop"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="3"/><circle cx="9" cy="10" r="2"/><path d="M21 16l-5-5-9 9"/></svg><b>기록 화면 캡처 올리기</b></div>
-      <button class="cta">이미지 선택 <span class="arr"><svg viewBox="0 0 24 24" style="width:18px;height:18px"><path d="M9 6l6 6-6 6"/></svg></span></button>
-    </div>
-
-    <div class="pane" id="p3">
-      <div class="field"><span class="ic"><svg viewBox="0 0 24 24"><path d="M4 19V5a2 2 0 0 1 2-2h12v18H6a2 2 0 0 1-2-2zM8 7h6"/></svg></span><select><option>국어</option><option>수학</option><option>영어</option><option>지구과학Ⅰ</option></select></div>
-      <div class="row2">
-        <div class="field"><span class="ic"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><path d="M12 8v4"/></svg></span><input placeholder="시간" inputmode="numeric"></div>
-        <div class="field"><span class="ic"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><path d="M12 12h3"/></svg></span><input placeholder="분" inputmode="numeric"></div>
-      </div>
-      <button class="cta">기록 추가 <span class="arr"><svg viewBox="0 0 24 24" style="width:18px;height:18px"><path d="M12 6v12M6 12h12"/></svg></span></button>
-    </div>
-  </div>
-</div>
-
 <script>
-  const scrim=document.getElementById('scrim');
-  function openSheet(){scrim.classList.add('open');document.getElementById('pop').classList.remove('open')}
-  function closeSheet(){scrim.classList.remove('open')}
-  document.querySelectorAll('.tabs button').forEach(b=>b.onclick=()=>{
-    document.querySelectorAll('.tabs button,.pane').forEach(x=>x.classList.remove('on'));
-    b.classList.add('on');document.getElementById(b.dataset.p).classList.add('on');
-  });
+  /* 열품타 관련은 전부 '열품타' 화면으로 */
+  function openSheet(){document.getElementById('pop').classList.remove('open');showView('ypt')}
+  function closeSheet(){}
   document.querySelectorAll('.group .seg button').forEach(b=>b.onclick=()=>{
     b.parentElement.querySelectorAll('button').forEach(x=>x.classList.remove('on'));b.classList.add('on');
   });
@@ -1760,6 +1777,7 @@ const IC={
   flag:'<path d="M5 21V4M5 4h11l-2 4 2 4H5"/>',
   mic:'<path d="M12 3a3 3 0 0 1 3 3v5a3 3 0 0 1-6 0V6a3 3 0 0 1 3-3zM5 11a7 7 0 0 0 14 0M12 18v3"/>',
   cal:'<rect x="3" y="5" width="18" height="16" rx="3"/><path d="M3 10h18M8 3v4M16 3v4"/>',
+  ypt:'<path d="M6 9.6L16.2 11.2V12.8L6 14.4z" fill="currentColor" fill-opacity=".35" stroke="none"/><path d="M6 14.4L16.2 12.8V14.6L8 19.7Q6 20.6 6 18.7z" fill="currentColor" fill-opacity=".75" stroke="none"/><path d="M16.2 9.4L18.9 11.1q1 .9 0 1.8L16.2 14.6z" fill="currentColor" stroke="none"/><path d="M6 5.3v13.4a1.3 1.3 0 0 0 2 1.1L18.8 13a1.2 1.2 0 0 0 0-2L8 4.2a1.3 1.3 0 0 0-2 1.1z"/>',
   list:'<path d="M9 6h11M9 12h11M9 18h11M4 6l1 1 2-2M4 12l1 1 2-2M4 18l1 1 2-2"/>'
 };
 const FEATS=[
@@ -1767,7 +1785,7 @@ const FEATS=[
     {n:'수능 시계',ic:'clock',v:'timer',m:'exam'},
     {n:'스톱워치',ic:'sw',v:'timer',m:'sw'},
     {n:'타이머',ic:'hour',v:'timer',m:'tm'},
-    {n:'열품타 연동',ic:'sync',act:'ypt'}]},
+    {n:'열품타',ic:'ypt',v:'ypt'}]},
   {cat:'입시',items:[
     {n:'수시 원서',ic:'doc',v:'admit',t:'apps'},
     {n:'최저 계산기',ic:'calc',v:'admit',t:'min'},
@@ -1849,7 +1867,7 @@ document.addEventListener('click',e=>{
 
 function renderAll(){renderHome();renderApps();renderMin();renderGoal();renderCal();renderBucket()}
 renderAll();
-const h=location.hash.slice(1); if(['admit','cal','bucket','all'].includes(h)) showView(h);
+const h=location.hash.slice(1); if(['admit','cal','bucket','all','ypt'].includes(h)) showView(h);
 })();
 
 </script>
@@ -1998,13 +2016,14 @@ async function studyStop(){
   }catch(e){toast('열품타 기록을 멈추지 못했어요 · '+msg(e))}
   render();
 }
-$('homePlay').onclick=()=>{
+const playClick=()=>{
   if(pending) return;
   if(!Y.jwt) return openSheet();
   enqueue(()=>Y.run?studyStop():studyStart(curSubj()));
 };
+$('homePlay').onclick=playClick; $('yvPlay').onclick=playClick;
 document.addEventListener('click',e=>{
-  const t=e.target.closest('#homeSubjPick [data-subj]'); if(!t||Y.run) return;
+  const t=e.target.closest('#homeSubjPick [data-subj], #yvSubjPick [data-subj]'); if(!t||Y.run) return;
   Y.subj=t.dataset.subj; saveY(); renderHome();
 });
 /* 탭을 닫을 때 기록 중이면 정지 요청 */
@@ -2025,26 +2044,25 @@ const IC_PLAY='<svg viewBox="0 0 24 24"><path d="M8 5.5v13l11-6.5z"/></svg>';
 const IC_PAUSE='<svg viewBox="0 0 24 24"><path d="M7 5h3.5v14H7zM13.5 5H17v14h-3.5z"/></svg>';
 function setTag(el,on,text){el.classList.toggle('ypt-off',!on);el.innerHTML=`<span class="dot"></span>${esc(text)}`}
 
-function renderHome(){
-  const on=!!Y.jwt;
-  setTag($('yptTag'),on,!on?'열품타 연결':Y.run?'열품타 기록 중':'열품타 연동됨');
-  setTag($('yptNick'),on,on?'@'+(Y.nick||'열품타'):'연결 안 됨');
-  $('homeStudy').textContent=hms((info?info.sm:0)+runMs());
-  const subs=(info?info.subjects:[]).filter(x=>x.sm>0).sort((a,b)=>b.sm-a.sm).slice(0,4);
-  $('homeSubj').innerHTML=subs.length?subs.map((x,i)=>`<span style="flex:${x.sm};background:${COLORS[i]}"></span>`).join(''):'<span style="flex:1;background:#d8ddee"></span>';
-  $('homeLegend').innerHTML=subs.map((x,i)=>`<span><i style="background:${COLORS[i]}"></i>${esc(x.t)}</span>`).join('');
-  const sel=Y.run?Y.run.subject:curSubj(), pick=$('homeSubjPick');
-  pick.classList.toggle('lock',!!Y.run);
-  pick.innerHTML=(info?info.subjects:[]).map(x=>`<span class="tag${x.t===sel?' on':''}" data-subj="${esc(x.t)}">${esc(x.t)}</span>`).join('');
-  const pb=$('homePlay');
-  pb.innerHTML=Y.run?IC_PAUSE:IC_PLAY; pb.disabled=!!pending;
+/* ---- 공용 조각 (홈 카드와 열품타 화면이 같이 씀) ---- */
+function topSubs(){return (info?info.subjects:[]).map(x=>({...x,sm:x.sm+(Y.run&&Y.run.subject===x.t?runMs():0)})).filter(x=>x.sm>0).sort((a,b)=>b.sm-a.sm).slice(0,4)}
+function studyParts(){
+  const subs=topSubs(), sel=Y.run?Y.run.subject:curSubj();
+  return {
+    clock:hms((info?info.sm:0)+runMs()),
+    bar:subs.length?subs.map((x,i)=>`<span style="flex:${x.sm};background:${COLORS[i]}"></span>`).join(''):'<span style="flex:1;background:#d8ddee"></span>',
+    legend:subs.map((x,i)=>`<span><i style="background:${COLORS[i]}"></i>${esc(x.t)}</span>`).join(''),
+    pick:(info?info.subjects:[]).map(x=>`<span class="tag${x.t===sel?' on':''}" data-subj="${esc(x.t)}">${esc(x.t)}</span>`).join('')
+  };
+}
+function fillStudy(ids,P){
+  $(ids.clock).textContent=P.clock; $(ids.bar).innerHTML=P.bar; $(ids.legend).innerHTML=P.legend;
+  const pick=$(ids.pick); pick.classList.toggle('lock',!!Y.run); pick.innerHTML=P.pick;
+  const pb=$(ids.play); pb.innerHTML=Y.run?IC_PAUSE:IC_PLAY; pb.disabled=!!pending;
   pb.setAttribute('aria-label',Y.run?'공부 기록 정지':'공부 기록 시작');
-
-  const g=groups.find(x=>x.id===Y.gid);
-  const studying=members.filter(m=>m.on).length;
-  $('yptGTitle').innerHTML=g?`${esc(g.t)}<small>${members.length}명 중 ${studying}명 공부 중</small>`:'그룹';
-  const og=orderedGroups();
-  $('yptGSeg').innerHTML=og.length>1?og.map(x=>`<button data-gid="${x.id}" class="${x.id===Y.gid?'on':''}">${esc(x.t)}</button>`).join(''):'';
+}
+function groupParts(){
+  const on=!!Y.jwt, g=groups.find(x=>x.id===Y.gid), studying=members.filter(m=>m.on).length, og=orderedGroups();
   let body;
   if(!on) body='<div class="empty">열품타를 연결하면 그룹이 보여요</div>';
   else if(err&&!members.length) body=`<div class="empty">${esc(err)}</div>`;
@@ -2055,7 +2073,30 @@ function renderHome(){
     return `<div class="mem${me?' me':''}${m.on?' study':''}"><span class="st${m.on?'':' off'}">${label}</span><div class="rk">${i+1}위${me?' · 나':''}</div>
       <div class="av" style="background:${me?'linear-gradient(135deg,#adb6d9,#5d6ca8)':MEMC[i%MEMC.length]}">${esc(m.n.charAt(0)||'?')}</div>
       <div class="nm">${esc(m.n)}</div><div class="tm">${hms(m.sm+(me?runMs():0))}</div></div>`}).join('')||'<div class="empty">멤버가 없어요</div>';
-  $('yptMembers').innerHTML=body;
+  return {
+    title:g?`${esc(g.t)}<small>${members.length}명 중 ${studying}명 공부 중</small>`:'그룹',
+    seg:og.length>1?og.map(x=>`<button data-gid="${x.id}" class="${x.id===Y.gid?'on':''}">${esc(x.t)}</button>`).join(''):'',
+    body
+  };
+}
+function subjectList(){
+  if(!Y.jwt) return '<li class="empty2">열품타를 연결하면 보여요</li>';
+  const subs=(info?info.subjects:[]); if(!subs.length) return `<li class="empty2">${info?'열품타에 과목이 없어요':'불러오는 중'}</li>`;
+  const L=subs.map(x=>({t:x.t,sm:x.sm+(Y.run&&Y.run.subject===x.t?runMs():0),run:!!(Y.run&&Y.run.subject===x.t)}));
+  const max=Math.max(1,...L.map(x=>x.sm));
+  return L.map(x=>`<li class="${x.run?'run':''}"><b>${esc(x.t)}</b><span class="t">${hms(x.sm)}</span><span class="bar"><i style="width:${x.sm/max*100}%"></i></span></li>`).join('');
+}
+function renderHome(){
+  const on=!!Y.jwt, tagTxt=!on?'열품타 연결':Y.run?'열품타 기록 중':'열품타 연동됨';
+  setTag($('yptTag'),on,tagTxt); setTag($('yvTag'),on,on?(Y.run?'기록 중 · ':'')+'@'+(Y.nick||'열품타'):'연결 안 됨');
+  setTag($('yptNick'),on,on?'@'+(Y.nick||'열품타'):'연결 안 됨');
+  const P=studyParts();
+  fillStudy({clock:'homeStudy',bar:'homeSubj',legend:'homeLegend',pick:'homeSubjPick',play:'homePlay'},P);
+  fillStudy({clock:'yvStudy',bar:'yvSubj',legend:'yvLegend',pick:'yvSubjPick',play:'yvPlay'},P);
+  $('yvSubs').innerHTML=subjectList();
+  const G=groupParts();
+  $('yptGTitle').innerHTML=G.title; $('yptGSeg').innerHTML=G.seg; $('yptMembers').innerHTML=G.body;
+  $('yvGTitle').innerHTML=G.title; $('yvGSeg').innerHTML=G.seg; $('yvMembers').innerHTML=G.body;
   updateMembersFade();
 }
 function updateMembersFade(){
@@ -2115,13 +2156,13 @@ document.addEventListener('flysky:userchange',()=>{if(!Y.jwt)renderPane()});
 
 /* 그룹 바꾸기 */
 document.addEventListener('click',e=>{
-  const b=e.target.closest('#yptGSeg button[data-gid]'); if(!b) return;
+  const b=e.target.closest('#yptGSeg button[data-gid], #yvGSeg button[data-gid]'); if(!b) return;
   Y.gid=+b.dataset.gid; saveY(); members=[]; render(); refresh({full:false});
 });
 /* 1초마다 시간 갱신, 1분마다 그룹, 5분마다 전체 */
 let tick=0;
 setInterval(()=>{
-  if(Y.run){$('homeStudy').textContent=hms((info?info.sm:0)+runMs());const t=$('yRunT');if(t)t.textContent=hms(runMs())}
+  if(Y.run){const c=hms((info?info.sm:0)+runMs());$('homeStudy').textContent=c;$('yvStudy').textContent=c;$('yvSubs').innerHTML=subjectList();const t=$('yRunT');if(t)t.textContent=hms(runMs())}
   if(!Y.jwt||document.hidden) return;
   if(++tick%300===0) refresh(); else if(tick%60===0) refresh({full:false});
 },1000);
@@ -2129,7 +2170,7 @@ document.addEventListener('visibilitychange',()=>{if(!document.hidden&&Y.jwt&&in
 
 render();
 if(Y.jwt) refresh();
-if(Y.run) setTimeout(()=>toast('열품타 기록이 켜진 채로 남아 있어요. 연동 관리에서 정지할 수 있어요'),800);
+if(Y.run) setTimeout(()=>toast('열품타 기록이 켜진 채로 남아 있어요. 열품타 화면에서 정지할 수 있어요'),800);
 })();
 </script>
 <script>
