@@ -661,8 +661,7 @@
 .scrim.closing:not(.open){display:flex;pointer-events:none;animation:flyFadeOut .22s ease both}
 /* 계정 창 */
 .pop{transform-origin:24px calc(100% - 24px)}
-.pop.open{animation:flyMorphIn .5s linear both}
-.pop.closing:not(.open){display:block;pointer-events:none;animation:flyMorphOut .22s cubic-bezier(.4,0,.8,.4) both}
+.pop.closing:not(.open){display:block;pointer-events:none}
 @media (max-width:900px){.pop{transform-origin:calc(100% - 24px) 100%}}
 /* 로그인 */
 .login.open{animation:flyFade .35s var(--soft) both}
@@ -2779,33 +2778,43 @@ document.addEventListener('keydown',e=>{if((e.ctrlKey||e.metaKey)&&['+','-','=',
   const closer=new MutationObserver(list=>{
     for(const m of list){
       const el=m.target, was=(m.oldValue||'').split(/\s+/), now=el.classList.contains('open');
-      if(was.includes('open')&&!now){el.classList.add('closing');if(el.id==='modal')unaim(el);clearTimeout(el._ct);el._ct=setTimeout(()=>el.classList.remove('closing'),320)}
-      else if(now&&!was.includes('open')){el.classList.remove('closing');clearTimeout(el._ct);if(el.id==='modal')aim(el)}
+      if(was.includes('open')&&!now){el.classList.add('closing');if(el.id==='modal'||el.id==='pop')unaim(el);clearTimeout(el._ct);el._ct=setTimeout(()=>el.classList.remove('closing'),320)}
+      else if(now&&!was.includes('open')){if(el.classList.contains('closing'))el.classList.remove('closing');clearTimeout(el._ct);if(el.id==='modal'||el.id==='pop')aim(el)}
     }
-    /* 같은 순간에 닫혔다 다시 열리면(모달 내용 바뀜) 시트 등장 다시 재생 */
-    list.forEach(m=>{const el=m.target;if(el.id==='modal'&&el.classList.contains('open')&&(m.oldValue||'').includes('open')){
-      aim(el)}});
   });
   /* 마지막으로 누른 곳 기억 → 모달이 그 자리에서 부풀고 그 자리로 들어감 */
   let lastX=null, lastY=null;
   addEventListener('pointerdown',e=>{lastX=e.clientX;lastY=e.clientY},{passive:true,capture:true});
-  /* 뾰잉: 누른 자리에서 작은 방울로 출발 → 날아오며 말랑하게 부풀고 초점이 맞음 (Safari에서도 확실하게 translate로 이동) */
-  const vec=sh=>{if(lastX==null)return [0,0];return [lastX-(sh.offsetLeft+sh.offsetWidth/2),lastY-(sh.offsetTop+sh.offsetHeight/2)]};
-  const E1='cubic-bezier(.2,.85,.3,1)',E2='cubic-bezier(.35,0,.45,1)';
-  function aim(sc){const sh=sc.querySelector('.sheet');if(!sh||!sh.animate)return;
-    const [dx,dy]=vec(sh); sh._v=[dx,dy]; if(sh._a)sh._a.cancel();
-    sh._a=sh.animate([
-      {opacity:0,transform:`translate(${dx}px,${dy}px) scale(.14,.17)`,filter:'blur(10px)',borderRadius:'260px',easing:E1},
-      {opacity:1,offset:.18,easing:E1},
-      {transform:`translate(${dx*.06}px,${dy*.06}px) scale(.93,1.05)`,filter:'blur(3px)',borderRadius:'56px',offset:.48,easing:E2},
-      {transform:'translate(0,0) scale(1.022,.985)',filter:'blur(.6px)',borderRadius:'34px',offset:.7,easing:E2},
-      {transform:'scale(.996,1.004)',filter:'blur(0px)',offset:.86},
-      {opacity:1,transform:'none',filter:'blur(0px)',borderRadius:'32px'}],{duration:520})}
-  function unaim(sc){const sh=sc.querySelector('.sheet');if(!sh||!sh.animate)return;
-    const [dx,dy]=sh._v||[0,0]; if(sh._a)sh._a.cancel();
-    sh._a=sh.animate([{opacity:1,transform:'none',filter:'blur(0px)'},
-      {opacity:0,transform:`translate(${dx}px,${dy}px) scale(.16,.2)`,filter:'blur(8px)',borderRadius:'260px'}],
-      {duration:240,easing:'cubic-bezier(.45,0,.8,.5)',fill:'forwards'});}   // 다음에 열 때 aim()이 지움
+  /* 뾰잉: 스프링 하나로 위치 · 크기 · 모양 · 흐림 · 투명도가 '한 번에' 움직임
+     (가로 · 세로는 스프링 세기를 살짝 달리 줘서 말랑하게 늘었다 줄어듦) */
+  const spring=(t,w,z)=>{const wd=w*Math.sqrt(1-z*z);return 1-Math.exp(-z*w*t)*(Math.cos(wd*t)+z*w/wd*Math.sin(wd*t))};
+  const BTN=46, R=n=>getComputedStyle(n).borderTopLeftRadius;
+  function frames(el,dx,dy,dir){
+    const W=el.offsetWidth,H=el.offsetHeight,rEnd=parseFloat(R(el))||24,N=40,T=dir>0?.6:.26,out=[];
+    const s0x=BTN/W,s0y=BTN/H;
+    for(let i=0;i<=N;i++){const t=i/N*T;
+      let px,py,pm;
+      if(dir>0){px=spring(t,21,.62);py=spring(t,18.5,.6);pm=spring(t,19,.8)}           // 열기: 통통 튀며 펴짐
+      else{const u=i/N,e=u*u*(3-2*u);px=py=pm=1-e}                                      // 닫기: 튐 없이 쏙
+      if(i===N){px=py=pm=dir>0?1:0}
+      const sx=s0x+(1-s0x)*px, sy=s0y+(1-s0y)*py, vis=Math.min(W*sx,H*sy)/2;
+      const vr=vis+(rEnd-vis)*Math.min(1,Math.max(0,pm));                              // 보이는 모서리: 동그라미 → 원래 모서리
+      const r=vr/Math.max(.01,(sx+sy)/2), k=Math.max(0,1-pm);
+      out.push({transform:`translate(${(dx*k).toFixed(1)}px,${(dy*k).toFixed(1)}px) scale(${sx.toFixed(4)},${sy.toFixed(4)})`,
+        borderRadius:r.toFixed(1)+'px',filter:`blur(${(Math.min(1,k*1.4)*9).toFixed(2)}px)`,opacity:Math.min(1,Math.max(0,pm*3.2)).toFixed(3)});
+    }
+    return {f:out,d:T*1000};
+  }
+  function vec(el){if(lastX==null)return [0,-40];const r=el.getBoundingClientRect();return [lastX-(r.left+r.width/2),lastY-(r.top+r.height/2)]}
+  function morph(el,dir){if(!el||!el.animate)return;
+    el.style.transformOrigin='50% 50%';
+    if(el._a){el._a.cancel();el._a=null}            // 진행 중인 변형을 먼저 지워야 원래 자리를 정확히 잼
+    if(dir>0) el._v=vec(el); const [dx,dy]=el._v||[0,0];
+    const {f,d}=frames(el,dx,dy,dir);
+    el._a=el.animate(f,{duration:d,easing:'linear',fill:dir>0?'none':'forwards'});
+  }
+  const aim=sc=>morph(sc.id==='modal'?sc.querySelector('.sheet'):sc,1);
+  const unaim=sc=>morph(sc.id==='modal'?sc.querySelector('.sheet'):sc,-1);
   ['modal','pop','login'].forEach(id=>{const el=document.getElementById(id);if(el)closer.observe(el,{attributes:true,attributeFilter:['class'],attributeOldValue:true})});
   /* 홈 필터 칩 */
   document.addEventListener('click',e=>{const c=e.target.closest('#view-home .chips .chip');if(c)setTimeout(()=>enter(document.querySelector('#view-home .grid')),0)});
