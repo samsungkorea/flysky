@@ -816,6 +816,16 @@ header.hhead .brand{font-size:54px;justify-self:start;margin-left:-5.5px;transfo
   .side .nav-btn .flymark{width:32px;height:32px}
 }
 </style>
+<style>
+/* 열품타 기록 중: 프로필 사진 뒤 후광 (부드럽게 켜지고 꺼지며, 켜져 있는 동안 천천히 숨 쉼) */
+.side .acct>.avatar::before{content:"";position:absolute;inset:-5px;border-radius:50%;z-index:-1;pointer-events:none;
+  background:rgba(93,108,168,.45);
+  box-shadow:0 0 0 2px rgba(93,108,168,.35),0 0 16px 4px rgba(93,108,168,.65),0 0 30px 10px rgba(93,108,168,.3);
+  opacity:0;transform:scale(.7);transition:opacity .7s cubic-bezier(.22,1,.36,1),transform .9s cubic-bezier(.34,1.56,.64,1)}
+.side .acct>.avatar.rec::before{opacity:1;transform:scale(1);animation:flyHalo 2.8s ease-in-out .9s infinite}
+@keyframes flyHalo{0%,100%{scale:1;filter:brightness(1)}50%{scale:1.1;filter:brightness(1.12)}}
+@media (prefers-reduced-motion:reduce){.side .acct>.avatar.rec::before{animation:none}}
+</style>
 </head>
 <body>
 <svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false"><symbol id="fslogo" viewBox="0 0 808 380"><defs>
@@ -2881,7 +2891,7 @@ window.__ypt={
   disconnect:()=>{if(Y.run&&!confirm('열품타 기록이 켜져 있어요. 정지하지 않고 연결을 해제할까요?'))return false;
     Y.jwt='';Y.authAt=Date.now();Y.run=null;Y.runAt=Date.now();info=null;groups=[];members=[];err='';saveY();render();return true}
 };
-function render(){renderHome();renderPane()}
+function render(){renderHome();renderPane();const av=document.getElementById('acctAv');if(av)av.classList.toggle('rec',!!Y.run)}   // 기록 중이면 프로필 후광
 /* 구글 로그인/로그아웃하면 '구글으로 연결' 버튼을 다시 그림 (아직 열품타 연결 전일 때만) */
 document.addEventListener('flysky:userchange',()=>{if(!Y.jwt)renderPane()});
 
