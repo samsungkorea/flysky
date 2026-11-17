@@ -173,6 +173,7 @@
   .grow.dragging .grip{cursor:grabbing;color:var(--ink)}
 
   /* Sheet */
+  body.nobg{overflow:hidden!important}
   .scrim{position:fixed;inset:0;background:rgba(21,22,26,.35);backdrop-filter:blur(6px);display:none;align-items:center;justify-content:center;z-index:50;padding:20px}
   .scrim.open{display:flex}
   .sheet{background:#fff;border-radius:32px;width:100%;max-width:460px;padding:28px;max-height:90vh;overflow:auto}
@@ -2553,7 +2554,7 @@ if(Y.run) setTimeout(()=>toast('열품타 기록이 켜진 채로 남아 있어�
 (function(){
   const SPRING='transform .6s cubic-bezier(.22,1.35,.36,1)';
   const B=document.body;
-  const blocked=()=>document.querySelector('.scrim.open, .login.open, #fsLayer.on');
+  const blocked=()=>document.querySelector('.scrim.open, .login.open, #fsLayer.on, #pop.open');
   const view=()=>document.querySelector('.view.on');
   const atTop=()=>B.scrollTop<=0;
   const atBot=()=>B.scrollTop+B.clientHeight>=B.scrollHeight-2;
@@ -2606,6 +2607,50 @@ document.addEventListener('gesturechange',e=>e.preventDefault());
 document.addEventListener('touchmove',e=>{if(e.touches.length>1)e.preventDefault()},{passive:false});
 document.addEventListener('wheel',e=>{if(e.ctrlKey)e.preventDefault()},{passive:false});
 document.addEventListener('keydown',e=>{if((e.ctrlKey||e.metaKey)&&['+','-','=','0'].includes(e.key))e.preventDefault()});
+</script>
+<script>
+/* 팝업(계정 창 · 모달 · 전체화면 시계)이 떠 있으면 뒤 화면은 못 건드리고, 뒤로가기는 팝업만 닫기 */
+(function(){
+  const B=document.body, pop=document.getElementById('pop'), modal=document.getElementById('modal');
+  const fs=()=>document.getElementById('fsLayer');
+  /* 위에 있는 것부터: 전체화면 시계 > 모달 > 계정 창 */
+  const LAYERS=[
+    {on:()=>{const f=fs();return !!f&&f.classList.contains('on')},close:()=>{const f=fs();f&&f.click()}},
+    {on:()=>modal.classList.contains('open'),close:()=>window.closeModal()},
+    {on:()=>pop.classList.contains('open'),close:()=>pop.classList.remove('open')}
+  ];
+  const top=()=>LAYERS.find(l=>l.on());
+  let pushed=false, selfBack=false, keepUrl='';
+  function sync(){
+    const open=!!top();
+    B.classList.toggle('nobg',open);
+    if(open&&!pushed){history.pushState({flyPopup:1},'',location.href);pushed=true}
+    else if(!open&&pushed){pushed=false;selfBack=true;keepUrl=location.href;history.back()}  // 버튼으로 닫으면 쌓아 둔 기록 하나 되돌리기
+  }
+  addEventListener('popstate',()=>{
+    if(selfBack){selfBack=false;if(location.href!==keepUrl)history.replaceState(null,'',keepUrl);return}
+    if(!pushed) return;
+    pushed=false;                       // 뒤로가기가 팝업 기록을 소모함
+    const l=top(); if(l) l.close();
+    if(top()){history.pushState({flyPopup:1},'',location.href);pushed=true}   // 아래에 또 팝업이 남아 있으면 한 번 더 막기
+  });
+  const mo=new MutationObserver(sync);
+  [pop,modal].forEach(el=>mo.observe(el,{attributes:true,attributeFilter:['class']}));
+  const watchFs=()=>{const f=fs();if(f)mo.observe(f,{attributes:true,attributeFilter:['class']});else setTimeout(watchFs,200)};
+  watchFs();
+  /* 계정 창이 떠 있을 때 바깥을 누르면: 뒤 버튼은 눌리지 않고 창만 닫힘 */
+  let eat=false, eatT=0;
+  const outside=e=>pop.classList.contains('open')&&!modal.classList.contains('open')&&!e.target.closest('#pop, #acctAv');
+  document.addEventListener('pointerdown',e=>{
+    if(!outside(e)) return;
+    e.stopPropagation(); eat=true; clearTimeout(eatT); eatT=setTimeout(()=>eat=false,800);
+    pop.classList.remove('open');
+  },true);
+  ['mousedown','touchstart'].forEach(t=>document.addEventListener(t,e=>{if(eat)e.stopPropagation()},{capture:true,passive:true}));
+  document.addEventListener('click',e=>{if(!eat)return;eat=false;e.preventDefault();e.stopPropagation()},true);
+  document.addEventListener('keydown',e=>{if(e.key!=='Escape')return;if(modal.classList.contains('open'))window.closeModal();else if(pop.classList.contains('open'))pop.classList.remove('open')});
+  sync();
+})();
 </script>
 </body>
 </html>
