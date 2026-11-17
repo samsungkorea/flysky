@@ -801,6 +801,16 @@ header.hhead .brand{font-size:54px;justify-self:start;margin-left:-5.5px;transfo
 @media (min-width:901px){.side{top:max(28px,calc(env(safe-area-inset-top) + 10px))}}
 @media (max-width:900px){.app{padding-top:max(18px,calc(env(safe-area-inset-top) + 8px))}}
 </style>
+<style>
+/* 휴대폰 하단 바: 홈 · 타이머 · 열품타 · ··· (나머지는 '모든 기능'에) + 프로필, 버튼은 찌그러지지 않는 정원 */
+@media (max-width:900px){
+  .side .nav-btn[data-v="admit"],.side .nav-btn[data-v="cal"],.side .micw{display:none}
+  .side{justify-content:space-between;padding:0 14px}
+  .side .nav-btn,.side .acct>.avatar{width:46px;height:46px;flex:0 0 46px}
+  .side .nav-btn svg{width:24px;height:24px}
+  .side .nav-btn .flymark{width:32px;height:32px}
+}
+</style>
 </head>
 <body>
 <svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false"><symbol id="fslogo" viewBox="0 0 808 380"><defs>
@@ -1267,7 +1277,8 @@ header.hhead .brand{font-size:54px;justify-self:start;margin-left:-5.5px;transfo
 
   function showView(v,m){
     document.querySelectorAll('.view').forEach(x=>x.classList.toggle('on',x.id==='view-'+v));
-    document.querySelectorAll('.side .nav-btn').forEach(b=>b.classList.toggle('active',b.dataset.v===v));
+    const phoneHidden=matchMedia('(max-width:900px)').matches&&['admit','cal','bucket'].includes(v);   // 휴대폰 하단 바에 없는 화면이면 ··· 표시
+    document.querySelectorAll('.side .nav-btn').forEach(b=>b.classList.toggle('active',b.dataset.v===v||(phoneHidden&&b.dataset.v==='all')));
     const hb=document.querySelector('.side .nav-btn[data-v="home"]'); if(hb) hb.classList.toggle('fly',v!=='home');
     if(m) window.setTimerMode(m);
     history.replaceState(null,'',v==='home'?location.pathname:'#'+v);
