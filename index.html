@@ -31,7 +31,7 @@
   *{-webkit-tap-highlight-color:transparent}
   /* 1) 아래로 당겨 새로고침 · 화면 끌림 막기 */
   html{height:100%;overflow:hidden;overscroll-behavior:none}
-  body{height:100%;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;overscroll-behavior:none}
+  body{height:100%;overflow-y:auto;overflow-x:hidden;overscroll-behavior:none}
   .side .spacer{flex:1}
   .nav-btn .flymark{display:none;width:34px;height:34px;stroke:none;fill:currentColor;color:var(--ink)}
   .nav-btn.fly .flymark{display:block}
@@ -609,7 +609,7 @@
   /* fixed sidebar + no zoom */
   html{touch-action:pan-x pan-y;-webkit-text-size-adjust:100%;text-size-adjust:100%}
   .side{position:fixed;top:28px;left:max(28px,calc(50vw - 652px))}
-  @media (min-width:901px){.side{top:28px;bottom:28px;height:auto;min-height:0;overflow:hidden}}
+  @media (min-width:901px){.side{top:28px;bottom:28px;height:auto;min-height:0}}
   .app>main{margin-left:104px}
   @media (max-width:900px){
     .side{left:16px;top:auto}
@@ -1084,7 +1084,7 @@
     const hb=document.querySelector('.side .nav-btn[data-v="home"]'); if(hb) hb.classList.toggle('fly',v!=='home');
     if(m) window.setTimerMode(m);
     history.replaceState(null,'',v==='home'?location.pathname:'#'+v);
-    window.scrollTo(0,0); document.body.scrollTop=0;
+    window.scrollTo(0,0); const B=document.body; B.scrollTop=0; B.style.overflowY='hidden'; void B.offsetHeight; B.style.overflowY='';
   }
   document.querySelectorAll('.side .nav-btn[data-v]').forEach(b=>b.addEventListener('click',()=>showView(b.dataset.v)));
 </script>
