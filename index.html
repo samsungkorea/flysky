@@ -2609,7 +2609,13 @@ async function loadMembers(){
   parseMembers(); markMe(); reconcile();
 }
 /* 서버와 대조: 내 실제 상태(그룹 데이터의 '나')와 Fly Sky의 기록 중 상태를 맞춤 */
-let miss=0, fixing=false;
+let miss=0, fixing=false, checkAt=0, checking=false;
+/* 기록 중에는 내 상태만 빠르게 확인 (다른 기기 · 열품타 앱에서 멈추면 몇 초 안에 반영) */
+function quickCheck(){
+  if(checking||!Y.jwt||document.hidden) return; checking=true; checkAt=Date.now();
+  const inGroup=members.some(m=>m.me);
+  (inGroup?loadMembers():loadDay()).then(()=>{render()},()=>{}).finally(()=>{checking=false});
+}
 /* 내 정보(오늘 기록)에 들어 있는 지금 상태: 그룹을 안 골랐거나 내가 그 그룹에 없어도 알 수 있음 */
 function liveFrom(dl){if(!info||!dl||typeof dl!=='object'||!('is' in dl))return;
   const st=typeof dl.st==='string'?Date.parse(dl.st):+dl.st||0;
@@ -2624,7 +2630,7 @@ function reconcile(){
       if(me.since>0&&me.since<=now&&Math.abs(me.since-Y.run.startedAt)>5000&&now-me.since<864e5){Y.run.startedAt=me.since;saveY()}   // 서버 시작 시각에 맞춤
       return}
     if(me.paused||now-Y.run.startedAt<60000) return;          // 일시정지거나 막 시작했으면 기다림
-    if(++miss<2) return;                                       // 두 번 연속 멈춰 있으면
+    if(++miss<2){setTimeout(quickCheck,1500);return}            // 한 번 보이면 1.5초 뒤 바로 다시 확인해서 확정
     /* 열품타처럼 '하나의 기기'로: 다른 기기 · 열품타 앱에서 멈췄으면 여기서도 멈춤 */
     miss=0; ylog('server-stopped',{s:Y.run.subject});
     Y.run=null; Y.runAt=now; saveY();
@@ -2945,6 +2951,7 @@ setInterval(()=>{
   if(!Y.jwt||document.hidden) return;
   ++tick;
   if(tick%300===0) refresh(); else if(Date.now()-membersAt>=(groupVisible()?10000:60000)) refresh({full:false});
+  else if(Y.run&&!loading&&Date.now()-checkAt>=3000) quickCheck();
 },1000);
 /* 앱으로 돌아오거나 홈 · 열품타 화면을 열면 바로 최신 상태로 */
 document.addEventListener('visibilitychange',()=>{if(document.hidden||!Y.jwt)return;
