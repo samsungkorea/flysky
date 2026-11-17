@@ -1728,7 +1728,7 @@ const h=location.hash.slice(1); if(['admit','cal','bucket','all'].includes(h)) s
    열품타는 공식 API가 없어서, 앱이 쓰는 서버(pi.tgclab.com)를 중계 서버를 거쳐 호출해요.
    중계 서버 코드: ypt-relay/worker.js (README의 '열품타 중계 서버' 참고) */
 (function(){
-const YPT_RELAY_URL='';            // 중계 서버 주소. 비워 두면 연결 화면에서 직접 입력
+const YPT_RELAY_URL='https://flysky-ypt.sm01025326079.workers.dev';   // 중계 서버 주소. 비워 두면 연결 화면에서 직접 입력
 const DEVICE_MODEL='FlySky Web';   // 공부 기록에 남는 기기 이름
 const YKEY='flysky:ypt';
 
