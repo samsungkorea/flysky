@@ -450,6 +450,11 @@
   .legend2{display:flex;gap:14px;flex-wrap:wrap;font-size:12px;color:var(--sub);margin-top:16px}
   .legend2 i{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:5px;background:var(--accent)}
   .gcard{display:flex;align-items:center;gap:14px}
+  .gmig{display:flex;align-items:center;gap:12px;margin-top:16px;padding-top:16px;border-top:1px solid var(--line)}
+  .gmig p{flex:1;font-size:14px;font-weight:600}
+  .gmig p small{display:block;font-size:12px;color:var(--sub);font-weight:400;margin-top:2px}
+  .gmode .dc .dots i.google,.gmode .evs .bar2.google{background:var(--accent)}
+  .gmode .dc .dots i.local,.gmode .evs .bar2.local{background:#8a93a8}
   .gcard .gi{width:44px;height:44px;border-radius:14px;background:var(--chip);display:grid;place-items:center;flex-shrink:0}
   .gcard .gi svg{width:22px;height:22px}
   .gcard p{flex:1;font-size:14px;font-weight:600}
@@ -925,7 +930,7 @@
         </div>
         <div class="wk"><span>일</span><span>월</span><span>화</span><span>수</span><span>목</span><span>금</span><span>토</span></div>
         <div class="days" id="calDays"></div>
-        <div class="legend2"><span><i></i>일정</span><span><i style="background:var(--ink)"></i>D-day</span><span><i style="background:var(--accent-light)"></i>원서</span><span><i style="background:#8a93a8"></i>Google</span></div>
+        <div class="legend2" id="calLegend"></div>
       </section>
       <div style="display:flex;flex-direction:column;gap:20px">
         <section class="card">
@@ -939,6 +944,7 @@
             <p id="gStatus">Google 캘린더<small>연결 안 됨</small></p>
             <button class="pbtn" id="gConnect">연결</button>
           </div>
+          <div class="gmig" id="gMigrate" style="display:none"></div>
         </section>
       </div>
     </div>
@@ -1373,6 +1379,10 @@ function allEvents(){
 }
 const TYPE_N={local:'내 일정',dday:'D-day',wsr:'원서',google:'Google 캘린더'};
 const TYPE_C={local:'var(--accent)',dday:'var(--ink)',wsr:'var(--accent-light)',google:'#8a93a8'};
+/* Google로 로그인돼 있으면 일정의 원본은 Google 캘린더 (어느 기기에서나 같음) */
+const gMode=()=>!!(GOOGLE_CLIENT_ID&&window.__flyUser);
+const typeName=t=>gMode()?(t==='google'?'내 일정':t==='local'?'이 기기에만':TYPE_N[t]):TYPE_N[t];
+const typeColor=t=>gMode()?(t==='google'?'var(--accent)':t==='local'?'#8a93a8':TYPE_C[t]):TYPE_C[t];
 
 /* ============ 모달 ============ */
 const M=$('modal');
@@ -1511,9 +1521,15 @@ function renderCal(){
   $('selLabel').textContent=sel===TS?'오늘':ddayTxt(ddayN(sel));
   $('selTitle').textContent=fmtLong(sel);
   $('selCount').textContent=list.length;
-  $('selList').innerHTML=(list.length?list.map(e=>`<li ${e.type==='local'?`data-act="ev-edit" data-id="${e.id}" style="cursor:pointer"`:''}>
-      <span class="bar2 ${e.type}"></span><div class="et"><b>${esc(e.title)}</b><small>${e.time||'종일'} · ${TYPE_N[e.type]}</small></div></li>`).join(''):'<li class="empty2">일정 없음</li>')
+  $('selList').innerHTML=(list.length?list.map(e=>`<li ${e.type==='local'?`data-act="ev-edit" data-id="${e.id}" style="cursor:pointer"`:e.type==='google'?`data-act="ev-gedit" data-gid="${esc(e.gid)}" style="cursor:pointer"`:''}>
+      <span class="bar2 ${e.type}"></span><div class="et"><b>${esc(e.title)}</b><small>${e.time||'종일'} · ${typeName(e.type)}</small></div></li>`).join(''):'<li class="empty2">일정 없음</li>')
     +`<li style="border:0;padding-top:16px"><button class="pbtn soft" data-act="ev-new" style="width:100%;justify-content:center">일정 추가</button></li>`;
+  $('calLegend').innerHTML=gMode()
+    ?'<span><i></i>내 일정</span><span><i style="background:var(--ink)"></i>D-day</span><span><i style="background:var(--accent-light)"></i>원서</span>'+(S.events.length?'<span><i style="background:#8a93a8"></i>이 기기에만</span>':'')
+    :'<span><i></i>일정</span><span><i style="background:var(--ink)"></i>D-day</span><span><i style="background:var(--accent-light)"></i>원서</span>';
+  const mg=$('gMigrate');
+  if(gMode()&&S.events.length){mg.style.display='';mg.innerHTML=`<p>이 기기에만 저장된 일정 ${S.events.length}개<small>Google 캘린더로 옮기면 어디서나 보여요</small></p><button class="pbtn soft" data-act="ev-migrate">옮기기</button>`}
+  else {mg.style.display='none';mg.innerHTML=''}
 }
 function editEvent(id,date){
   const e=id?S.events.find(x=>x.id===id):null;
@@ -1524,7 +1540,8 @@ function editEvent(id,date){
     `,{
     onSave:fd=>{
       const v={title:fd.get('title').trim(),date:fd.get('date'),time:fd.get('time')};
-      if(e) Object.assign(e,v); else {S.events.push({id:uid(),...v}); if(gValid()) pushGoogle(v)}
+      if(!e&&gMode()){sel=v.date;gSave(null,v);return}
+      if(e) Object.assign(e,v); else S.events.push({id:uid(),...v});
       sel=v.date; save();
     },
     onDelete:e?()=>{S.events=S.events.filter(x=>x!==e);save()}:null
@@ -1534,12 +1551,26 @@ $('calPrev').onclick=()=>{calM--;if(calM<0){calM=11;calY--}renderCal();if(gValid
 $('calNext').onclick=()=>{calM++;if(calM>11){calM=0;calY++}renderCal();if(gValid())fetchGoogle()};
 $('calToday').onclick=()=>{calY=T.getFullYear();calM=T.getMonth();sel=TS;renderCal()};
 $('calAdd').onclick=()=>editEvent(null,sel);
+function editGEvent(gid){
+  const e=GEV.find(x=>x.gid===gid); if(!e) return;
+  openModal('일정 수정',`
+    <div class="fx"><label>제목</label><input name="title" value="${esc(e.title)}" required></div>
+    <div class="fx2"><div class="fx"><label>날짜</label><input type="date" name="date" value="${e.date}" required></div>
+    <div class="fx"><label>시간</label><input type="time" name="time" value="${e.time}"></div></div>
+    <p style="font-size:12px;color:var(--sub);margin-top:4px">Google 캘린더 일정이에요. 바꾸면 Google에도 바로 반영돼요.</p>`,{
+    onSave:fd=>{const v={title:fd.get('title').trim(),date:fd.get('date'),time:fd.get('time')};sel=v.date;gSave(e,v)},
+    onDelete:()=>gRemove(e)
+  });
+}
 
 /* ============ Google 로그인 · 캘린더 ============ */
 const GKEY='flysky:user', GUEST='flysky:guest';
 const CAL_SCOPE='https://www.googleapis.com/auth/calendar.events';
 let user=null; try{user=JSON.parse(localStorage.getItem(GKEY))}catch(e){}
 let gExp=0, tokenClient=null, pending=null;
+const GCACHE='flysky:gcal';
+let gSyncedAt=0;
+const TZ=(()=>{try{return Intl.DateTimeFormat().resolvedOptions().timeZone||'Asia/Seoul'}catch(e){return 'Asia/Seoul'}})();
 function gValid(){if(gToken&&Date.now()>gExp)gToken=null;return !!gToken}
 function loadGIS(){return new Promise((res,rej)=>{if(window.google&&google.accounts&&google.accounts.oauth2)return res();const s=document.createElement('script');s.src='https://accounts.google.com/gsi/client';s.onload=res;s.onerror=rej;document.head.appendChild(s)})}
 function setupModal(){
@@ -1583,12 +1614,13 @@ async function googleLogin(){
     $('login').classList.remove('open'); renderAccount();
     document.dispatchEvent(new CustomEvent('flysky:userchange'));
     toast(`${user.name||user.email} 님, 반가워요`);
+    GEV=[];gSyncedAt=0;loadGCache();renderAccount();renderCal();renderHome();
     if(gValid()) fetchGoogle();
   }catch(e){$('gErr').textContent=gErrMsg(e)}
   b.disabled=false;
 }
 function logout(){
-  user=null; gToken=null; GEV=[]; localStorage.removeItem(GKEY); localStorage.removeItem(GUEST);
+  user=null; gToken=null; GEV=[]; gSyncedAt=0; localStorage.removeItem(GKEY); localStorage.removeItem(GUEST); localStorage.removeItem('flysky:gcal');
   $('pop').classList.remove('open'); renderAccount(); renderCal(); renderHome();
   document.dispatchEvent(new CustomEvent('flysky:userchange'));
   $('gErr').textContent=''; $('login').classList.add('open');
@@ -1601,39 +1633,102 @@ function renderAccount(){
   $('popMail').textContent=user?user.email:'';
   $('popLogout').querySelector('span').textContent=user?'로그아웃':'로그인';
   $('popCal').querySelector('span').textContent=gValid()?'Google 캘린더 연동됨':'Google 캘린더 연결';
-  if(!gValid()){$('gStatus').innerHTML=`Google 캘린더<small>${user?'연결하려면 눌러 주세요':'연결 안 됨'}</small>`;$('gConnect').textContent='연결'}
+  window.__flyUser=user; document.body.classList.toggle('gmode',gMode());
+  const t=gSyncedAt?new Date(gSyncedAt):null, when=t?`${t.getMonth()+1}/${t.getDate()} ${pad(t.getHours())}:${pad(t.getMinutes())}`:'';
+  if(!user){$('gStatus').innerHTML=`Google 캘린더<small>${GOOGLE_CLIENT_ID?'Google로 로그인하면 연결돼요':'연결 안 됨'}</small>`;$('gConnect').textContent=GOOGLE_CLIENT_ID?'로그인':'연결'}
+  else if(!gValid()){$('gStatus').innerHTML=`Google 캘린더<small>${when?`마지막 동기화 ${when}`:'아직 안 불러옴'}</small>`;$('gConnect').textContent='불러오기'}
+  else{$('gStatus').innerHTML=`Google 캘린더<small>연결됨 · ${GEV.length}개${when?` · ${when}`:''}</small>`;$('gConnect').textContent='새로고침'}
 }
 async function connectCalendar(){
   if(!GOOGLE_CLIENT_ID) return setupModal();
-  if(gValid()) return fetchGoogle();
-  try{await requestToken(''); renderAccount(); fetchGoogle()}catch(e){toast(gErrMsg(e))}
+  if(!user){$('gErr').textContent='';$('login').classList.add('open');return}
+  if(await ensureToken()) fetchGoogle();
 }
 $('gConnect').onclick=connectCalendar;
 $('popCal').onclick=()=>{$('pop').classList.remove('open');connectCalendar()};
 $('gLogin').onclick=googleLogin;
 $('gSkip').onclick=()=>{localStorage.setItem(GUEST,'1');$('login').classList.remove('open')};
 $('popLogout').onclick=()=>{if(user)logout();else{$('pop').classList.remove('open');$('gErr').textContent='';$('login').classList.add('open')}};
-renderAccount();
+window.__flyUser=user; loadGCache(); renderAccount();
 if(GOOGLE_CLIENT_ID&&!user&&!localStorage.getItem(GUEST)) $('login').classList.add('open');
-async function fetchGoogle(){
-  const a=new Date(calY,calM-1,1), b=new Date(calY,calM+2,1);
-  try{
-    const r=await fetch(`https://www.googleapis.com/calendar/v3/calendars/primary/events?singleEvents=true&orderBy=startTime&maxResults=250&timeMin=${a.toISOString()}&timeMax=${b.toISOString()}`,{headers:{Authorization:'Bearer '+gToken}});
-    if(r.status===401){gToken=null;renderAccount();toast('Google 연결이 만료됐어요. 다시 연결해 주세요');return}
-    if(!r.ok) throw 0;
-    const j=await r.json();
-    GEV=(j.items||[]).map(e=>{const st=e.start.dateTime||e.start.date;return{date:st.slice(0,10),time:e.start.dateTime?st.slice(11,16):'',title:e.summary||'(제목 없음)'}});
-    $('gStatus').innerHTML=`Google 캘린더<small>연결됨 · ${GEV.length}개</small>`;$('gConnect').textContent='새로고침';
-    renderCal();renderHome();renderAccount();
-  }catch(e){toast('Google 일정을 불러오지 못했어요')}
+if(GOOGLE_CLIENT_ID&&user) loadGIS().catch(()=>{});
+document.addEventListener('click',e=>{
+  if(!e.target.closest('[data-v="cal"]')||!user||!GOOGLE_CLIENT_ID||gValid()) return;
+  if(Date.now()-gSyncedAt<5*60*1000&&gSyncedAt) return;   // 방금 동기화했으면 생략
+  connectCalendar();
+},true);
+function loadGCache(){try{const c=JSON.parse(localStorage.getItem(GCACHE));if(c&&c.sub===(user&&user.sub)){GEV=c.items||[];gSyncedAt=c.at||0}}catch(e){}}
+function saveGCache(){try{localStorage.setItem(GCACHE,JSON.stringify({sub:user&&user.sub,at:gSyncedAt,items:GEV}))}catch(e){}}
+/* 토큰이 없으면 받아 옴 (버튼을 누른 직후에만 부를 것: 팝업) */
+async function ensureToken(){
+  if(gValid()) return true;
+  if(!GOOGLE_CLIENT_ID||!user) return false;
+  try{await requestToken('');renderAccount();return true}catch(e){toast(gErrMsg(e));return false}
 }
-async function pushGoogle(v){
-  const body={summary:v.title};
-  if(v.time){const st=`${v.date}T${v.time}:00`;const end=new Date(parse(v.date));const[h,m]=v.time.split(':').map(Number);end.setHours(h+1,m);
-    body.start={dateTime:st,timeZone:'Asia/Seoul'};body.end={dateTime:`${ds(end)}T${pad(end.getHours())}:${pad(end.getMinutes())}:00`,timeZone:'Asia/Seoul'}}
-  else{const n=parse(v.date);n.setDate(n.getDate()+1);body.start={date:v.date};body.end={date:ds(n)}}
-  try{const r=await fetch('https://www.googleapis.com/calendar/v3/calendars/primary/events',{method:'POST',headers:{Authorization:'Bearer '+gToken,'Content-Type':'application/json'},body:JSON.stringify(body)});
-    toast(r.ok?'Google 캘린더에도 저장했어요':'Google 캘린더 저장에 실패했어요')}catch(e){toast('Google 캘린더 저장에 실패했어요')}
+async function gApi(method,path,body){
+  if(!await ensureToken()) throw {type:'notoken'};
+  const r=await fetch('https://www.googleapis.com/calendar/v3/calendars/primary/events'+path,{method,
+    headers:{Authorization:'Bearer '+gToken,...(body?{'Content-Type':'application/json'}:{})},body:body?JSON.stringify(body):undefined});
+  if(r.status===401){gToken=null;renderAccount();throw {type:'expired'}}
+  if(!r.ok&&r.status!==410) throw {type:'http',status:r.status};
+  return r.status===204||r.status===410?null:r.json();
+}
+const fmtLocal=d=>`${ds(d)}T${pad(d.getHours())}:${pad(d.getMinutes())}:00`;
+function gFromApi(e){
+  if(e.start.dateTime){
+    const st=new Date(e.start.dateTime), en=new Date((e.end&&e.end.dateTime)||e.start.dateTime);
+    return {gid:e.id,title:e.summary||'(제목 없음)',date:ds(st),time:`${pad(st.getHours())}:${pad(st.getMinutes())}`,dur:Math.max(15,Math.round((en-st)/6e4))||60};
+  }
+  const days=Math.max(1,Math.round((parse((e.end&&e.end.date)||e.start.date)-parse(e.start.date))/864e5));
+  return {gid:e.id,title:e.summary||'(제목 없음)',date:e.start.date,time:'',days};
+}
+function gBody(v,prev){
+  const b={summary:v.title};
+  if(v.time){
+    const [h,m]=v.time.split(':').map(Number), st=parse(v.date); st.setHours(h,m,0,0);
+    const en=new Date(st.getTime()+((prev&&prev.dur)||60)*6e4);
+    b.start={dateTime:fmtLocal(st),timeZone:TZ,date:null}; b.end={dateTime:fmtLocal(en),timeZone:TZ,date:null};
+  }else{
+    const en=parse(v.date); en.setDate(en.getDate()+((prev&&prev.days)||1));
+    b.start={date:v.date,dateTime:null,timeZone:null}; b.end={date:ds(en),dateTime:null,timeZone:null};
+  }
+  return b;
+}
+async function gSave(prev,v){
+  try{
+    if(prev) await gApi('PATCH','/'+encodeURIComponent(prev.gid),gBody(v,prev));
+    else await gApi('POST','',gBody(v));
+    toast(prev?'Google 캘린더 일정을 고쳤어요':'Google 캘린더에 저장했어요');
+    await fetchGoogle();
+  }catch(e){if(e.type!=='notoken')toast(e.type==='expired'?'Google 연결이 만료됐어요. 다시 시도해 주세요':'Google 캘린더 저장에 실패했어요')}
+}
+async function gRemove(prev){
+  try{await gApi('DELETE','/'+encodeURIComponent(prev.gid));toast('Google 캘린더에서 지웠어요');await fetchGoogle()}
+  catch(e){if(e.type!=='notoken')toast('Google 캘린더에서 지우지 못했어요')}
+}
+async function migrateLocal(){
+  const L=S.events.slice(); if(!L.length) return;
+  if(!confirm(`이 기기에만 있는 일정 ${L.length}개를 Google 캘린더로 옮길까요?\n\n`+L.map(e=>`· ${e.date} ${e.time||'종일'} ${e.title}`).join('\n')+'\n\n필요 없는 일정은 먼저 지우고 옮기세요.')) return;
+  if(!await ensureToken()) return;
+  let ok=0;
+  for(const e of L){try{await gApi('POST','',gBody(e));S.events=S.events.filter(x=>x!==e);ok++}catch(x){break}}
+  save(); toast(ok===L.length?`${ok}개를 Google 캘린더로 옮겼어요`:`${ok}개만 옮겼어요. 다시 시도해 주세요`);
+  await fetchGoogle();
+}
+async function fetchGoogle(){
+  if(!gValid()) return;
+  const m0=Math.min(calY*12+calM-1,T.getFullYear()*12+T.getMonth()), m1=Math.max(calY*12+calM+2,T.getFullYear()*12+T.getMonth()+1);
+  const a=new Date(Math.floor(m0/12),m0%12,1), b=new Date(Math.floor(m1/12),m1%12,1);
+  try{
+    const items=[]; let pageToken='';
+    do{
+      const j=await gApi('GET',`?singleEvents=true&orderBy=startTime&maxResults=250&timeMin=${a.toISOString()}&timeMax=${b.toISOString()}${pageToken?'&pageToken='+encodeURIComponent(pageToken):''}`);
+      (j.items||[]).filter(e=>e.status!=='cancelled'&&e.start).forEach(e=>items.push(gFromApi(e)));
+      pageToken=j.nextPageToken||'';
+    }while(pageToken);
+    GEV=items; gSyncedAt=Date.now(); saveGCache();
+    renderCal();renderHome();renderAccount();
+  }catch(e){if(e.type!=='notoken'&&e.type!=='expired')toast('Google 일정을 불러오지 못했어요')}
 }
 
 /* ============ 버킷리스트 ============ */
@@ -1708,7 +1803,7 @@ function renderHome(){
   home.querySelector('.goal').innerHTML=g.slice(0,2).map(x=>`<span class="tag">${esc(x.univ)} ${esc(x.major)}</span>`).join('')+(g.length>2?`<span class="tag">+${g.length-2}</span>`:'')||'<span class="tag">목표 대학 추가</span>';
 
   const todays=allEvents().filter(e=>e.date===TS);
-  $('homeSched').innerHTML=todays.length?todays.slice(0,4).map(e=>`<li><span class="t">${e.time||'종일'}</span><span class="bar" style="background:${TYPE_C[e.type]}"></span><span class="what">${esc(e.title)}<small>${TYPE_N[e.type]}</small></span></li>`).join('')
+  $('homeSched').innerHTML=todays.length?todays.slice(0,4).map(e=>`<li><span class="t">${e.time||'종일'}</span><span class="bar" style="background:${typeColor(e.type)}"></span><span class="what">${esc(e.title)}<small>${typeName(e.type)}</small></span></li>`).join('')
     :'<li class="hsched-empty">오늘 일정이 없어요</li>';
   $('homeDate').textContent=`${T.getMonth()+1}월 ${T.getDate()}일 ${W[T.getDay()]}`;
 
@@ -1744,6 +1839,8 @@ document.addEventListener('click',e=>{
   else if(act==='cal-sel'){sel=el.dataset.d;const d=parse(sel);if(d.getMonth()!==calM){calY=d.getFullYear();calM=d.getMonth()}renderCal()}
   else if(act==='ev-new') editEvent(null,sel);
   else if(act==='ev-edit') editEvent(id);
+  else if(act==='ev-gedit') editGEvent(el.dataset.gid);
+  else if(act==='ev-migrate') migrateLocal();
   else if(act==='bk-del'){S.bucket=S.bucket.filter(x=>x.id!==id);save()}
   else if(act==='feat'){openFeat(FEATS[el.dataset.c].items[el.dataset.f])}
   else if(act==='go'){showView(el.dataset.v);if(el.dataset.t)setAdmitTab(el.dataset.t)}
