@@ -233,6 +233,15 @@
 
   .avatar>b{display:grid;place-items:center;width:100%;height:100%}
   .avatar img{width:100%;height:100%;border-radius:50%;object-fit:cover}
+  .pop .who{cursor:pointer;border-radius:14px;margin:-6px -6px 8px;padding:6px 6px 14px}
+  .pop .who:hover{background:var(--chip)}
+  .pfedit{display:flex;flex-direction:column;align-items:center;gap:12px;padding:4px 0 18px}
+  .pfedit .avatar{width:96px;height:96px;font-size:34px;cursor:pointer}
+  .pfedit .avatar .cam{position:absolute;right:0;bottom:0;width:30px;height:30px;border-radius:50%;background:var(--ink);color:#fff;display:grid;place-items:center;border:3px solid #fff}
+  .pfedit .avatar .cam svg{width:14px;height:14px}
+  .pfedit .row{display:flex;gap:8px}
+  .pfedit .row .pbtn{padding:9px 14px;font-size:13px}
+  .pfmail{font-size:12px;color:var(--sub);text-align:center;margin:-4px 0 14px;line-height:1.6}
   .pop .who p,.pop .who small{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:170px}
   .lcard .skip{display:block;margin:14px auto 0;font-size:13px;color:var(--sub);text-decoration:underline}
   .lcard .err{font-size:13px;color:#b5485a;text-align:center;margin-top:12px;min-height:1px}
@@ -643,7 +652,8 @@
     <div class="acct">
       <div class="avatar" id="acctAv" onclick="document.getElementById('pop').classList.toggle('open')"><b id="acctIni">?</b><span class="g"><svg viewBox="0 0 48 48"><path fill="#4285F4" d="M45 24.5c0-1.6-.1-3.1-.4-4.5H24v8.5h11.8c-.5 2.7-2.1 5-4.4 6.6v5.5h7.1C42.6 36.8 45 31.2 45 24.5z"/><path fill="#34A853" d="M24 46c5.9 0 10.9-2 14.5-5.4l-7.1-5.5c-2 1.3-4.5 2.1-7.4 2.1-5.7 0-10.5-3.8-12.2-9H4.5v5.7C8.1 41 15.5 46 24 46z"/><path fill="#FBBC05" d="M11.8 28.2c-.4-1.3-.7-2.7-.7-4.2s.3-2.9.7-4.2v-5.7H4.5C3 17.1 2 20.4 2 24s1 6.9 2.5 9.9l7.3-5.7z"/><path fill="#EA4335" d="M24 10.8c3.2 0 6.1 1.1 8.4 3.3l6.3-6.3C34.9 4.2 29.9 2 24 2 15.5 2 8.1 7 4.5 14.1l7.3 5.7c1.7-5.2 6.5-9 12.2-9z"/></svg></span></div>
       <div class="pop" id="pop">
-        <div class="who"><div class="avatar" id="popAv">?</div><div><p id="popName">로그인 안 됨</p><small id="popMail"></small></div></div>
+        <div class="who" id="popWho" title="계정 관리"><div class="avatar" id="popAv">?</div><div><p id="popName">로그인 안 됨</p><small id="popMail"></small></div></div>
+        <button class="item" id="popProfile"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg><span>계정 관리</span></button>
         <button class="item" id="popCal"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="3"/><path d="M3 10h18M8 3v4M16 3v4"/></svg><span>Google 캘린더 연결</span></button>
         <button class="item" onclick="openSheet()"><svg viewBox="0 0 24 24"><path d="M6 9.6L16.2 11.2V12.8L6 14.4z" fill="currentColor" fill-opacity=".35" stroke="none"/><path d="M6 14.4L16.2 12.8V14.6L8 19.7Q6 20.6 6 18.7z" fill="currentColor" fill-opacity=".75" stroke="none"/><path d="M16.2 9.4L18.9 11.1q1 .9 0 1.8L16.2 14.6z" fill="currentColor" stroke="none"/><path d="M6 5.3v13.4a1.3 1.3 0 0 0 2 1.1L18.8 13a1.2 1.2 0 0 0 0-2L8 4.2a1.3 1.3 0 0 0-2 1.1z"/></svg>열품타</button>
         <button class="item" id="popSettings"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1L7 17M17 7l2.1-2.1"/></svg>설정</button>
@@ -1462,7 +1472,8 @@ function openSettings(){
   const t=syncAt?new Date(syncAt):null, when=t?`${t.getMonth()+1}/${t.getDate()} ${pad(t.getHours())}:${pad(t.getMinutes())}`:'';
   const syncTxt=!FIREBASE_CONFIG?'꺼짐 · Firebase 설정이 필요해요':!fbUser?'Google로 로그인하면 켜져요':syncErr?syncErr:syncOn?`켜짐 · 마지막 동기화 ${when}`:'연결 중';
   openModal('설정',`
-    <div class="setrow"><div><b>계정</b><small>${user?esc(user.name||user.email)+(user.email?' · '+esc(user.email):''):'로그인 안 됨'}</small></div>
+    <div class="setrow"><div><b>계정</b><small>${user||profNick()?esc(profName())+(user&&user.email?' · '+esc(user.email):''):'로그인 안 됨'}</small></div>
+      <button type="button" class="pbtn soft" id="setProf">관리</button>
       <button type="button" class="pbtn soft" id="setAcct">${user?'로그아웃':'로그인'}</button></div>
     <div class="setrow"><div><b>기기 간 동기화</b><small>${syncTxt}</small></div></div>
     <div class="setrow"><div><b>열품타</b><small>${yp.on?'연결됨 · @'+esc(yp.nick||'열품타'):'연결 안 됨'}</small></div>
@@ -1470,6 +1481,7 @@ function openSettings(){
     ${yp.on&&window.__ypt.groups().length>1?`<div class="setrow" style="display:block"><b>열품타 그룹 순서</b><small style="margin-bottom:10px"></small><div class="greorder" id="setGroups"></div></div>`:''}
     <div class="setrow"><div><b>이 기기 데이터 초기화</b></div>
       <button type="button" class="pbtn del" id="setReset">초기화</button></div>`);
+  document.getElementById('setProf').onclick=()=>{closeModal();openProfile()};
   const sa=document.getElementById('setAcct');
   if(sa) sa.onclick=()=>{closeModal();if(user)logout();else{document.getElementById('pop').classList.remove('open');document.getElementById('login').classList.add('open')}};
   const sy=document.getElementById('setYpt');
@@ -1718,7 +1730,7 @@ async function googleLogin(){
     localStorage.setItem(GKEY,JSON.stringify(user)); localStorage.removeItem(GUEST);
     $('login').classList.remove('open'); renderAccount();
     document.dispatchEvent(new CustomEvent('flysky:userchange'));
-    toast(`${user.name||user.email} 님, 반가워요`);
+    toast(`${profName()} 님, 반가워요`);
     GEV=[];gSyncedAt=0;loadGCache();renderAccount();renderCal();renderHome();
     if(gValid()) fetchGoogle();
   }catch(e){$('gErr').textContent=gErrMsg(e)}
@@ -1733,10 +1745,9 @@ function logout(){
   $('gErr').textContent=''; $('login').classList.add('open');
 }
 function renderAccount(){
-  const ini=user?esc((user.name||user.email||'?').trim().charAt(0).toUpperCase()):'?';
-  const av=user&&user.picture?`<img src="${esc(user.picture)}" alt="" referrerpolicy="no-referrer">`:ini;
+  const av=avatarHTML();
   $('acctIni').innerHTML=av; $('popAv').innerHTML=av;
-  $('popName').textContent=user?(user.name||'Google 계정'):'로그인 안 됨';
+  $('popName').textContent=user||profNick()?profName():'로그인 안 됨';
   $('popMail').textContent=user?user.email:'';
   $('popLogout').querySelector('span').textContent=user?'로그아웃':'로그인';
   $('popCal').querySelector('span').textContent=gValid()?'Google 캘린더 연동됨':'Google 캘린더 연결';
@@ -1746,6 +1757,51 @@ function renderAccount(){
   else if(!gValid()){$('gStatus').innerHTML=`Google 캘린더<small>${when?`마지막 동기화 ${when}`:'아직 안 불러옴'}</small>`;$('gConnect').textContent='불러오기'}
   else{$('gStatus').innerHTML=`Google 캘린더<small>연결됨 · ${GEV.length}개${when?` · ${when}`:''}</small>`;$('gConnect').textContent='새로고침'}
 }
+/* ============ 계정 관리: 별명 · 프로필 사진 (S.profile → 기기 간 동기화) ============ */
+const prof=()=>(S&&S.profile)||{};
+const profNick=()=>(prof().nick||'').trim();
+function profName(){return profNick()||(user&&(user.name||user.email))||'게스트'}
+function profPhoto(){return prof().photo||(user&&user.picture)||''}
+function avatarHTML(photo=profPhoto(),name=profName()){
+  return photo?`<img src="${esc(photo)}" alt="" referrerpolicy="no-referrer">`:`<b>${esc((name||'?').trim().charAt(0).toUpperCase()||'?')}</b>`}
+/* 고른 사진을 가운데 기준 정사각형으로 잘라 256px JPEG로 줄임 (동기화 용량 절약) */
+function shrinkPhoto(file){return new Promise((res,rej)=>{
+  const url=URL.createObjectURL(file), im=new Image();
+  im.onload=()=>{const n=Math.min(im.naturalWidth,im.naturalHeight),Z=256,c=document.createElement('canvas');c.width=c.height=Z;
+    const x=c.getContext('2d');x.fillStyle='#fff';x.fillRect(0,0,Z,Z);
+    x.drawImage(im,(im.naturalWidth-n)/2,(im.naturalHeight-n)/2,n,n,0,0,Z,Z);
+    URL.revokeObjectURL(url);res(c.toDataURL('image/jpeg',.85))};
+  im.onerror=()=>{URL.revokeObjectURL(url);rej()};
+  im.src=url})}
+function openProfile(){
+  $('pop').classList.remove('open');
+  let photo=prof().photo||'';
+  const gPic=user&&user.picture||'', gName=user&&(user.name||user.email)||'';
+  openModal('계정 관리',`
+    <div class="pfedit">
+      <div class="avatar" id="pfAv"></div>
+      <input type="file" id="pfFile" accept="image/*" hidden>
+      <div class="row"><button type="button" class="pbtn soft" id="pfPick">사진 바꾸기</button><button type="button" class="pbtn soft" id="pfReset"></button></div>
+    </div>
+    <div class="field"><span class="ic"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg></span><input name="nick" id="pfNick" maxlength="20" placeholder="${esc(gName||'별명')}" value="${esc(profNick())}" autocomplete="nickname" enterkeyhint="done"></div>
+    <p class="pfmail">${user?`Google 계정 · ${esc(user.email||'')}<br>별명과 사진은 Fly Sky에서만 보이고, 로그인한 기기끼리 동기화돼요`:'로그인하지 않으면 이 기기에만 저장돼요'}</p>`,
+    {onSave:fd=>{
+      const nick=String(fd.get('nick')||'').trim().slice(0,20);
+      S.profile={nick,photo}; if(!nick&&!photo) delete S.profile;
+      save(); renderAccount(); toast('계정 정보를 저장했어요');
+    }});
+  const draw=()=>{const nm=$('pfNick').value.trim()||gName||'?';
+    $('pfAv').innerHTML=avatarHTML(photo||gPic,nm)+'<span class="cam"><svg viewBox="0 0 24 24"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg></span>';
+    const r=$('pfReset'); r.textContent=gPic?'Google 사진으로':'사진 지우기'; r.style.display=photo?'':'none'};
+  draw();
+  $('pfNick').oninput=()=>{if(!photo&&!gPic)draw()};
+  $('pfAv').onclick=$('pfPick').onclick=()=>$('pfFile').click();
+  $('pfReset').onclick=()=>{photo='';draw()};
+  $('pfFile').onchange=async e=>{const f=e.target.files[0];e.target.value='';if(!f)return;
+    try{photo=await shrinkPhoto(f);draw()}catch(x){toast('이 사진은 열 수 없어요')}};
+}
+$('popProfile').onclick=openProfile;
+$('popWho').onclick=openProfile;
 async function connectCalendar(){
   if(!GOOGLE_CLIENT_ID) return setupModal();
   if(!user){$('gErr').textContent='';$('login').classList.add('open');return}
@@ -1980,7 +2036,7 @@ function fbLogin(){
   (FB?go():fbLoad().then(go)).then(res=>{
     const cred=FB.A.GoogleAuthProvider.credentialFromResult(res);
     if(cred&&cred.accessToken) saveTok(cred.accessToken,55*60*1000);
-    toast(`${res.user.displayName||res.user.email} 님, 반가워요`);
+    toast(`${profNick()||res.user.displayName||res.user.email} 님, 반가워요`);
     if(gValid()) fetchGoogle();
   }).catch(e=>{$('gErr').textContent=fbErrMsg(e)});
 }
@@ -2012,7 +2068,7 @@ function applyRemote(d){
   try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}
   if(d.ypt){try{const y=JSON.parse(localStorage.getItem('flysky:ypt'))||{};Object.assign(y,d.ypt);localStorage.setItem('flysky:ypt',JSON.stringify(y))}catch(e){}
     document.dispatchEvent(new CustomEvent('flysky:yptprefs'))}
-  syncAt=Date.now(); renderAll();
+  syncAt=Date.now(); renderAll(); renderAccount();
 }
 async function pushNow(){
   if(!syncRef) return;
