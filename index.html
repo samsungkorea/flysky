@@ -2303,12 +2303,19 @@ function fbStart(){
   }).catch(()=>{syncErr='Firebase를 불러오지 못했어요'});
 }
 const stateBody=()=>{const o={...S};delete o._t;return JSON.stringify(o)};
-function yptPrefs(){try{const y=JSON.parse(localStorage.getItem('flysky:ypt'))||{};return {gorder:y.gorder||null,gid:y.gid||null,subj:y.subj||null}}catch(e){return {}}}
+/* 열품타: 그룹 순서 · 그룹 · 과목 + 로그인 정보(토큰). 로그인 정보는 더 나중에 로그인/로그아웃한 쪽(authAt)이 이김 */
+const YAUTH=['jwt','nick','uid','coid','email','relay','authAt'];
+function yptPrefs(){try{const y=JSON.parse(localStorage.getItem('flysky:ypt'))||{};const o={gorder:y.gorder||null,gid:y.gid||null,subj:y.subj||null};
+  YAUTH.forEach(k=>{if(k in y)o[k]=y[k]});return o}catch(e){return {}}}
+function mergeYpt(r,authOnly){const y=JSON.parse(localStorage.getItem('flysky:ypt'))||{};
+  if(!authOnly)['gorder','gid','subj'].forEach(k=>{if(k in r)y[k]=r[k]});
+  if((+r.authAt||0)>(+y.authAt||0)) YAUTH.forEach(k=>{if(k in r)y[k]=r[k]});
+  localStorage.setItem('flysky:ypt',JSON.stringify(y))}
 function applyRemote(d){
   try{const n=JSON.parse(d.state); if(!n||!Array.isArray(n.ddays)) return; S=n}catch(e){return}
   S._t=+d.t||Date.now();
   try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}
-  if(d.ypt){try{const y=JSON.parse(localStorage.getItem('flysky:ypt'))||{};Object.assign(y,d.ypt);localStorage.setItem('flysky:ypt',JSON.stringify(y))}catch(e){}
+  if(d.ypt){try{mergeYpt(d.ypt)}catch(e){}
     document.dispatchEvent(new CustomEvent('flysky:yptprefs'))}
   syncAt=Date.now(); renderAll(); renderAccount(); document.dispatchEvent(new CustomEvent('flysky:prefs'));
 }
@@ -2327,6 +2334,8 @@ async function startSync(uid){
   try{
     const snap=await FB.F.getDoc(syncRef), r=snap.exists()?snap.data():null;
     const first=localStorage.getItem('flysky:synced')!==uid;
+    if(r&&r.ypt&&(+r.ypt.authAt||0)>(+yptPrefs().authAt||0)){   // 클라우드의 열품타 로그인이 더 최신이면 먼저 받아 둠 (이 기기 데이터를 올릴 때 덮어쓰지 않게)
+      try{mergeYpt(r.ypt,true)}catch(e){} document.dispatchEvent(new CustomEvent('flysky:yptprefs'))}
     if(r&&r.state){
       const rt=+r.t||0, lt=+S._t||0;
       if(first&&r.state!==stateBody()){
@@ -2338,6 +2347,7 @@ async function startSync(uid){
     }else await pushNow();
     localStorage.setItem('flysky:synced',uid);
     syncOn=true; syncAt=Date.now(); syncErr='';
+    {const ly=yptPrefs(); if((+ly.authAt||0)>(+(r&&r.ypt&&r.ypt.authAt)||0)) await pushNow();}   // 이 기기의 열품타 로그인이 더 최신이면 올림
     unsub=FB.F.onSnapshot(syncRef,sn=>{if(sn.metadata&&sn.metadata.hasPendingWrites)return;const d=sn.data();if(d&&(+d.t||0)>(+S._t||0))applyRemote(d)});
   }catch(e){syncErr=String(e&&e.code||'').includes('permission')?'Firestore 보안 규칙을 확인해 주세요':'동기화를 시작하지 못했어요'}
 }
@@ -2412,7 +2422,14 @@ function toast(m){const t=$('toast');t.textContent=m;t.classList.add('show');cle
 /* 상태: relay, jwt, email, nick, coid(국가 ID), gid(선택한 그룹), subj(고른 과목), run({startedAt, subject}) */
 let Y={}; try{Y=JSON.parse(localStorage.getItem(YKEY))||{}}catch(e){}
 const saveY=()=>{try{localStorage.setItem(YKEY,JSON.stringify(Y))}catch(e){} document.dispatchEvent(new CustomEvent('flysky:yptsave'))};
-document.addEventListener('flysky:yptprefs',()=>{try{const n=JSON.parse(localStorage.getItem(YKEY))||{};['gorder','gid','subj'].forEach(k=>{if(k in n)Y[k]=n[k]});render()}catch(e){}});
+if(Y.jwt&&!Y.authAt){Y.authAt=1;try{localStorage.setItem(YKEY,JSON.stringify(Y))}catch(e){}}   // 예전에 연결해 둔 토큰도 다른 기기로 넘어가게
+document.addEventListener('flysky:yptprefs',()=>{try{const n=JSON.parse(localStorage.getItem(YKEY))||{};['gorder','gid','subj'].forEach(k=>{if(k in n)Y[k]=n[k]});
+  if((+n.authAt||0)>(+Y.authAt||0)){                        // 다른 기기에서 열품타에 로그인/로그아웃함
+    const was=Y.jwt; ['jwt','nick','uid','coid','email','relay','authAt'].forEach(k=>{if(k in n)Y[k]=n[k]});
+    if(Y.jwt&&Y.jwt!==was){err='';info=null;groups=[];members=[];render();refresh({full:true});return}
+    if(!Y.jwt&&was){Y.run=null;info=null;groups=[];members=[];err=''}
+  }
+  render()}catch(e){}});
 const relay=()=>(YPT_RELAY_URL||Y.relay||'').trim().replace(/\/+$/,'');
 let info=null, groups=[], members=[], err='', loading=false;
 
@@ -2448,7 +2465,7 @@ async function call(method,path,body,{auth=true,keepalive=false}={}){
   if(!j) throw new YErr('bad_json');
   return j;
 }
-function expire(){Y.jwt='';info=null;groups=[];members=[];saveY();render()}
+function expire(){Y.jwt='';Y.authAt=Date.now();info=null;groups=[];members=[];saveY();render()}
 
 /* ---------- API ---------- */
 function applyInfo(j){
@@ -2463,7 +2480,7 @@ function applyInfo(j){
 async function login(email,password){
   const j=await call('POST','/user/sign-in-jwt',{email,password,loginProvider:'Email',new:true,getx:true,language:'ko'},{auth:false});
   if(j.s!==true||!j.jwt) throw new YErr(String(j.c||'unknown'));
-  Y.jwt=String(j.jwt); Y.email=email; applyInfo(j);
+  Y.jwt=String(j.jwt); Y.email=email; Y.authAt=Date.now(); applyInfo(j);
 }
 /* Fly Sky에 구글로 로그인한 계정 정보 (Google 모듈이 localStorage에 저장) */
 function googleUser(){try{const u=JSON.parse(localStorage.getItem('flysky:user'));return u&&u.sub?u:null}catch(e){return null}}
@@ -2476,7 +2493,7 @@ async function socialLogin(){
     {accessToken:'',providerId:'g'+gu.sub,email:gu.email||'',loginProvider:'Google',new:true,getx:true,version:810046,language:'ko'},
     {auth:false});
   if(j.s!==true||!j.jwt){const c=String(j.c||'unknown');throw new YErr(c==='111'||c==='113'?'nosocial':c)}
-  Y.jwt=String(j.jwt); Y.email=gu.email||''; applyInfo(j);
+  Y.jwt=String(j.jwt); Y.email=gu.email||''; Y.authAt=Date.now(); applyInfo(j);
 }
 async function reloadInfo(){
   const j=await call('POST','/user/v2/reload/info',{pv:0,cd:{su:null,sbu:null,cu:null,eu:null,du:null,tu:null}});
@@ -2756,7 +2773,7 @@ window.__ypt={
   move:(id,dir)=>moveGroup(id,dir),
   setOrder:ids=>{Y.gorder=ids.slice();saveY();render()},
   disconnect:()=>{if(Y.run&&!confirm('열품타 기록이 켜져 있어요. 정지하지 않고 연결을 해제할까요?'))return false;
-    Y.jwt='';Y.run=null;info=null;groups=[];members=[];err='';saveY();render();return true}
+    Y.jwt='';Y.authAt=Date.now();Y.run=null;info=null;groups=[];members=[];err='';saveY();render();return true}
 };
 function render(){renderHome();renderPane()}
 /* 구글 로그인/로그아웃하면 '구글으로 연결' 버튼을 다시 그림 (아직 열품타 연결 전일 때만) */
