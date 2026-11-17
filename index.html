@@ -2467,6 +2467,7 @@ function toast(m){const t=$('toast');t.textContent=m;t.classList.add('show');cle
 let Y={}; try{Y=JSON.parse(localStorage.getItem(YKEY))||{}}catch(e){}
 const saveY=()=>{try{localStorage.setItem(YKEY,JSON.stringify(Y))}catch(e){} document.dispatchEvent(new CustomEvent('flysky:yptsave'))};
 if(Y.jwt&&!Y.authAt){Y.authAt=1;try{localStorage.setItem(YKEY,JSON.stringify(Y))}catch(e){}}
+if(Y.smKey){delete Y.smKey;try{localStorage.setItem(YKEY,JSON.stringify(Y))}catch(e){}}   // 예전 버전의 칸 자동 찾기 흔적 정리
 if(Y.run&&!Y.runAt){Y.runAt=1;try{localStorage.setItem(YKEY,JSON.stringify(Y))}catch(e){}}   // 예전에 연결해 둔 토큰도 다른 기기로 넘어가게
 document.addEventListener('flysky:yptprefs',()=>{try{const n=JSON.parse(localStorage.getItem(YKEY))||{};['gorder','gid','subj'].forEach(k=>{if(k in n)Y[k]=n[k]});
   if((+n.runAt||0)>(+Y.runAt||0)){Y.run=n.run||null;Y.runAt=n.runAt;loadMembers().then(render,()=>{})}   // 다른 기기에서 기록 시작/정지
@@ -2589,21 +2590,20 @@ async function loadMembers(){
   if(gid!==Y.gid) return;   // 그사이 다른 그룹을 골랐으면 버림
   rawMembers=Array.isArray(j.ms)?j.ms:[]; rawAt=Date.now();
   parseMembers(); markMe();
-  if(detectKeys()){parseMembers();markMe()}   // 내 기록과 맞는 칸을 찾았으면 그 칸으로 다시 읽음
 }
 let rawMembers=[], rawAt=0;
 const sbool=v=>v===true||v===1||v==='1'||v==='true';
-const getPath=(o,p)=>p.split('.').reduce((a,k)=>a&&typeof a==='object'?a[k]:undefined,o);
 function parseMembers(){
-  const prev=new Map(members.map(m=>[m.n,m])), now=Date.now(), K=Y.smKey;
+  const prev=new Map(members.map(m=>[m.n,m])), now=Date.now();
   members=rawMembers.map(m=>{
     const dl=m.dl&&typeof m.dl==='object'?m.dl:{};
     const paused=sbool(dl.ia??dl.ip??m.ia??m.ip);
     const studying=sbool(dl.is??m.is??m.isStudying)&&!paused;
-    let since=+(K&&K.ss?getPath(m,K.ss):(dl.ss??m.ss))||0; if(since>0&&since<1e11)since*=1000;   // 초 단위면 ms로
-    let sm=+(dl.sm??dl.tp??m.sm)||0, inc=false;
-    if(K&&K.path){const v=+getPath(m,K.path); if(!isNaN(v)){sm=v*K.unit; inc=!!K.inc}}
-    if(inc&&studying) since=rawAt;          // 이미 지금 공부까지 포함된 값이면, 불러온 뒤부터만 더함
+    /* dl.sm = 오늘 끝낸 공부(지금 진행 중인 건 빠짐), dl.st = 지금 공부를 시작한 시각(ISO 문자열)
+       → 화면 시간 = dl.sm + (지금 - dl.st)  (열품타 앱과 같은 계산) */
+    const stv=dl.st??dl.ss??m.ss; let since=typeof stv==='string'?Date.parse(stv):+stv||0;
+    if(!(since>0)) since=0; else if(since<1e11) since*=1000;   // 초 단위면 ms로
+    const sm=+(dl.sm??dl.tp??m.sm)||0;
     return {n:String(m.n||''),ud:+(m.ud??m.userId)||0,sm,on:studying,paused,
       subj:(typeof dl.sn==='string'?dl.sn:typeof dl.sb==='string'?dl.sb:'')||'',
       since, cat:String(m.ct||''), raw:m};
@@ -2612,30 +2612,9 @@ function parseMembers(){
     return m;
   }).sort((a,b)=>b.sm-a.sm);
 }
-/* 열품타 그룹 데이터에서 '오늘 누적 공부 시간'이 어느 칸인지 자동으로 찾기:
-   정확히 알고 있는 내 오늘 기록(info.sm)과 같은 값을 가진 칸을 '나' 항목에서 찾음 */
-function detectKeys(){
-  const me=members.find(m=>m.me); if(!me||!me.raw||!info||!(info.sm>=60000)) return false;
-  const flat=[]; (function walk(o,p,d){if(!o||typeof o!=='object'||d>2)return;
-    for(const k in o){const v=o[k],pp=p?p+'.'+k:k; if(typeof v==='object')walk(v,pp,d+1); else if(v!==''&&v!==null&&!isNaN(+v)&&+v>0)flat.push([pp,+v])}})(me.raw,'',0);
-  const run=Y.run?Date.now()-Y.run.startedAt:0, T=[[info.sm,false],[info.sm+run,true]];
-  /* 참고 구현(deveworld/ypt_client)대로 기본 칸은 dl.sm. 그 값이 내 기록과 맞으면 그대로 씀 */
-  {const d=+getPath(me.raw,'dl.sm'); if(!isNaN(d)&&T.some(([t])=>Math.abs(d-t)<=Math.max(60000,t*.03))){const had=!!Y.smKey; if(had){delete Y.smKey;saveY()} return had}}
-  let best=null;
-  for(const [path,v] of flat){ if(!path.startsWith('dl.')||/^(ud|userId|id|gid|ct|coid)$/.test(path.split('.').pop())) continue;
-    for(const unit of [1,1000,60000]) for(const [t,inc] of T){const err=Math.abs(v*unit-t); const tol=Math.max(60000,t*.03);
-      if(err<=tol&&(!best||err<best.err)) best={path,unit,inc:inc&&run>60000,err}}}
-  let ss=null;
-  if(Y.run){for(const [path,v] of flat){for(const u of [1,1000]){if(Math.abs(v*u-Y.run.startedAt)<=120000){ss=path;break}} if(ss)break}}
-  if(!best) return false;
-  const K={path:best.path,unit:best.unit,inc:best.inc,ss:ss||(Y.smKey&&Y.smKey.ss)||null};
-  const same=Y.smKey&&Y.smKey.path===K.path&&Y.smKey.unit===K.unit&&Y.smKey.inc===K.inc&&Y.smKey.ss===K.ss;
-  if(!same){Y.smKey=K;saveY()}
-  return !same;
-}
 /* 그룹에서 '나' 찾기: 그룹 이름이 계정 닉네임과 다를 수 있어서 여러 단서를 씀 */
 function liveMs(m){
-  if(m.me&&info&&info.sm>=0) return info.sm+runMs();   // 나는 내 정확한 기록으로
+  if(m.me) return myTotal();   // 나는 내 기록으로 (다른 기기 · 열품타 앱에서 공부 중이어도)
   if(!m.on) return m.sm;
   const now=Date.now(), st=(m.since>0&&m.since<=now&&now-m.since<864e5)?m.since:(m.seenAt||now);
   return m.sm+Math.max(0,now-st);
@@ -2726,6 +2705,13 @@ document.addEventListener('click',e=>{
 const COLORS=['var(--accent-deep)','var(--accent)','var(--accent-light)','#d8ddee'];
 const MEMC=['var(--accent-deep)','#8592c4','#9aa0b0','#3f4a6b','var(--accent)'];
 const runMs=()=>Y.run?Date.now()-Y.run.startedAt:0;
+/* 내 오늘 공부 시간: Fly Sky에서 기록 중이면 그 시간, 아니면 열품타 앱 등에서 공부 중인 시간까지 */
+function myTotal(){
+  const base=info?info.sm:0; if(Y.run) return base+runMs();
+  const me=members.find(m=>m.me);
+  if(me&&me.on&&me.since>0&&me.since<=Date.now()&&Date.now()-me.since<864e5) return Math.max(base,me.sm)+(Date.now()-me.since);
+  return me?Math.max(base,me.sm):base;
+}
 function orderedGroups(){const ord=Y.gorder||[];return groups.slice().sort((a,b)=>{let ia=ord.indexOf(a.id),ib=ord.indexOf(b.id);if(ia<0)ia=1e9;if(ib<0)ib=1e9;return ia-ib||0})}
 function moveGroup(id,dir){const og=orderedGroups().map(g=>g.id),i=og.indexOf(id),j=i+dir;if(i<0||j<0||j>=og.length)return;[og[i],og[j]]=[og[j],og[i]];Y.gorder=og;saveY();render()}
 function curSubj(){const subs=info?info.subjects:[];return (subs.find(x=>x.t===Y.subj)||subs[0]||{t:''}).t}
@@ -2738,7 +2724,7 @@ function topSubs(){return (info?info.subjects:[]).map(x=>({...x,sm:x.sm+(Y.run&&
 function studyParts(){
   const subs=topSubs(), sel=Y.run?Y.run.subject:curSubj();
   return {
-    clock:hms((info?info.sm:0)+runMs()),
+    clock:hms(myTotal()),
     bar:subs.length?subs.map((x,i)=>`<span style="flex:${x.sm};background:${COLORS[i]}"></span>`).join(''):'<span style="flex:1;background:#d8ddee"></span>',
     legend:subs.map((x,i)=>`<span><i style="background:${COLORS[i]}"></i>${esc(x.t)}</span>`).join(''),
     pick:(info?info.subjects:[]).map(x=>`<span class="tag${x.t===sel?' on':''}" data-subj="${esc(x.t)}">${esc(x.t)}</span>`).join('')
@@ -2868,7 +2854,7 @@ function memberDetail(i){
     </div>
     <div class="mdstat"><span>오늘 공부 시간</span><b>${hms(total)}</b></div>
     ${m.on&&m.subj?`<div class="mdstat"><span>지금 과목</span><b>${esc(m.subj)}${sinceTxt?` · ${sinceTxt}`:''}</b></div>`:''}
-    <details class="mdraw"><summary>서버 원본 데이터</summary><pre>${esc(JSON.stringify({member:m.raw,key:Y.smKey||null,mine:me&&info?{daySm:info.sm,runMs:runMs()}:undefined},null,1))}</pre></details>
+    <details class="mdraw"><summary>서버 원본 데이터</summary><pre>${esc(JSON.stringify({member:m.raw,mine:me&&info?{daySm:info.sm,runMs:runMs()}:undefined},null,1))}</pre></details>
     <div class="mfoot"><button type="button" class="pbtn" onclick="closeModal()">닫기</button></div>`;
   M.classList.add('open');
 }
@@ -2896,7 +2882,7 @@ document.addEventListener('click',e=>{
 const groupVisible=()=>['view-home','view-ypt'].some(id=>{const v=document.getElementById(id);return v&&v.classList.contains('on')});
 let tick=0;
 setInterval(()=>{
-  if(Y.run){const c=hms((info?info.sm:0)+runMs());$('homeStudy').textContent=c;$('yvStudy').textContent=c;$('yvSubs').innerHTML=subjectList()}
+  if(Y.run||members.some(m=>m.me&&m.on)){const c=hms(myTotal());$('homeStudy').textContent=c;$('yvStudy').textContent=c;if(Y.run)$('yvSubs').innerHTML=subjectList()}
   if(!document.hidden&&(Y.run||members.some(m=>m.on)))
     document.querySelectorAll('#yptMembers .mem.study, #yvMembers .mem.study').forEach(el=>{const m=members[+el.dataset.mi];if(m){const t=el.querySelector('.tm');if(t)t.textContent=hms(liveMs(m))}});
   if(!Y.jwt||document.hidden) return;
