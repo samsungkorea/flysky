@@ -1461,12 +1461,16 @@ function openSettings(){
     <div class="setrow"><div><b>기기 간 동기화</b><small>${syncTxt}<br>원서·D-day·목표 대학·성적·버킷리스트·열품타 그룹 순서가 같은 Google 계정의 모든 기기에서 같아요. 일정은 Google 캘린더에 저장돼요.</small></div></div>
     <div class="setrow"><div><b>열품타</b><small>${yp.on?'연결됨 · @'+esc(yp.nick||'열품타'):'연결 안 됨'}</small></div>
       <button type="button" class="pbtn soft" id="setYpt">${yp.on?'연결 해제':'연결'}</button></div>
+    ${yp.on&&window.__ypt.groups().length>1?`<div class="setrow" style="display:block"><b>열품타 그룹 순서</b><small style="margin-bottom:10px">홈과 열품타 화면의 그룹 버튼 순서예요.</small><div class="greorder" id="setGroups"></div></div>`:''}
     <div class="setrow"><div><b>이 기기 데이터 초기화</b><small>이 브라우저에 저장된 Fly Sky 데이터를 지워요. 동기화가 켜져 있으면 다시 로그인할 때 클라우드에서 가져올 수 있어요.</small></div>
       <button type="button" class="pbtn del" id="setReset">초기화</button></div>`);
   const sa=document.getElementById('setAcct');
   if(sa) sa.onclick=()=>{closeModal();if(user)logout();else{document.getElementById('pop').classList.remove('open');document.getElementById('login').classList.add('open')}};
   const sy=document.getElementById('setYpt');
   if(sy) sy.onclick=()=>{if(yp.on){if(window.__ypt.disconnect()){closeModal();toast('열품타 연결을 해제했어요')}}else{closeModal();showView('ypt')}};
+  const sg=document.getElementById('setGroups');
+  const drawG=()=>{const og=window.__ypt.groups();sg.innerHTML=og.map((x,i)=>`<div class="grow"><span>${esc(x.t)}</span><span class="gbtns"><button type="button" data-gmove="${x.id}" data-dir="-1" ${i===0?'disabled':''}>↑</button><button type="button" data-gmove="${x.id}" data-dir="1" ${i===og.length-1?'disabled':''}>↓</button></span></div>`).join('')};
+  if(sg){drawG();sg.onclick=e=>{const btn=e.target.closest('[data-gmove]');if(!btn)return;window.__ypt.move(+btn.dataset.gmove,+btn.dataset.dir);drawG()}}
   const sr=document.getElementById('setReset');
   if(sr) sr.onclick=()=>{
     if(!confirm('이 브라우저에 저장된 Fly Sky 데이터를 모두 지울까요?\n\nGoogle 캘린더의 실제 일정과 클라우드에 동기화된 데이터는 지워지지 않아요.'))return;
@@ -2132,6 +2136,7 @@ function applyInfo(j){
     .map(x=>({id:+(x.id??x.sid??x.subjectId??x.subjectID??x.si)||0,t:String(x.tt??x.t??x.title??''),sm:+x.sm||0,or:+x.or||0})).filter(x=>x.t).sort((a,b)=>a.or-b.or);
   info={sm:+(j.dl&&j.dl.sm)||0,subjects:ss,at:Date.now()};
   if(j.n) Y.nick=String(j.n);
+  {const u=+(j.ud??(j.p&&j.p.ud))||0; if(u) Y.uid=u;}
   if(+j.coid) Y.coid=+j.coid;
   saveY();
 }
@@ -2203,10 +2208,21 @@ async function loadMembers(){
     const paused=sbool(dl.ia??dl.ip??m.ia??m.ip);
     const studying=sbool(dl.is??m.is??m.isStudying)&&!paused;
     let since=+(dl.ss??m.ss)||0; if(since>0&&since<1e11)since*=1000;   // 초 단위면 ms로
-    return {n:String(m.n||''),sm:+(dl.sm??dl.tp??m.sm)||0,on:studying,paused,
+    return {n:String(m.n||''),ud:+(m.ud??m.userId)||0,sm:+(dl.sm??dl.tp??m.sm)||0,on:studying,paused,
       subj:(typeof dl.sn==='string'?dl.sn:typeof dl.sb==='string'?dl.sb:'')||'',
       since, cat:String(m.ct||'')};
   }).sort((a,b)=>b.sm-a.sm);
+  markMe();
+}
+/* 그룹에서 '나' 찾기: 그룹 이름이 계정 닉네임과 다를 수 있어서 여러 단서를 씀 */
+function markMe(){
+  const L=members; let me=-1;
+  if(Y.uid) me=L.findIndex(m=>m.ud&&m.ud===Y.uid);
+  if(me<0&&Y.nick) me=L.findIndex(m=>m.n===Y.nick);
+  if(me<0&&Y.meName) me=L.findIndex(m=>m.n===Y.meName);
+  if(me<0&&info&&info.sm>0){const c=L.filter(m=>Math.abs(m.sm-info.sm)<=2000); if(c.length===1) me=L.indexOf(c[0])}
+  L.forEach((m,i)=>m.me=i===me);
+  if(me>=0&&L[me].n&&L[me].n!==Y.meName){Y.meName=L[me].n;saveY()}
 }
 async function refresh({full=true}={}){
   if(!Y.jwt||loading) return;
@@ -2301,18 +2317,19 @@ function fillStudy(ids,P){
 }
 function groupParts(){
   const on=!!Y.jwt, g=groups.find(x=>x.id===Y.gid), og=orderedGroups();
-  const isMe=m=>!!(Y.nick&&m.n===Y.nick), live=m=>m.on||(isMe(m)&&!!Y.run);
+  const isMe=m=>!!m.me, live=m=>m.on||(isMe(m)&&!!Y.run);
   const studying=members.filter(live).length;
+  const view=members.map((m,i)=>({m,i,t:m.sm+(m.me?runMs():0)})).sort((a,b)=>b.t-a.t);
   let body;
   if(!on) body='<div class="empty">열품타를 연결하면 그룹이 보여요</div>';
   else if(err&&!members.length) body=`<div class="empty">${esc(err)}</div>`;
   else if(!groups.length) body=`<div class="empty">${loading||!info?'불러오는 중':'가입한 그룹이 없어요'}</div>`;
-  else body=members.map((m,i)=>{
+  else body=view.map(({m,i,t},r)=>{
     const me=isMe(m), lv=live(m);
     const label=lv?'공부 중':m.paused?'일시정지':'휴식';
-    return `<div class="mem${me?' me':''}${lv?' study':''}" data-mi="${i}"><span class="st${lv?'':' off'}">${label}</span><div class="rk">${i+1}위${me?' · 나':''}</div>
+    return `<div class="mem${me?' me':''}${lv?' study':''}" data-mi="${i}"><span class="st${lv?'':' off'}">${label}</span><div class="rk">${r+1}위${me?' · 나':''}</div>
       <div class="av" style="background:${me?'linear-gradient(135deg,#adb6d9,#5d6ca8)':MEMC[i%MEMC.length]}">${esc(m.n.charAt(0)||'?')}</div>
-      <div class="nm">${esc(m.n)}</div><div class="tm">${hms(m.sm+(me?runMs():0))}</div></div>`}).join('')||'<div class="empty">멤버가 없어요</div>';
+      <div class="nm">${esc(m.n)}</div><div class="tm">${hms(t)}</div></div>`}).join('')||'<div class="empty">멤버가 없어요</div>';
   return {
     title:g?`${esc(g.t)}<small>${members.length}명 중 ${studying}명 공부 중</small>`:'그룹',
     seg:og.length>1?og.map(x=>`<button data-gid="${x.id}" class="${x.id===Y.gid?'on':''}">${esc(x.t)}</button>`).join(''):'',
@@ -2380,16 +2397,16 @@ function renderPane(){
     };
     return;
   }
-  const og0=orderedGroups();
-  $('yvAcctLabel').textContent='그룹 순서';
-  $('yvAcctCard').style.display=(og0.length>1||err)?'':'none';
-  p.innerHTML=`<p class="yerr">${esc(err)}</p>
-    ${(()=>{const og=og0;return og.length>1?`<div class="greorder">${og.map((x,i)=>`<div class="grow"><span>${esc(x.t)}</span><span class="gbtns"><button data-gmove="${x.id}" data-dir="-1" ${i===0?'disabled':''}>↑</button><button data-gmove="${x.id}" data-dir="1" ${i===og.length-1?'disabled':''}>↓</button></span></div>`).join('')}</div>`:''})()}`;
-  p.querySelectorAll('[data-gmove]').forEach(btn=>btn.onclick=()=>moveGroup(+btn.dataset.gmove,+btn.dataset.dir));
+  $('yvAcctLabel').textContent='계정'; $('yvAcctCard').style.display='';
+  p.innerHTML=`<div class="connected"><div class="av">${esc((Y.nick||'?').charAt(0))}</div><div><p>@${esc(Y.nick||'열품타')}</p><small>● 연결됨</small></div><button id="yOut">연결 해제</button></div>
+    <p class="yerr">${esc(err)}</p>`;
+  $('yOut').onclick=()=>{if(window.__ypt.disconnect())toast('열품타 연결을 해제했어요')};
 }
 /* 설정 창에서 쓰는 열품타 상태 · 연결 해제 */
 window.__ypt={
   status:()=>({on:!!Y.jwt,nick:Y.nick||'',run:!!Y.run}),
+  groups:()=>orderedGroups().map(g=>({id:g.id,t:g.t})),
+  move:(id,dir)=>moveGroup(id,dir),
   disconnect:()=>{if(Y.run&&!confirm('열품타 기록이 켜져 있어요. 정지하지 않고 연결을 해제할까요?'))return false;
     Y.jwt='';Y.run=null;info=null;groups=[];members=[];err='';saveY();render();return true}
 };
@@ -2401,7 +2418,7 @@ document.addEventListener('flysky:userchange',()=>{if(!Y.jwt)renderPane()});
 const M=$('modal');
 function memberDetail(i){
   const m=members[i]; if(!m) return;
-  const me=Y.nick&&m.n===Y.nick;
+  const me=!!m.me;
   const total=m.sm+(me?runMs():0);
   const state=m.on?'공부 중':m.paused?'일시정지':'휴식';
   const sinceTxt=m.on&&m.since?`${Math.max(0,Math.floor((Date.now()-m.since)/60000))}분째`:'';
