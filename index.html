@@ -105,6 +105,11 @@
   .play svg{width:38px;height:38px;fill:#fff;stroke:none}
   .modes{display:flex;gap:6px;margin-top:16px}
   .modes .tag.on{background:var(--ink);color:#fff;border-color:var(--ink)}
+  .modes{flex-wrap:wrap}
+  .modes .tag{cursor:pointer}
+  .modes.lock .tag:not(.on){opacity:.4;cursor:default}
+  .play{cursor:pointer}
+  .play:disabled{opacity:.6}
 
 
   /* YPT status */
@@ -629,11 +634,9 @@
           <div class="clock" id="homeStudy">00:00:00</div>
           <div class="subj" id="homeSubj"><span style="flex:1;background:#d8ddee"></span></div>
           <div class="legend" id="homeLegend"></div>
-          <div class="modes">
-            <span class="tag on">스톱워치</span><span class="tag">타이머</span><span class="tag">뽀모도로</span>
-          </div>
+          <div class="modes" id="homeSubjPick"></div>
         </div>
-        <button class="play" onclick="showView('timer','sw')"><svg viewBox="0 0 24 24"><path d="M8 5.5v13l11-6.5z"/></svg></button>
+        <button class="play" id="homePlay" aria-label="공부 기록 시작"><svg viewBox="0 0 24 24"><path d="M8 5.5v13l11-6.5z"/></svg></button>
       </section>
 
       <!-- YPT group -->
@@ -1142,13 +1145,12 @@ function fmtSW(ms){const s=ms/1000;return `${fmtHMS(s)}<small>.${Math.floor(ms%1
 $('swStart').onclick=()=>{
   if(sw.running){sw.acc+=performance.now()-sw.t0;sw.running=false}else{sw.t0=performance.now();sw.running=true}
   $('swStart').textContent=sw.running?'정지':'계속';
-  document.dispatchEvent(new CustomEvent('flysky:sw',{detail:{running:sw.running,subject:$('swSubjTag').textContent}}));
 };
 $('swLap').onclick=()=>{
   const t=swEl(); if(!t) return;
   sw.laps.unshift([t-sw.lastLap,t]); sw.lastLap=t; renderLaps();
 };
-$('swReset').onclick=()=>{if(sw.running)document.dispatchEvent(new CustomEvent('flysky:sw',{detail:{running:false}}));sw={running:false,acc:0,t0:0,laps:[],lastLap:0};$('swStart').textContent='시작';renderLaps()};
+$('swReset').onclick=()=>{sw={running:false,acc:0,t0:0,laps:[],lastLap:0};$('swStart').textContent='시작';renderLaps()};
 function renderLaps(){
   $('laps').innerHTML=sw.laps.length?sw.laps.map((l,i)=>`<li><span>랩 ${sw.laps.length-i}</span><span>+${fmtHMS(l[0]/1000)}</span><span>${fmtHMS(l[1]/1000)}</span></li>`).join(''):'<li class="empty">기록 없음</li>';
 }
@@ -1746,9 +1748,8 @@ const truthy=v=>v===true||v===1||v==='1'||v==='true';
 let toastT;
 function toast(m){const t=$('toast');t.textContent=m;t.classList.add('show');clearTimeout(toastT);toastT=setTimeout(()=>t.classList.remove('show'),3000)}
 
-/* 상태: relay, jwt, email, nick, coid(국가 ID), gid(선택한 그룹), sync(스톱워치 연동), run({startedAt, subject}) */
+/* 상태: relay, jwt, email, nick, coid(국가 ID), gid(선택한 그룹), subj(고른 과목), run({startedAt, subject}) */
 let Y={}; try{Y=JSON.parse(localStorage.getItem(YKEY))||{}}catch(e){}
-if(Y.sync===undefined) Y.sync=true;
 const saveY=()=>{try{localStorage.setItem(YKEY,JSON.stringify(Y))}catch(e){}};
 const relay=()=>(YPT_RELAY_URL||Y.relay||'').trim().replace(/\/+$/,'');
 let info=null, groups=[], members=[], err='', loading=false;
@@ -1840,11 +1841,11 @@ async function refresh({full=true}={}){
   loading=false; render();
 }
 
-/* ---------- 스톱워치 연동 (요청은 순서대로 처리) ---------- */
-let q=Promise.resolve();
-const enqueue=f=>q=q.then(f,f);
+/* ---------- 공부 기록 (홈 '오늘 공부 시간'의 재생 버튼. 타이머와는 따로) ---------- */
+let q=Promise.resolve(), pending=0;
+const enqueue=f=>{pending++;render();return q=q.then(f,f).then(()=>{pending--;render()})};
 async function studyStart(subject){
-  if(!Y.jwt||!Y.sync||Y.run) return;
+  if(!Y.jwt||Y.run) return;
   const subs=info?info.subjects:[];
   const s=subs.find(x=>x.t===subject)||subs[0];
   const title=s?s.t:(subject||'공부');
@@ -1870,9 +1871,14 @@ async function studyStop(){
   }catch(e){toast('열품타 기록을 멈추지 못했어요 · '+msg(e))}
   render();
 }
-document.addEventListener('flysky:sw',e=>{
-  const d=e.detail||{};
-  enqueue(()=>d.running?studyStart(d.subject):studyStop());
+$('homePlay').onclick=()=>{
+  if(pending) return;
+  if(!Y.jwt) return openSheet();
+  enqueue(()=>Y.run?studyStop():studyStart(curSubj()));
+};
+document.addEventListener('click',e=>{
+  const t=e.target.closest('#homeSubjPick [data-subj]'); if(!t||Y.run) return;
+  Y.subj=t.dataset.subj; saveY(); renderHome();
 });
 /* 탭을 닫을 때 기록 중이면 정지 요청 */
 window.addEventListener('pagehide',e=>{
@@ -1885,6 +1891,9 @@ window.addEventListener('pagehide',e=>{
 const COLORS=['var(--accent-deep)','var(--accent)','var(--accent-light)','#d8ddee'];
 const MEMC=['var(--accent-deep)','#8592c4','#9aa0b0','#3f4a6b','var(--accent)'];
 const runMs=()=>Y.run?Date.now()-Y.run.startedAt:0;
+function curSubj(){const subs=info?info.subjects:[];return (subs.find(x=>x.t===Y.subj)||subs[0]||{t:''}).t}
+const IC_PLAY='<svg viewBox="0 0 24 24"><path d="M8 5.5v13l11-6.5z"/></svg>';
+const IC_PAUSE='<svg viewBox="0 0 24 24"><path d="M7 5h3.5v14H7zM13.5 5H17v14h-3.5z"/></svg>';
 function setTag(el,on,text){el.classList.toggle('ypt-off',!on);el.innerHTML=`<span class="dot"></span>${esc(text)}`}
 
 function renderHome(){
@@ -1895,6 +1904,12 @@ function renderHome(){
   const subs=(info?info.subjects:[]).filter(x=>x.sm>0).sort((a,b)=>b.sm-a.sm).slice(0,4);
   $('homeSubj').innerHTML=subs.length?subs.map((x,i)=>`<span style="flex:${x.sm};background:${COLORS[i]}"></span>`).join(''):'<span style="flex:1;background:#d8ddee"></span>';
   $('homeLegend').innerHTML=subs.map((x,i)=>`<span><i style="background:${COLORS[i]}"></i>${esc(x.t)}</span>`).join('');
+  const sel=Y.run?Y.run.subject:curSubj(), pick=$('homeSubjPick');
+  pick.classList.toggle('lock',!!Y.run);
+  pick.innerHTML=(info?info.subjects:[]).map(x=>`<span class="tag${x.t===sel?' on':''}" data-subj="${esc(x.t)}">${esc(x.t)}</span>`).join('');
+  const pb=$('homePlay');
+  pb.innerHTML=Y.run?IC_PAUSE:IC_PLAY; pb.disabled=!!pending;
+  pb.setAttribute('aria-label',Y.run?'공부 기록 정지':'공부 기록 시작');
 
   const g=groups.find(x=>x.id===Y.gid);
   const studying=members.filter(m=>m.on).length;
@@ -1946,12 +1961,10 @@ function renderPane(){
   }
   const exp=jwtExp(Y.jwt), days=exp?Math.max(0,Math.ceil((exp-Date.now())/864e5)):null;
   p.innerHTML=`<div class="connected"><div class="av">${esc((Y.nick||'?').charAt(0))}</div><div><p>@${esc(Y.nick||'열품타')}</p><small>● 연결됨${days!==null?` · 토큰 만료까지 ${days}일`:''}</small></div><button id="yOut">연결 해제</button></div>
-    <button class="tgl${Y.sync?' on':''}" id="ySync">스톱워치와 같이 기록<i></i></button>
     ${Y.run?`<div class="connected"><div><p>기록 중 · ${esc(Y.run.subject)}</p><small id="yRunT">${hms(runMs())}</small></div><button id="yStop">정지</button></div>`:''}
     <p class="yerr">${esc(err)}</p>
     <button class="cta" id="yRefresh">${loading?'불러오는 중':'새로고침'} ${ARR}</button>`;
   $('yOut').onclick=()=>{if(Y.run&&!confirm('열품타 기록이 켜져 있어요. 정지하지 않고 연결을 해제할까요?'))return;Y.jwt='';Y.run=null;info=null;groups=[];members=[];err='';saveY();render()};
-  $('ySync').onclick=()=>{Y.sync=!Y.sync;saveY();renderPane()};
   $('yRefresh').onclick=()=>refresh();
   if($('yStop')) $('yStop').onclick=()=>enqueue(studyStop);
 }
