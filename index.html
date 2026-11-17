@@ -2619,8 +2619,10 @@ function detectKeys(){
   const flat=[]; (function walk(o,p,d){if(!o||typeof o!=='object'||d>2)return;
     for(const k in o){const v=o[k],pp=p?p+'.'+k:k; if(typeof v==='object')walk(v,pp,d+1); else if(v!==''&&v!==null&&!isNaN(+v)&&+v>0)flat.push([pp,+v])}})(me.raw,'',0);
   const run=Y.run?Date.now()-Y.run.startedAt:0, T=[[info.sm,false],[info.sm+run,true]];
+  /* 참고 구현(deveworld/ypt_client)대로 기본 칸은 dl.sm. 그 값이 내 기록과 맞으면 그대로 씀 */
+  {const d=+getPath(me.raw,'dl.sm'); if(!isNaN(d)&&T.some(([t])=>Math.abs(d-t)<=Math.max(60000,t*.03))){const had=!!Y.smKey; if(had){delete Y.smKey;saveY()} return had}}
   let best=null;
-  for(const [path,v] of flat){ if(/^(ud|userId|id|gid|ct|coid)$/.test(path.split('.').pop())) continue;
+  for(const [path,v] of flat){ if(!path.startsWith('dl.')||/^(ud|userId|id|gid|ct|coid)$/.test(path.split('.').pop())) continue;
     for(const unit of [1,1000,60000]) for(const [t,inc] of T){const err=Math.abs(v*unit-t); const tol=Math.max(60000,t*.03);
       if(err<=tol&&(!best||err<best.err)) best={path,unit,inc:inc&&run>60000,err}}}
   let ss=null;
