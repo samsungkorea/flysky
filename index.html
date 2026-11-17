@@ -424,6 +424,9 @@
   .lgopt small{font-size:12px;color:var(--sub)}
   .lgopt.on{background:#fff;box-shadow:inset 0 0 0 2px var(--accent)}
   .lgopt.on small{color:var(--accent);font-weight:600}
+  .lgin{display:none;margin:8px 0 4px}
+  .lgin.on{display:flex}
+  .lgin .ic b{color:var(--ink)}
   .setrow>div{flex:1;min-width:0}
   .setrow b{font-size:15px;font-weight:600}
   .setrow small{display:block;font-size:12px;color:var(--sub);line-height:1.6;margin-top:4px}
@@ -759,6 +762,10 @@ body.fs .app{padding:20px}
 .card.lit,.tile.lit{--go:1}
 .card.lit::after,.tile.lit::after{transition-duration:.12s}
 .card.press,.tile.press{transform:perspective(1100px) rotateX(var(--rx)) rotateY(var(--ry)) scale(.985);transition-duration:.18s;transition-delay:60ms}
+</style>
+<style>
+/* Fly Display: 커스텀 로고용 (영문 대소문자 · 띄어쓰기만) */
+@font-face{font-family:'FlyDisplay';src:url(data:font/ttf;base64,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) format('truetype');font-display:block}
 </style>
 </head>
 <body>
@@ -1610,18 +1617,48 @@ function closeModal(){M.classList.remove('open')}
 window.closeModal=closeModal;
 /* ============ 로고 고르기 (S.logo → 기기 간 동기화) ============ */
 const LOGOS=[['sky','기본',808],['medical','의대',1282],['oriental','한의대',1356],['pharmacy','약대',1574],['veterinary','수의대',1642],['nursing','간호대',1294],['science','자연대',1258],['engineering','공대',1754],['law','법대',922],['economics','경영·경제',1616],['social','사회대',1074],['humanities','인문대',1714],['education','사범대',1544],['arts','예대',928],['sports','체대',1172],['agriculture','농대',1704],['univ','대학',940]];
-const logoOf=k=>LOGOS.find(x=>x[0]===k)||LOGOS[0];
+/* 커스텀: 'Fly ○○○' — Sky 자리에 직접 입력한 영어 단어를 Fly Display 폰트로 그림 (기존 로고와 같은 크기 · 기준선) */
+const CUSTOM_FS=1000*220/700;                       // 대문자 높이 700/1000 → 로고 대문자 높이 220
+const cleanWord=t=>String(t||'').replace(/[^A-Za-z ]/g,'').replace(/\s+/g,' ').replace(/^ /,'').slice(0,14);
+let customW=808;
+function buildCustom(){
+  const word=cleanWord(S.logoText).trim(), text='Fly'+(word?' '+word:'');
+  let w=808;
+  try{const c=buildCustom.c||(buildCustom.c=document.createElement('canvas').getContext('2d'));c.font=`1000px FlyDisplay`;
+    const m=c.measureText(text); w=Math.ceil(46+(m.actualBoundingBoxRight||m.width)*CUSTOM_FS/1000+50)}catch(e){}
+  customW=w;
+  let sym=document.getElementById('fslogo-custom');
+  if(!sym){sym=document.createElementNS('http://www.w3.org/2000/svg','symbol');sym.id='fslogo-custom';document.getElementById('fslogo').parentNode.appendChild(sym)}
+  sym.setAttribute('viewBox',`0 0 ${w} 380`);
+  sym.innerHTML=`<text x="46" y="260" font-family="FlyDisplay" font-size="${CUSTOM_FS.toFixed(2)}" fill="currentColor"></text>`;
+  sym.firstChild.textContent=text;
+  return text;
+}
+const logoOf=k=>k==='custom'?['custom','커스텀',customW]:(LOGOS.find(x=>x[0]===k)||LOGOS[0]);
 function applyLogo(){
-  const [k,,w]=logoOf(S.logo), name='Fly '+(k==='sky'?'Sky':k==='univ'?'Univ':k[0].toUpperCase()+k.slice(1));
+  const custom=S.logo==='custom'?buildCustom():null;
+  const [k,,w]=logoOf(S.logo), name=custom||'Fly '+(k==='sky'?'Sky':k==='univ'?'Univ':k[0].toUpperCase()+k.slice(1));
   document.querySelectorAll('svg.brandmark').forEach(sv=>{sv.setAttribute('viewBox',`0 0 ${w} 380`);sv.setAttribute('aria-label',name);
     const u=sv.querySelector('use'); if(u) u.setAttribute('href',k==='sky'?'#fslogo':'#fslogo-'+k)});
 }
 const logoSvg=(k,w)=>`<svg viewBox="0 0 ${w} 380"><use href="${k==='sky'?'#fslogo':'#fslogo-'+k}"/></svg>`;
 function openLogo(){
-  openModal('로고',`<div class="lggrid">${LOGOS.map(([k,ko,w])=>`<button type="button" class="lgopt${(S.logo||'sky')===k?' on':''}" data-k="${k}">${logoSvg(k,w)}<small>${ko}</small></button>`).join('')}</div>`);
-  $('mForm').querySelector('.lggrid').onclick=e=>{const b=e.target.closest('.lgopt');if(!b)return;
-    S.logo=b.dataset.k==='sky'?undefined:b.dataset.k; if(!S.logo) delete S.logo; save(); applyLogo();
-    $('mForm').querySelectorAll('.lgopt').forEach(x=>x.classList.toggle('on',x===b))};
+  buildCustom();
+  const cur=S.logo||'sky';
+  openModal('로고',`<div class="lggrid">${LOGOS.map(([k,ko,w])=>`<button type="button" class="lgopt${cur===k?' on':''}" data-k="${k}">${logoSvg(k,w)}<small>${ko}</small></button>`).join('')}
+    <button type="button" class="lgopt lgc${cur==='custom'?' on':''}" data-k="custom">${logoSvg('custom',customW)}<small>커스텀</small></button></div>
+    <div class="field lgin${cur==='custom'?' on':''}"><span class="ic"><b style="font-family:FlyDisplay;font-size:20px;font-weight:400">Fly</b></span>
+      <input id="lgWord" maxlength="14" placeholder="Sky 자리에 넣을 영어 단어" value="${esc(cleanWord(S.logoText))}" autocomplete="off" autocapitalize="words" spellcheck="false" enterkeyhint="done"></div>`);
+  const F=$('mForm'), grid=F.querySelector('.lggrid'), box=F.querySelector('.lgin'), inp=$('lgWord');
+  const pick=k=>{S.logo=k==='sky'?undefined:k; if(!S.logo) delete S.logo; save(); applyLogo();
+    F.querySelectorAll('.lgopt').forEach(x=>x.classList.toggle('on',x.dataset.k===k)); box.classList.toggle('on',k==='custom')};
+  const redrawTile=()=>{F.querySelector('.lgc svg').outerHTML=logoSvg('custom',customW)};
+  grid.onclick=e=>{const b=e.target.closest('.lgopt');if(!b)return; pick(b.dataset.k); if(b.dataset.k==='custom'){redrawTile();setTimeout(()=>inp.focus(),50)}};
+  let t=0;
+  inp.oninput=()=>{const v=cleanWord(inp.value); if(v!==inp.value) inp.value=v;   // 영어 · 띄어쓰기만
+    S.logoText=v; buildCustom(); redrawTile(); if(S.logo==='custom') applyLogo();
+    clearTimeout(t); t=setTimeout(save,400)};
+  document.fonts&&document.fonts.load('40px FlyDisplay').then(()=>{buildCustom();redrawTile();applyLogo()});
 }
 function openSettings(){
   const yp=window.__ypt?window.__ypt.status():{on:false};
@@ -2313,6 +2350,7 @@ function openBell(){
 }
 $('hdBell').onclick=openBell;
 
+if(document.fonts) document.fonts.load('40px FlyDisplay').then(()=>{if(S.logo==='custom')applyLogo()});
 function renderAll(){applyLogo();renderHome();renderApps();renderMin();renderGoal();renderCal();renderBucket();renderBell()}
 renderAll();
 if(FIREBASE_CONFIG) fbStart();
