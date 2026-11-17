@@ -431,6 +431,11 @@
   .setrow b{font-size:15px;font-weight:600}
   .setrow small{display:block;font-size:12px;color:var(--sub);line-height:1.6;margin-top:4px}
   .setrow .pbtn{flex-shrink:0}
+  .setsw{width:46px;height:28px;border-radius:99px;background:#d9dce5;position:relative;flex-shrink:0;transition:background-color .25s}
+  .setsw::after{content:"";position:absolute;top:3px;left:3px;width:22px;height:22px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.2);transition:transform .45s var(--spring,ease)}
+  .setsw.on{background:var(--ink)}
+  .setsw.on::after{transform:translateX(18px)}
+  .setsw:disabled{opacity:.4}
   .mfoot{display:flex;gap:10px;margin-top:10px}
   .mfoot .pbtn{flex:1;justify-content:center;padding:15px}
   .mfoot .del{flex:0 0 auto;background:#f6e9e9;color:#a14848}
@@ -1019,7 +1024,6 @@ header.hhead .brand{font-size:54px;justify-self:start;margin-left:-5.5px;transfo
             </div>
             <div class="toggles">
               <div class="tg"><div>알림음</div><button class="sw on" id="swSound"></button></div>
-              <div class="tg"><div>화면 꺼짐 방지</div><button class="sw" id="swWake"></button></div>
             </div>
           </section>
 
@@ -1458,21 +1462,20 @@ $('mockPlay').onclick=()=>{
 $('mockReset').onclick=()=>{startSel.onchange()};
 
 $('swSound').onclick=e=>{soundOn=!soundOn;e.currentTarget.classList.toggle('on',soundOn);setPref('sound',soundOn)};
-/* 화면 꺼짐 방지: 켜 둔 설정은 기억 · 동기화하고, 화면이 다시 보이면 자동으로 다시 켬 */
-let wakeLock=null, wakeWant=false;
-async function wakeOn(manual){
-  if(wakeLock) return true;
-  try{wakeLock=await navigator.wakeLock.request('screen');$('swWake').classList.add('on');
-    wakeLock.onrelease=()=>{wakeLock=null;if(!wakeWant)$('swWake').classList.remove('on')};return true}
-  catch(err){if(manual)notify('이 브라우저에서는 지원하지 않아요',0);return false}
+/* 화면 꺼짐 방지 (설정에서 켬): 수능 시계 · 스톱워치 · 타이머 화면이 보이는 동안 화면이 꺼지지 않음 */
+let wakeLock=null, wakeWant=false, wakeBusy=false;
+const timerShown=()=>!document.hidden&&($('view-timer').classList.contains('on')||document.body.classList.contains('fsmode'));
+async function wakeSync(){
+  const need=wakeWant&&timerShown()&&!!navigator.wakeLock;
+  if(need&&!wakeLock&&!wakeBusy){wakeBusy=true;
+    try{wakeLock=await navigator.wakeLock.request('screen');wakeLock.onrelease=()=>{wakeLock=null}}
+    catch(e){addEventListener('pointerdown',()=>wakeSync(),{once:true,capture:true})}   // 터치 후에만 허락하는 브라우저면 첫 터치 때
+    wakeBusy=false; if(!(wakeWant&&timerShown())) wakeSync();
+  }else if(!need&&wakeLock){const l=wakeLock;wakeLock=null;l.release().catch(()=>{})}
 }
-function wakeOff(){wakeWant=false;if(wakeLock){wakeLock.release();wakeLock=null}$('swWake').classList.remove('on')}
-document.addEventListener('visibilitychange',()=>{if(!document.hidden&&wakeWant)wakeOn()});
-$('swWake').onclick=async()=>{
-  if(wakeWant||wakeLock){wakeOff();setPref('wake',false);return}
-  wakeWant=true; $('swWake').classList.add('on'); setPref('wake',true);
-  if(!navigator.wakeLock||!(await wakeOn(true))){wakeWant=false;$('swWake').classList.remove('on');setPref('wake',false)}
-};
+document.addEventListener('visibilitychange',wakeSync);
+new MutationObserver(wakeSync).observe($('view-timer'),{attributes:true,attributeFilter:['class']});
+new MutationObserver(wakeSync).observe(document.body,{attributes:true,attributeFilter:['class']});
 function setPref(k,v){if(window.flyPref)window.flyPref.set(k,v)}
 function applyPrefs(){
   const p=window.flyPref?window.flyPref.get():{};
@@ -1481,9 +1484,7 @@ function applyPrefs(){
   if(p.mockStart!=null&&!mock.running&&startSel.value!==String(p.mockStart)&&P[p.mockStart]){startSel.value=p.mockStart;startSel.onchange()}
   if(p.tmMin&&!tm.running&&!tm.acc&&tm.total!==p.tmMin*60){tm.total=p.tmMin*60;tm.done=false;
     let n='';document.querySelectorAll('#tmPresets .chip').forEach(x=>{const on=+x.dataset.min===p.tmMin;x.classList.toggle('on',on);if(on)n=x.dataset.n});$('tmTag').textContent=n}
-  if(p.wake===true&&!wakeWant&&navigator.wakeLock){wakeWant=true;$('swWake').classList.add('on');
-    wakeOn().then(ok=>{if(!ok)addEventListener('pointerdown',()=>{if(wakeWant)wakeOn()},{once:true,capture:true})})}   // 브라우저가 터치 후에만 허락하면 첫 터치 때 켬
-  else if(p.wake===false&&(wakeWant||wakeLock)) wakeOff();
+  wakeWant=p.wake===true; wakeSync();
 }
 document.addEventListener('flysky:prefs',applyPrefs);
 const fsLayer=document.createElement('div');fsLayer.id='fsLayer';
@@ -1709,6 +1710,8 @@ function openSettings(){
       <button type="button" class="pbtn soft" id="setAcct">${user?'로그아웃':'로그인'}</button></div>
     <div class="setrow"><div><b>로고</b><small class="lgnow">${logoSvg(logoOf(S.logo)[0],logoOf(S.logo)[2])}</small></div>
       <button type="button" class="pbtn soft" id="setLogo">바꾸기</button></div>
+    <div class="setrow"><div><b>타이머 화면 꺼짐 방지</b><small>${'wakeLock' in navigator?'수능 시계 · 스톱워치 · 타이머를 보는 동안 화면이 꺼지지 않아요':'이 브라우저에서는 지원하지 않아요'}</small></div>
+      <button type="button" class="setsw${S.prefs&&S.prefs.wake?' on':''}" id="setWake" aria-label="타이머 화면 꺼짐 방지" ${'wakeLock' in navigator?'':'disabled'}></button></div>
     <div class="setrow"><div><b>기기 간 동기화</b><small>${syncTxt}</small></div></div>
     <div class="setrow"><div><b>열품타</b><small>${yp.on?'연결됨 · @'+esc(yp.nick||'열품타'):'연결 안 됨'}</small></div>
       <button type="button" class="pbtn soft" id="setYpt">${yp.on?'연결 해제':'연결'}</button></div>
@@ -1717,6 +1720,8 @@ function openSettings(){
       <button type="button" class="pbtn del" id="setReset" style="background:#f6e9e9;color:#a14848">초기화</button></div>`);
   document.getElementById('setProf').onclick=()=>{closeModal();openProfile()};
   document.getElementById('setLogo').onclick=()=>{closeModal();openLogo()};
+  document.getElementById('setWake').onclick=e=>{const on=!e.currentTarget.classList.contains('on');e.currentTarget.classList.toggle('on',on);
+    window.flyPref.set('wake',on); document.dispatchEvent(new CustomEvent('flysky:prefs'))};
   const sa=document.getElementById('setAcct');
   if(sa) sa.onclick=()=>{closeModal();if(user)logout();else{document.getElementById('pop').classList.remove('open');document.getElementById('login').classList.add('open')}};
   const sy=document.getElementById('setYpt');
