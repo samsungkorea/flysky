@@ -10,6 +10,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Fly Sky">
 <meta name="theme-color" content="#c9cfe2">
+<script>window.FLY_BUILD="2026.11.18-r56";</script>
 <script>
 /* 홈 화면 웹앱으로 실행 중이면 html.pwa (iPad 창 모드 등에서 safe-area 값이 0으로 오는 경우 대비) */
 try{if(navigator.standalone||matchMedia('(display-mode: standalone)').matches||matchMedia('(display-mode: fullscreen)').matches)document.documentElement.classList.add('pwa')}catch(e){}
@@ -1768,6 +1769,7 @@ function openSettings(){
     <div class="setrow"><div><b>열품타</b><small>${yp.on?'연결됨 · @'+esc(yp.nick||'열품타'):'연결 안 됨'}</small></div>
       <button type="button" class="pbtn soft" id="setYpt">${yp.on?'연결 해제':'연결'}</button></div>
     ${yp.on&&window.__ypt.groups().length>1?`<div class="setrow" style="display:block"><b>열품타 그룹 순서</b><small style="margin-bottom:10px"></small><div class="greorder" id="setGroups"></div></div>`:''}
+    <div class="setrow"><div><b>버전</b><small>${window.FLY_BUILD||''} · ${document.documentElement.classList.contains('pwa')?'웹앱':'브라우저'}</small></div></div>
     <div class="setrow"><div><b>이 기기 데이터 초기화</b></div>
       <button type="button" class="pbtn del" id="setReset" style="background:#f6e9e9;color:#a14848">초기화</button></div>`);
   document.getElementById('setProf').onclick=()=>{closeModal();openProfile()};
