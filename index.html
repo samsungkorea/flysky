@@ -10,7 +10,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Fly Sky">
 <meta name="theme-color" content="#c9cfe2">
-<script>window.FLY_BUILD="2026.11.18-r70";
+<script>window.FLY_BUILD="2026.11.18-r71";
 /* 새로고침 버튼이 붙인 ?r=… 는 주소창에서 바로 지움 */
 if(/[?&]r=\d/.test(location.search))history.replaceState(history.state,"",location.pathname+location.hash);</script>
 <script>
@@ -2909,7 +2909,7 @@ function observe(o){
   cand=null; const was=srv; srv=o;
   if(o.on!==(was?was.on:null)) ylog(o.on?'obs-on':'obs-off',{s:`누적 ${Math.round(o.sm/60000)}분${o.st?' · 시작 '+new Date(o.st).toTimeString().slice(0,8):''}${o.sp?' · 멈춤 '+new Date(o.sp).toTimeString().slice(0,8):''} · is ${o.is?'켜짐':'꺼짐'}`});
   if(pend&&((pend.on===o.on&&!o.ghost)||Date.now()-pend.at>30000)) pend=null;   // 서버가 따라왔거나, 30초가 지나면 서버가 맞음
-  if(!pend&&was&&was.on&&!o.on&&Date.now()-actionAt>30000) toast('다른 기기에서 공부를 멈췄어요');
+  if(!pend&&was&&was.on&&!o.on&&Date.now()-actionAt>30000&&!(was.st&&wasStopped(was.st))) toast('다른 기기에서 공부를 멈췄어요');   // 내가 멈춘 세션이면 알리지 않음
   apply();
 }
 /* view()를 Y.run(정지 요청에 쓰는 시작 시각 · 과목)과 화면에 반영 */
