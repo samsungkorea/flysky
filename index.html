@@ -10,7 +10,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Fly Sky">
 <meta name="theme-color" content="#c9cfe2">
-<script>window.FLY_BUILD="2026.11.18-r59";</script>
+<script>window.FLY_BUILD="2026.11.18-r60";</script>
 <script>
 /* 홈 화면 웹앱으로 실행 중이면 html.pwa (iPad 창 모드 등에서 safe-area 값이 0으로 오는 경우 대비) */
 try{if(navigator.standalone||matchMedia('(display-mode: standalone)').matches||matchMedia('(display-mode: fullscreen)').matches)document.documentElement.classList.add('pwa')}catch(e){}
@@ -762,7 +762,10 @@ try{if(navigator.standalone||matchMedia('(display-mode: standalone)').matches||m
 #fsLayer.on{animation:flyFade .35s var(--soft) both}
 #fsLayer.on .wsvg{animation:flySheetIn .7s var(--spring) both}
 /* 토스트 */
-.toast{transition:transform .6s var(--spring),opacity .3s var(--soft)}
+.toast{transition:transform .6s var(--spring),opacity .3s var(--soft),visibility 0s linear .6s}
+/* 숨어 있을 때는 그림자까지 완전히 안 보이게 (상태바 아래로 비치던 거뭇한 자국 제거) */
+.toast:not(.show){opacity:0;visibility:hidden;transform:translate(-50%,calc(-100% - 140px))}
+.toast.show{opacity:1;visibility:visible;transition:transform .6s var(--spring),opacity .2s var(--soft),visibility 0s}
 
 /* 누르면 쫀득하게 눌렸다 튕겨 오름 */
 :is(.pbtn,.chip,.tmode,.circle,.tag,.pill,.gbtn,.ibtn,.skip,.seg button,.tabs button,.tabs2 button,.pop .item,.dc,.avatar,.fsb,.ck,.play,.pill-go,.mem,.tgl,.sw){
