@@ -2643,14 +2643,15 @@ function quickCheck(){
 /* 내 정보(오늘 기록)에 들어 있는 지금 상태: 그룹을 안 골랐거나 내가 그 그룹에 없어도 알 수 있음 */
 function liveFrom(dl,asked){if(!info||!dl||typeof dl!=='object'||!('is' in dl))return;
   const st=typeof dl.st==='string'?Date.parse(dl.st):+dl.st||0;
-  info.live={on:sbool(dl.is)&&!sbool(dl.ia),paused:sbool(dl.ia),since:st>0?(st<1e11?st*1000:st):0,at:asked||Date.now()}}
+  info.live={on:sbool(dl.is)&&!sbool(dl.ia),paused:sbool(dl.ia),since:st>0?(st<1e11?st*1000:st):0,sm:+dl.sm||0,at:asked||Date.now()}}
 function reconcile(){
   const g=members.find(m=>m.me), L=info&&info.live;
   const useG=g&&(!L||membersAsked>=L.at);
-  const me=useG?g:(L?{on:L.on,paused:L.paused,since:L.since,subj:''}:null);   // 더 최근에 출발한 응답
+  const me=useG?g:(L?{on:L.on,paused:L.paused,since:L.since,sm:L.sm,subj:''}:null);   // 더 최근에 출발한 응답
   const asked=useG?membersAsked:(L?L.at:0);
   if(!me||fixing||pending||!Y.jwt||stale(asked)) return;    // 버튼 누르기 전 상태면 무시
   const now=Date.now();
+  if(Y.run&&Y.run.base==null&&info){Y.run.base=info.sm;saveY()}   // 예전 버전에서 시작한 기록: 지금 누적을 기준으로
   if(Y.run){
     if(me.on){miss=0;
       /* 같은 공부의 시작 시각만 서버 기준으로 살짝 맞춤 (2분 넘게 다르면 다른 공부이므로 건드리지 않음) */
@@ -2658,10 +2659,13 @@ function reconcile(){
       if(me.since>0&&me.since<=now&&Math.abs(d)>5000&&Math.abs(d)<120000){Y.run.startedAt=me.since;saveY()}
       return}
     if(me.paused||now-Y.run.startedAt<60000) return;          // 일시정지거나 막 시작했으면 기다림
+    /* '공부 중 아님' 표시만으로는 멈춘 걸로 보지 않음: 진짜로 멈췄다면 서버의 오늘 누적에 이 공부가 더해져 있어야 함 */
+    const base=+Y.run.base||0, ran=now-Y.run.startedAt;
+    if(!(+me.sm>=base+ran*0.5)){miss=0;if(!reconcile.noted||now-reconcile.noted>600000){reconcile.noted=now;ylog('off-ignored')}return}
     if(++miss<2){setTimeout(quickCheck,1500);return}            // 한 번 보이면 1.5초 뒤 바로 다시 확인해서 확정
     /* 열품타처럼 '하나의 기기'로: 다른 기기 · 열품타 앱에서 멈췄으면 여기서도 멈춤 */
     miss=0; ylog('server-stopped',{s:Y.run.subject});
-    Y.lastStop={since:Y.run.startedAt,at:now}; Y.run=null; Y.runAt=now; saveY();
+    Y.lastStop={since:Y.run.startedAt,at:now,by:'remote'}; Y.run=null; Y.runAt=now; saveY();
     toast('다른 기기에서 공부를 멈췄어요');
     loadDay().then(render,()=>render());
   }else if(me.on&&me.since>0&&me.since<=now&&now-me.since<864e5){
@@ -2669,10 +2673,10 @@ function reconcile(){
        멈춘 세션보다 나중에 시작한 '새' 공부만 반영 */
     const LS=Y.lastStop;
     if(LS&&me.since<=Math.max(LS.since,LS.at-5000)+5000){
-      if(now-LS.at>30000&&!LS.retried&&Y.jwt){LS.retried=1;saveY();ylog('stop-retry');   // 30초가 지나도 그대로면 정지 요청을 한 번 더
+      if(LS.by==='me'&&now-LS.at>30000&&!LS.retried&&Y.jwt){LS.retried=1;saveY();ylog('stop-retry');   // 30초가 지나도 그대로면 정지 요청을 한 번 더
         call('POST','/study/stop',{startedAt:me.since,deviceModel:DEVICE_MODEL}).then(()=>loadDay().then(render),()=>{})}
       return}
-    Y.run={startedAt:me.since,subject:me.subj||curSubj()}; ylog('adopt',{s:Y.run.subject}); saveY();   // 열품타 앱 등에서 시작한 공부
+    Y.run={startedAt:me.since,subject:me.subj||curSubj(),base:+me.sm||(info?info.sm:0)}; ylog('adopt',{s:Y.run.subject}); saveY();   // 열품타 앱 등에서 시작한 공부
   }
 }
 let rawMembers=[], rawAt=0;
@@ -2754,7 +2758,7 @@ async function studyStart(subject,auto){
   try{
     const j=await call('POST','/study/start',{subject:title,deviceModel:DEVICE_MODEL,taskId:null});
     if(j.s!==true) throw new YErr(String(j.c||'start'));
-    actionAt=Date.now(); Y.run={startedAt,subject:title}; Y.runAt=Date.now(); ylog(auto?'auto-restart':'start',{s:title}); saveY();
+    actionAt=Date.now(); Y.run={startedAt,subject:title,base:j.dl&&+j.dl.sm||(info?info.sm:0)}; Y.runAt=Date.now(); ylog(auto?'auto-restart':'start',{s:title}); saveY();
     if(j.dl&&info) info.sm=+j.dl.sm||info.sm;
     toast(auto?`열품타 기록이 끊겨 있어서 바로 다시 시작했어요 · ${title}`:`열품타 기록 시작 · ${title}`);
     render(); loadMembers().then(render,()=>{});   // 그룹에도 바로 반영
@@ -2768,7 +2772,7 @@ async function studyStop(){
     const j=await call('POST','/study/stop',{startedAt,deviceModel:DEVICE_MODEL});
     if(j.s!==true) throw new YErr(String(j.c||'stop'));
     if(info) info.sm=j.dl?(+j.dl.sm||0):info.sm+(Date.now()-startedAt);
-    actionAt=Date.now(); Y.lastStop={since:startedAt,at:Date.now()}; Y.run=null; Y.runAt=Date.now(); ylog('stop'); saveY(); toast('열품타에 기록했어요');
+    actionAt=Date.now(); Y.lastStop={since:startedAt,at:Date.now(),by:'me'}; Y.run=null; Y.runAt=Date.now(); ylog('stop'); saveY(); toast('열품타에 기록했어요');
     loadDay().then(()=>loadMembers()).then(render,()=>render());
   }catch(e){toast('열품타 기록을 멈추지 못했어요 · '+msg(e))}
   render();
@@ -2954,7 +2958,7 @@ function memberDetail(i){
       <span class="st2 ${m.on?'on':m.paused?'pause':'off'}">${state}</span>
     </div>
     ${rows.map(([k,v,big])=>`<div class="mdstat"><span>${k}</span><b${big?'':' class="sm"'}>${esc(v)}</b></div>`).join('')}
-    ${me&&(Y.log||[]).length?`<details class="mdraw"><summary>기록 내역</summary><pre>${esc((Y.log||[]).slice().reverse().map(x=>{const t=new Date(x.t);return `${t.getMonth()+1}/${t.getDate()} ${pad(t.getHours())}:${pad(t.getMinutes())}:${pad(t.getSeconds())}  ${({start:'시작','auto-restart':'끊김 → 자동 재시작',stop:'정지','remote-start':'다른 기기에서 시작','remote-stop':'다른 기기에서 정지','server-stopped':'다른 기기 · 열품타 앱에서 정지',adopt:'열품타 앱 기록 반영','relogin-try':'로그인 만료 → 재로그인 시도',relogin:'재로그인 성공',expired:'로그인 만료','stop-retry':'정지가 반영되지 않아 다시 정지 요청'})[x.e]||x.e}${x.s?' · '+x.s:''}  (${x.d})`}).join('\n'))}</pre></details>`:''}
+    ${me&&(Y.log||[]).length?`<details class="mdraw"><summary>기록 내역</summary><pre>${esc((Y.log||[]).slice().reverse().map(x=>{const t=new Date(x.t);return `${t.getMonth()+1}/${t.getDate()} ${pad(t.getHours())}:${pad(t.getMinutes())}:${pad(t.getSeconds())}  ${({start:'시작','auto-restart':'끊김 → 자동 재시작',stop:'정지','remote-start':'다른 기기에서 시작','remote-stop':'다른 기기에서 정지','server-stopped':'다른 기기 · 열품타 앱에서 정지',adopt:'열품타 앱 기록 반영','relogin-try':'로그인 만료 → 재로그인 시도',relogin:'재로그인 성공',expired:'로그인 만료','stop-retry':'정지가 반영되지 않아 다시 정지 요청','off-ignored':'서버가 잠깐 \'공부 중 아님\'으로 보냄 → 무시하고 계속'})[x.e]||x.e}${x.s?' · '+x.s:''}  (${x.d})`}).join('\n'))}</pre></details>`:''}
     <div class="mfoot"><button type="button" class="pbtn" onclick="closeModal()">닫기</button></div>`;
   M.classList.add('open');
 }
