@@ -2472,7 +2472,7 @@ const h=location.hash.slice(1); if(['admit','cal','bucket','all','ypt'].includes
 (function(){
 const YPT_RELAY_URL='https://flysky-ypt.sm01025326079.workers.dev';   // 중계 서버 주소. 비워 두면 연결 화면에서 직접 입력
 const DEVICE_MODEL='FlySky Web';   // 공부 기록에 남는 기기 이름
-const DEV=(/iPad|Macintosh/.test(navigator.userAgent)&&'ontouchend' in document)?'iPad':/iPhone/.test(navigator.userAgent)?'iPhone':/Android/.test(navigator.userAgent)?'Android':'PC';
+const DEV=((/iPad|Macintosh/.test(navigator.userAgent)&&'ontouchend' in document)?'iPad':/iPhone/.test(navigator.userAgent)?'iPhone':/Android/.test(navigator.userAgent)?'Android':'PC')+(document.documentElement.classList.contains('pwa')?' 웹앱':' 브라우저');
 /* 공부 기록 내역 (끊김 원인 추적용, 최근 40개) */
 function ylog(e,extra){try{Y.log=(Y.log||[]).slice(-39);Y.log.push(Object.assign({t:Date.now(),e,d:DEV},extra||{}));localStorage.setItem(YKEY,JSON.stringify(Y))}catch(x){}}
 const YKEY='flysky:ypt';
