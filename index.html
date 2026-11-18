@@ -10,7 +10,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Fly Sky">
 <meta name="theme-color" content="#c9cfe2">
-<script>window.FLY_BUILD="2026.11.18-r69";
+<script>window.FLY_BUILD="2026.11.18-r70";
 /* 새로고침 버튼이 붙인 ?r=… 는 주소창에서 바로 지움 */
 if(/[?&]r=\d/.test(location.search))history.replaceState(history.state,"",location.pathname+location.hash);</script>
 <script>
@@ -2867,8 +2867,29 @@ function myTotal(){
 /* 서버가 보여 준 내 상태 받기 */
 const wasStopped=st=>(Y.stopped||[]).some(x=>Math.abs(x-st)<3000);
 const mergeStops=(a,b)=>[...new Set([...(a||[]),...(b||[])].map(Number).filter(Boolean))].sort((x,y)=>x-y).slice(-30);
+/* 열품타 서버 자료는 시간이 갈수록 '멈춘 시각(sp)'과 '누적(sm)'이 늘기만 함. 그런데 서버의 어떤 응답(그룹 목록 등)은
+   몇 분 전 사본이라 '멈추기 전' 모습(공부 중 · 예전 sp · 적은 누적)을 다시 보여 줌 → 이게 '저절로 다시 켜짐'의 원인.
+   서버가 준 값 중 가장 최근 sp · sm을 기억(앱을 껐다 켜도 유지)해서, 그보다 옛날 자료는 버림 */
+const dayKey=()=>{const d=new Date(Date.now()-5*3600e3);return d.getFullYear()*1e4+(d.getMonth()+1)*100+d.getDate()};
+function monoSeen(sp,sm){
+  const m=Y.mono&&Y.mono.day===dayKey()?Y.mono:{day:dayKey(),sp:(Y.mono&&Y.mono.sp)||0,sm:0};
+  let ch=m!==Y.mono;
+  if(sp&&sp>m.sp){m.sp=sp;ch=true}
+  if(sm&&sm>m.sm){m.sm=sm;ch=true}
+  if(ch){Y.mono=m;saveY()}
+}
+function isOld(o){
+  const m=Y.mono; if(!m) return '';
+  if(o.sp&&m.sp&&o.sp<m.sp-1000) return '예전 멈춤 시각';
+  if(o.on&&o.st&&m.sp&&o.st<m.sp-1000) return '이미 끝난 세션';
+  if(o.on&&o.st&&wasStopped(o.st)&&m.day===dayKey()&&m.sm&&o.sm<m.sm-1000) return '멈추기 전 누적';
+  return '';
+}
 function observe(o){
   if(!Y.jwt||stale(o.asked)||(srv&&o.asked<srv.asked)) return;
+  const old=isOld(o);
+  if(old){if(observe.old!==(o.sp||o.st)){observe.old=o.sp||o.st;ylog('old-ignored',{s:old+' · 누적 '+Math.round((o.sm||0)/60000)+'분'+(o.sp?' · 멈춤 '+new Date(o.sp).toTimeString().slice(0,8):'')})}return}
+  monoSeen(o.sp,o.sm);
   /* 안정성 보장: 기록 중이면 '이 기록이 시작된 뒤에 멈춘 시각(sp)'이 서버에 있을 때만 멈춘 걸로 봄
      (열품타 앱 · 다른 기기의 진짜 정지). 그런 증거 없는 '공부 중 아님'(표시 누락 · 늦은 반영 · 일시 오류)은 무시하고 계속 */
   if(!o.on&&Y.run&&!(o.sp&&o.sp>Y.run.startedAt+1000)){
@@ -3005,6 +3026,7 @@ async function studyStop(){
     const j=await call('POST','/study/stop',{startedAt,deviceModel:DEVICE_MODEL});
     if(j.s!==true) throw new YErr(String(j.c||'stop'));
     const total=myTotal(); actionAt=Date.now(); pend={on:false,st:0,sm:Math.max(total,j.dl&&+j.dl.sm||0),at:actionAt};
+    if(j.dl&&+j.dl.sm) monoSeen(0,+j.dl.sm);                 // 정지 응답의 누적(서버 값)도 기억 → 그보다 적은 '멈추기 전' 사본은 버림
     Y.stopped=mergeStops(Y.stopped,[startedAt]);           // 멈춘 세션 기억 (기기 간 동기화) → 서버가 늦게 반영해도 다시 켜지지 않음
     Y.run=null; ylog('stop'); saveY(); toast('열품타에 기록했어요');
     loadDay().then(()=>loadMembers()).then(render,()=>render());
@@ -3204,7 +3226,7 @@ function memberDetail(i){
       <span class="st2 ${m.on?'on':m.paused?'pause':'off'}">${state}</span>
     </div>
     ${rows.map(([k,v,big])=>`<div class="mdstat"><span>${k}</span><b${big?'':' class="sm"'}>${esc(v)}</b></div>`).join('')}
-    ${me&&(Y.log||[]).length?`<details class="mdraw"><summary>기록 내역</summary><pre>${esc((Y.log||[]).slice().reverse().map(x=>{const t=new Date(x.t);return `${t.getMonth()+1}/${t.getDate()} ${pad(t.getHours())}:${pad(t.getMinutes())}:${pad(t.getSeconds())}  ${({start:'시작','auto-restart':'끊김 → 자동 재시작',stop:'정지','remote-start':'다른 기기에서 시작','remote-stop':'다른 기기에서 정지','server-stopped':'다른 기기 · 열품타 앱에서 정지',adopt:'열품타 앱 기록 반영','relogin-try':'로그인 만료 → 재로그인 시도',relogin:'재로그인 성공',expired:'로그인 만료','stop-retry':'정지가 반영되지 않아 다시 정지 요청','stop-failed':'정지가 반영되지 않음 → 기록 중으로 되돌림','obs-on':'서버: 공부 중','obs-off':'서버: 공부 중 아님','obs-paused':'서버: 일시정지','off-ignored':'서버가 잠깐 \'공부 중 아님\'으로 보냄 → 무시하고 계속'})[x.e]||x.e}${x.s?' · '+x.s:''}  (${x.d})`}).join('\n'))}</pre></details>`:''}
+    ${me&&(Y.log||[]).length?`<details class="mdraw"><summary>기록 내역</summary><pre>${esc((Y.log||[]).slice().reverse().map(x=>{const t=new Date(x.t);return `${t.getMonth()+1}/${t.getDate()} ${pad(t.getHours())}:${pad(t.getMinutes())}:${pad(t.getSeconds())}  ${({start:'시작','auto-restart':'끊김 → 자동 재시작',stop:'정지','remote-start':'다른 기기에서 시작','remote-stop':'다른 기기에서 정지','server-stopped':'다른 기기 · 열품타 앱에서 정지',adopt:'열품타 앱 기록 반영','relogin-try':'로그인 만료 → 재로그인 시도',relogin:'재로그인 성공',expired:'로그인 만료','stop-retry':'정지가 반영되지 않아 다시 정지 요청','stop-failed':'정지가 반영되지 않음 → 기록 중으로 되돌림','obs-on':'서버: 공부 중','obs-off':'서버: 공부 중 아님','obs-paused':'서버: 일시정지','off-ignored':'서버가 잠깐 \'공부 중 아님\'으로 보냄 → 무시하고 계속','old-ignored':'서버의 옛날 사본 → 무시','on-ignored':'이미 멈춘 세션 → 무시'})[x.e]||x.e}${x.s?' · '+x.s:''}  (${x.d})`}).join('\n'))}</pre></details>`:''}
     <div class="mfoot"><button type="button" class="pbtn" onclick="closeModal()">닫기</button></div>`;
   M.classList.add('open');
 }
