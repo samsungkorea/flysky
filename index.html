@@ -10,7 +10,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Fly Sky">
 <meta name="theme-color" content="#c9cfe2">
-<script>window.FLY_BUILD="2026.11.18-r73";
+<script>window.FLY_BUILD="2026.11.18-r74";
 /* 새로고침 버튼이 붙인 ?r=… 는 주소창에서 바로 지움 */
 if(/[?&]r=\d/.test(location.search))history.replaceState(history.state,"",location.pathname+location.hash);</script>
 <script>
@@ -1489,20 +1489,34 @@ const hH=document.getElementById('hHour'),hM=document.getElementById('hMin'),hS=
 const bH=document.getElementById('bwH'),bM=document.getElementById('bwM'),bS=document.getElementById('bwS'),BX=281.26,BY=489.04,BO=-0.38;
 let beige=false;
 const easeOutBack=t=>{const c1=1.70158,c3=c1+1;return 1+c3*Math.pow(t-1,3)+c1*Math.pow(t-1,2)};
+/* 시각이 갑자기 바뀌면(수능 모드 ↔ 스톱워치, 모의 수능 교시 바꾸기, 화면에 다시 들어올 때 등)
+   바늘이 순간이동하지 않고 실제 시계처럼 돌아서 새 시각으로 감 (각 바늘이 가까운 쪽으로) */
+let handA=null, lastSec=null, mv=null;
+const easeIO=t=>t<.5?4*t*t*t:1-Math.pow(-2*t+2,3)/2;
+const near=(from,to)=>{let d=((to-from)%360+540)%360-180;return from+d};   // to와 같은 위치 중 from에서 가장 가까운 각도
 function drawHands(sec){
   const whole=Math.floor(sec), frac=sec-whole;
-  const s=whole%60, m=(sec/60)%60, h=(sec/3600)%12;
+  const s=((whole%60)+60)%60, m=(((sec/60)%60)+60)%60, h=(((sec/3600)%12)+12)%12;
   const step=Math.min(1,frac/0.16);                       // 초침: 1초마다 '똑' 하고 넘어감
-  const sAng=((s-1)+easeOutBack(step))*6;
+  let A={s:((s-1)+easeOutBack(step))*6, m:m*6, h:h*30};
+  const now=performance.now();
+  if(handA&&lastSec!=null&&Math.abs(sec-lastSec)>2) mv={from:{...handA},t0:now,dur:900};   // 시각이 튐 → 돌려서 이동 시작
+  lastSec=sec;
+  if(mv){
+    const t=Math.min(1,(now-mv.t0)/mv.dur), e=easeIO(t);
+    if(t>=1) mv=null;
+    else A={s:mv.from.s+(near(mv.from.s,A.s)-mv.from.s)*e, m:mv.from.m+(near(mv.from.m,A.m)-mv.from.m)*e, h:mv.from.h+(near(mv.from.h,A.h)-mv.from.h)*e};
+  }
+  handA=A;
   if(beige){
-    bS.setAttribute('transform',`rotate(${sAng+BO} ${BX} ${BY})`);
-    bM.setAttribute('transform',`rotate(${m*6+BO} ${BX} ${BY})`);
-    bH.setAttribute('transform',`rotate(${h*30+BO} ${BX} ${BY})`);
+    bS.setAttribute('transform',`rotate(${A.s+BO} ${BX} ${BY})`);
+    bM.setAttribute('transform',`rotate(${A.m+BO} ${BX} ${BY})`);
+    bH.setAttribute('transform',`rotate(${A.h+BO} ${BX} ${BY})`);
     return;
   }
-  hS.setAttribute('transform',`rotate(${sAng} ${CX} ${CY})`);
-  hM.setAttribute('transform',`rotate(${m*6} ${CX} ${CY})`);
-  hH.setAttribute('transform',`rotate(${h*30} ${CX} ${CY})`);
+  hS.setAttribute('transform',`rotate(${A.s} ${CX} ${CY})`);
+  hM.setAttribute('transform',`rotate(${A.m} ${CX} ${CY})`);
+  hH.setAttribute('transform',`rotate(${A.h} ${CX} ${CY})`);
 }
 
 /* ---------- 수능 상태 ---------- */
