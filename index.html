@@ -10,7 +10,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Fly Sky">
 <meta name="theme-color" content="#c9cfe2">
-<script>window.FLY_BUILD="2026.11.18-r61";</script>
+<script>window.FLY_BUILD="2026.11.18-r62";</script>
 <script>
 /* 홈 화면 웹앱으로 실행 중이면 html.pwa (iPad 창 모드 등에서 safe-area 값이 0으로 오는 경우 대비) */
 try{if(navigator.standalone||matchMedia('(display-mode: standalone)').matches||matchMedia('(display-mode: fullscreen)').matches)document.documentElement.classList.add('pwa')}catch(e){}
@@ -664,6 +664,11 @@ try{if(navigator.standalone||matchMedia('(display-mode: standalone)').matches||m
   /* bucket */
   .bkgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:20px;align-items:start}
   .bkc ul{list-style:none;margin-top:10px}
+  .bkc>.label{display:flex;align-items:center;justify-content:space-between}
+  .bkc .bkedit{width:30px;height:30px;margin:-6px -6px -6px 0}
+  .bkc .bkedit svg{width:16px;height:16px}
+  .bkadd{border:2px dashed #b9c0d8;background:rgba(255,255,255,.35);display:flex;align-items:center;justify-content:center;gap:8px;color:var(--sub);font-size:15px;font-weight:600;min-height:120px;cursor:pointer}
+  .bkadd svg{width:20px;height:20px}
   .bkc li{display:flex;align-items:center;gap:12px;padding:12px 2px;border-bottom:1px solid var(--line);font-size:15px}
   .bkc li::before{content:"";width:6px;height:6px;border-radius:50%;background:var(--accent-light);flex-shrink:0}
   .bkc li .bt{flex:1}
@@ -1360,13 +1365,33 @@ html.pwa .toast{top:calc(max(env(safe-area-inset-top),24px) + 34px)}
     b.parentElement.querySelectorAll('button').forEach(x=>x.classList.remove('on'));b.classList.add('on');
   });
 
-  function showView(v,m){
+  /* 뒤로가기: 홈이 아닌 화면은 홈 위에 한 칸 쌓아 둠 → 뒤로가기를 누르면 홈으로 */
+  const VIEWS=['home','timer','admit','cal','bucket','all','ypt'];
+  let navBack=false;
+  function navHist(v){
+    const st=history.state, mine=!!(st&&st.flyNav), url=location.pathname+location.search;
+    if(v==='home'){
+      if(mine){navBack=true;history.back()} else if(!(st&&st.flyPopup)) history.replaceState(null,'',url);
+      return;
+    }
+    if(mine) history.replaceState({flyNav:1},'','#'+v);
+    else{ if(!st) history.replaceState(null,'',url); history.pushState({flyNav:1},'','#'+v) }
+  }
+  addEventListener('popstate',()=>setTimeout(()=>{          // 팝업 닫기용 뒤로가기가 먼저 정리되도록 한 박자 늦게
+    const cur=(document.querySelector('.view.on')||{}).id||'';
+    if(navBack){navBack=false;                               // 코드가 홈으로 되돌린 것: 그 사이 다른 화면으로 갔다면 다시 쌓기
+      const v=cur.replace('view-',''); if(v&&v!=='home'&&!(history.state&&history.state.flyNav)) history.pushState({flyNav:1},'','#'+v);
+      return}
+    const h=location.hash.slice(1), v=VIEWS.includes(h)?h:'home';
+    if(cur!=='view-'+v) showView(v,null,true);
+  },0));
+  function showView(v,m,fromPop){
     document.querySelectorAll('.view').forEach(x=>x.classList.toggle('on',x.id==='view-'+v));
     const phoneHidden=matchMedia('(max-width:900px)').matches&&['admit','cal','bucket'].includes(v);   // 휴대폰 하단 바에 없는 화면이면 ··· 표시
     document.querySelectorAll('.side .nav-btn').forEach(b=>b.classList.toggle('active',b.dataset.v===v||(phoneHidden&&b.dataset.v==='all')));
     const hb=document.querySelector('.side .nav-btn[data-v="home"]'); if(hb) hb.classList.toggle('fly',v!=='home');
     if(m) window.setTimerMode(m);
-    history.replaceState(null,'',v==='home'?location.pathname:'#'+v);
+    if(!fromPop) navHist(v);
     document.querySelector('.app').scrollTo(0,0);
   }
   /* 이미 보고 있는 화면의 아래 버튼을 다시 누르면: 위쪽 탭을 처음 것으로 (홈 → 전체, 타이머 → 수능 모드, 입시 → 첫 탭, 캘린더 → 오늘) */
@@ -2319,15 +2344,38 @@ async function fetchGoogle(){
 
 /* ============ 버킷리스트 ============ */
 const BKC=['여행','배우기','먹기','쉬기','기타'];
+const bkCats=()=>Array.isArray(S.bkCats)?S.bkCats:BKC;      // 직접 고친 범주 목록 (기기 간 동기화)
+const PEN='<svg viewBox="0 0 24 24"><path d="M4 20h4L19 9l-4-4L4 16zM14 6l4 4"/></svg>';
 function renderBucket(){
-  const cats=[...BKC,...new Set(S.bucket.map(b=>b.cat).filter(c=>!BKC.includes(c)))];
+  const base=bkCats(), cats=[...base,...new Set(S.bucket.map(b=>b.cat).filter(c=>!base.includes(c)))];
   $('bkTag').textContent=S.bucket.length+'개';
   $('bkGrid').innerHTML=cats.map(c=>{
     const items=S.bucket.filter(b=>b.cat===c);
-    return `<section class="card bkc"><div class="label">${esc(c)} <span class="tag">${items.length}</span></div>
+    return `<section class="card bkc"><div class="label"><span class="bkn">${esc(c)} <span class="tag">${items.length}</span></span><button type="button" class="ibtn bkedit" data-act="bk-cat" data-c="${esc(c)}" aria-label="범주 수정">${PEN}</button></div>
       <ul>${items.map(b=>`<li><span class="bt">${esc(b.text)}</span><button class="ibtn" data-act="bk-del" data-id="${b.id}">${X}</button></li>`).join('')}</ul>
       <form class="inline" data-bk="${esc(c)}"><input name="text" placeholder="추가" required><button class="pbtn">추가</button></form></section>`;
-  }).join('');
+  }).join('')+`<button type="button" class="card bkc bkadd" data-act="bk-cat-new"><svg class="ic" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>범주 추가</button>`;
+}
+/* 범주 추가 · 이름 바꾸기 · 삭제 */
+function editBkCat(old){
+  const n=old==null?0:S.bucket.filter(b=>b.cat===old).length;
+  openModal(old==null?'범주 추가':'범주 수정',
+    `<div class="fx"><label>이름</label><input name="name" maxlength="20" required value="${old==null?'':esc(old)}" placeholder="예: 운동, 공연"></div>`,
+    {saveText:old==null?'추가':'저장',
+     onSave:f=>{
+       const nm=String(f.get('name')||'').trim(); if(!nm) return;
+       const base=bkCats(), all=[...base,...new Set(S.bucket.map(b=>b.cat).filter(c=>!base.includes(c)))];
+       if(nm!==old&&all.includes(nm)){toast('이미 있는 범주예요');return}
+       if(old==null){S.bkCats=[...all,nm]}
+       else{S.bkCats=all.map(c=>c===old?nm:c); S.bucket.forEach(b=>{if(b.cat===old)b.cat=nm})}
+       save();
+     },
+     onDelete:old==null?null:()=>{
+       const base=bkCats(), all=[...base,...new Set(S.bucket.map(b=>b.cat).filter(c=>!base.includes(c)))];
+       S.bkCats=all.filter(c=>c!==old); S.bucket=S.bucket.filter(b=>b.cat!==old); save();
+     },
+     delMsg:n?`'${old}' 범주와 안에 있는 ${n}개 항목이 모두 삭제돼요.`:`'${old}' 범주가 삭제돼요.`});
+  setTimeout(()=>{const i=document.querySelector('#mForm input[name="name"]');if(i){i.focus();i.select()}},60);
 }
 document.addEventListener('submit',e=>{
   const f=e.target.closest('form[data-bk]'); if(!f) return;
@@ -2444,6 +2492,8 @@ document.addEventListener('click',e=>{
   else if(act==='ev-gedit') editGEvent(el.dataset.gid);
   else if(act==='ev-migrate') migrateLocal();
   else if(act==='bk-del'){S.bucket=S.bucket.filter(x=>x.id!==id);save()}
+  else if(act==='bk-cat') editBkCat(el.dataset.c);
+  else if(act==='bk-cat-new') editBkCat(null);
   else if(act==='feat'){openFeat(FEATS[el.dataset.c].items[el.dataset.f])}
   else if(act==='go'){showView(el.dataset.v);if(el.dataset.t)setAdmitTab(el.dataset.t)}
   else if(act==='interview'){window.open(INTERVIEW_URL,'_blank','noopener')}
