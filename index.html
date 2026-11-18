@@ -10,7 +10,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Fly Sky">
 <meta name="theme-color" content="#c9cfe2">
-<script>window.FLY_BUILD="2026.11.18-r65";
+<script>window.FLY_BUILD="2026.11.18-r66";
 /* 새로고침 버튼이 붙인 ?r=… 는 주소창에서 바로 지움 */
 if(/[?&]r=\d/.test(location.search))history.replaceState(history.state,"",location.pathname+location.hash);</script>
 <script>
@@ -196,6 +196,9 @@ try{if(navigator.standalone||matchMedia('(display-mode: standalone)').matches||m
   /* Sheet */
   .scrim{position:fixed;inset:0;background:rgba(21,22,26,.35);backdrop-filter:blur(6px);display:none;align-items:center;justify-content:center;z-index:50;padding:20px}
   .scrim.open{display:flex}
+  .updbar{position:fixed;left:50%;bottom:calc(118px + env(safe-area-inset-bottom));transform:translateX(-50%);z-index:140;background:var(--ink);color:#fff;border-radius:999px;padding:12px 18px;font-size:14px;font-weight:600;box-shadow:0 10px 30px rgba(0,0,0,.2);white-space:nowrap;animation:flyFade .35s var(--soft) both}
+  .updbar b{color:#b9c3ff;margin-left:8px}
+  @media (min-width:901px){.updbar{bottom:28px}}
   /* 아이콘을 누르면 아이콘마다 다른 짧은 동작 */
   .mo-spin{animation:moSpin .7s var(--spring)}  @keyframes moSpin{from{transform:rotate(0)}to{transform:rotate(180deg)}}
   .mo-spin360{animation:moSpin360 .7s var(--spring)}  @keyframes moSpin360{from{transform:rotate(0)}to{transform:rotate(360deg)}}
@@ -1750,6 +1753,8 @@ function loop(){
 updateLabels(); loop();
 
 window.setTimerMode=m=>document.querySelector(`#view-timer .tmode[data-m="${m}"]`).click();
+/* 자동 업데이트가 함부로 새로고침하면 안 되는 상태 (모의 수능 · 스톱워치 · 타이머가 진행 중이거나 멈춰 둔 기록이 있을 때) */
+window.__timerBusy=()=>mock.running||mock.acc>0||sw.running||sw.acc>0||sw.laps.length>0||tm.running||tm.acc>0;
 })();
 if(location.hash==='#timer') showView('timer');
 </script>
@@ -3250,6 +3255,36 @@ document.addEventListener('keydown',e=>{if((e.ctrlKey||e.metaKey)&&['+','-','=',
   document.addEventListener('click',e=>{if(!eat)return;eat=false;e.preventDefault();e.stopPropagation()},true);
   document.addEventListener('keydown',e=>{if(e.key!=='Escape')return;if(ask.classList.contains('open'))window.flyAskDone(false);else if(modal.classList.contains('open'))window.closeModal();else if(pop.classList.contains('open'))pop.classList.remove('open')});
   sync();
+})();
+</script>
+<script>
+/* 새 버전 자동 확인: 웹앱(특히 아이패드)은 예전 페이지를 오래 붙잡고 있어서,
+   앱을 열 때 · 다시 돌아올 때 서버의 최신 버전을 직접 확인하고 더 새로우면 새로고침
+   (팝업이 떠 있거나, 글을 쓰는 중이거나, 타이머가 돌고 있으면 대신 '업데이트' 버튼을 띄움) */
+(function(){
+  const num=b=>{const m=String(b||'').match(/^(\d+)\.(\d+)\.(\d+)-r(\d+)/);return m?[+m[1],+m[2],+m[3],+m[4]]:null};
+  const newer=(a,b)=>{const x=num(a),y=num(b);if(!x||!y)return false;for(let i=0;i<4;i++){if(x[i]!==y[i])return x[i]>y[i]}return false};
+  let last=0, bar=null, busy=false;
+  let touched=0; addEventListener('pointerdown',()=>touched=Date.now(),{passive:true,capture:true});
+  const go=()=>location.replace(location.pathname+'?r='+Date.now()+location.hash);
+  const safe=()=>Date.now()-touched>4000&&!document.querySelector('.scrim.open, .pop.open, #fsLayer.on, #cdown.on')&&!(document.activeElement&&document.activeElement.matches('input,textarea,select,[contenteditable]'))&&!(window.__timerBusy&&window.__timerBusy());
+  function offer(v){
+    if(bar) return;
+    bar=document.createElement('button'); bar.className='updbar'; bar.type='button';
+    bar.innerHTML=`새 버전이 있어요 <b>업데이트</b>`; bar.onclick=go; document.body.appendChild(bar);
+  }
+  async function check(force){
+    if(busy||location.protocol==='file:'||(!force&&Date.now()-last<60000)) return; busy=true; last=Date.now();
+    try{
+      const t=await (await fetch(location.pathname+'?v='+Date.now(),{cache:'no-store'})).text();
+      const m=t.match(/FLY_BUILD="([^"]+)"/);
+      if(m&&newer(m[1],window.FLY_BUILD)){ if(safe()) go(); else offer(m[1]) }
+    }catch(e){}
+    busy=false;
+  }
+  setTimeout(()=>check(true),2500);
+  document.addEventListener('visibilitychange',()=>{if(!document.hidden)check()});
+  window.__flyCheckUpdate=check;
 })();
 </script>
 <script>
