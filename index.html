@@ -10,7 +10,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Fly Sky">
 <meta name="theme-color" content="#c9cfe2">
-<script>window.FLY_BUILD="2026.11.18-r66";
+<script>window.FLY_BUILD="2026.11.18-r67";
 /* 새로고침 버튼이 붙인 ?r=… 는 주소창에서 바로 지움 */
 if(/[?&]r=\d/.test(location.search))history.replaceState(history.state,"",location.pathname+location.hash);</script>
 <script>
@@ -199,6 +199,16 @@ try{if(navigator.standalone||matchMedia('(display-mode: standalone)').matches||m
   .updbar{position:fixed;left:50%;bottom:calc(118px + env(safe-area-inset-bottom));transform:translateX(-50%);z-index:140;background:var(--ink);color:#fff;border-radius:999px;padding:12px 18px;font-size:14px;font-weight:600;box-shadow:0 10px 30px rgba(0,0,0,.2);white-space:nowrap;animation:flyFade .35s var(--soft) both}
   .updbar b{color:#b9c3ff;margin-left:8px}
   @media (min-width:901px){.updbar{bottom:28px}}
+  .clkpick{display:inline-flex;align-items:center;gap:4px;font:inherit;color:inherit;margin:-6px -8px;padding:6px 8px;border-radius:999px;transition:background .2s}
+  .clkpick:hover,.clkpick[aria-expanded="true"]{background:var(--chip)}
+  .clkpick svg{width:15px;height:15px;stroke-width:2.2;transition:transform .3s var(--spring)}
+  .clkpick[aria-expanded="true"] svg{transform:rotate(180deg)}
+  .clkmenu{position:fixed;z-index:120;background:#fff;border-radius:20px;padding:6px;min-width:190px;box-shadow:0 14px 40px rgba(20,22,40,.18);transform-origin:top left;animation:clkIn .28s var(--spring) both}
+  .clkmenu button{display:flex;align-items:center;justify-content:space-between;gap:14px;width:100%;padding:12px 14px;border-radius:14px;font-size:14px;font-weight:500;text-align:left}
+  .clkmenu button:hover{background:var(--chip)}
+  .clkmenu button.on{font-weight:700;color:var(--accent)}
+  .clkmenu button small{color:var(--sub);font-weight:500;font-variant-numeric:tabular-nums}
+  @keyframes clkIn{from{opacity:0;transform:scale(.9) translateY(-4px)}to{opacity:1;transform:none}}
   /* 아이콘을 누르면 아이콘마다 다른 짧은 동작 */
   .mo-spin{animation:moSpin .7s var(--spring)}  @keyframes moSpin{from{transform:rotate(0)}to{transform:rotate(180deg)}}
   .mo-spin360{animation:moSpin360 .7s var(--spring)}  @keyframes moSpin360{from{transform:rotate(0)}to{transform:rotate(360deg)}}
@@ -989,7 +999,7 @@ html.pwa .toast{top:calc(max(env(safe-area-inset-top),24px) + 34px)}
       <!-- Timer -->
       <section class="card timer">
         <div class="left">
-          <div class="label">오늘 공부 시간</div>
+          <div class="label"><button type="button" class="clkpick" data-act="ypt-clk" aria-haspopup="menu"><span class="clkname">오늘 공부 시간</span><svg viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg></button></div>
         <span class="tag ypt ypt-corner ypt-off" id="yptTag" onclick="openSheet()"><span class="dot"></span>열품타 연결</span>
           <div class="clock" id="homeStudy">00:00:00</div>
           <div class="subj" id="homeSubj"><span style="flex:1;background:#d8ddee"></span></div>
@@ -1296,7 +1306,7 @@ html.pwa .toast{top:calc(max(env(safe-area-inset-top),24px) + 34px)}
       <div class="ycol">
         <section class="card timer yv-timer">
           <div class="left">
-            <div class="label">오늘 공부 시간</div>
+            <div class="label"><button type="button" class="clkpick" data-act="ypt-clk" aria-haspopup="menu"><span class="clkname">오늘 공부 시간</span><svg viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg></button></div>
             <div class="clock" id="yvStudy">00:00:00</div>
             <div class="subj" id="yvSubj"><span style="flex:1;background:#d8ddee"></span></div>
             <div class="legend" id="yvLegend"></div>
@@ -2992,6 +3002,25 @@ document.addEventListener('click',e=>{
 const COLORS=['var(--accent-deep)','var(--accent)','var(--accent-light)','#d8ddee'];
 const MEMC=['var(--accent-deep)','#8592c4','#9aa0b0','#3f4a6b','var(--accent)'];
 const runMs=()=>Y.run?Date.now()-Y.run.startedAt:0;
+/* 큰 시계에 무엇을 보일지: 오늘 공부 시간(total) · 과목 공부 시간(subj, 고른/진행 중 과목) · 현재 집중 시간(sess, 이번 세션) — 설정은 기기 간 동기화 */
+const CLK={total:'오늘 공부 시간',subj:'과목 공부 시간',sess:'현재 집중 시간'};
+const clkMode=()=>{const p=window.flyPref?window.flyPref.get():{};return CLK[p.yclock]?p.yclock:'total'};
+const selSubj=()=>Y.run?Y.run.subject:curSubj();
+function subjMs(t){const x=(info?info.subjects:[]).find(s=>s.t===t);return (x?x.sm:0)+(Y.run&&Y.run.subject===t?runMs():0)}
+function clockMs(k){k=k||clkMode();return k==='sess'?runMs():k==='subj'?subjMs(selSubj()):myTotal()}
+function clockName(){const k=clkMode(),t=selSubj();return k==='subj'?(t?`${t} 공부 시간`:'과목 공부 시간'):CLK[k]}
+function clkMenu(btn){
+  const old=document.querySelector('.clkmenu'); if(old){old.remove();document.querySelectorAll('.clkpick').forEach(b=>b.setAttribute('aria-expanded','false'));if(old._b===btn)return}
+  const k=clkMode(), t=selSubj(), m=document.createElement('div'); m.className='clkmenu'; m.setAttribute('role','menu'); m._b=btn;
+  m.innerHTML=Object.keys(CLK).map(x=>`<button type="button" role="menuitem" data-k="${x}" class="${x===k?'on':''}"><span>${x==='subj'&&t?esc(t)+' 공부 시간':CLK[x]}</span><small>${hms(clockMs(x))}</small></button>`).join('');
+  document.body.appendChild(m); btn.setAttribute('aria-expanded','true');
+  const r=btn.getBoundingClientRect(); m.style.left=Math.max(10,Math.min(r.left-6,innerWidth-m.offsetWidth-10))+'px'; m.style.top=(r.bottom+8)+'px';
+  m.onclick=e=>{const b=e.target.closest('[data-k]');if(!b)return;window.flyPref&&window.flyPref.set('yclock',b.dataset.k);m.remove();btn.setAttribute('aria-expanded','false');renderHome()};
+  const close=e=>{if(e.target.closest('.clkmenu, .clkpick'))return;m.remove();document.querySelectorAll('.clkpick').forEach(b=>b.setAttribute('aria-expanded','false'));document.removeEventListener('pointerdown',close,true)};
+  setTimeout(()=>document.addEventListener('pointerdown',close,true),0);
+}
+document.addEventListener('click',e=>{const b=e.target.closest('.clkpick');if(b){e.stopPropagation();clkMenu(b)}},true);
+document.addEventListener('flysky:prefs',()=>renderHome());
 function orderedGroups(){const ord=Y.gorder||[];return groups.slice().sort((a,b)=>{let ia=ord.indexOf(a.id),ib=ord.indexOf(b.id);if(ia<0)ia=1e9;if(ib<0)ib=1e9;return ia-ib||0})}
 function moveGroup(id,dir){const og=orderedGroups().map(g=>g.id),i=og.indexOf(id),j=i+dir;if(i<0||j<0||j>=og.length)return;[og[i],og[j]]=[og[j],og[i]];Y.gorder=og;saveY();render()}
 function curSubj(){const subs=info?info.subjects:[];return (subs.find(x=>x.t===Y.subj)||subs[0]||{t:''}).t}
@@ -3004,14 +3033,14 @@ function topSubs(){return (info?info.subjects:[]).map(x=>({...x,sm:x.sm+(Y.run&&
 function studyParts(){
   const subs=topSubs(), sel=Y.run?Y.run.subject:curSubj();
   return {
-    clock:hms(myTotal()),
+    clock:hms(clockMs()),
     bar:subs.length?subs.map((x,i)=>`<span style="flex:${x.sm};background:${COLORS[i]}"></span>`).join(''):'<span style="flex:1;background:#d8ddee"></span>',
     legend:subs.map((x,i)=>`<span><i style="background:${COLORS[i]}"></i>${esc(x.t)}</span>`).join(''),
     pick:(info?info.subjects:[]).map(x=>`<span class="tag${x.t===sel?' on':''}" data-subj="${esc(x.t)}">${esc(x.t)}</span>`).join('')
   };
 }
 function fillStudy(ids,P){
-  $(ids.clock).textContent=P.clock; $(ids.bar).innerHTML=P.bar; $(ids.legend).innerHTML=P.legend;
+  $(ids.clock).textContent=P.clock; const lb=$(ids.clock).parentElement.querySelector('.clkname'); if(lb) lb.textContent=clockName(); $(ids.bar).innerHTML=P.bar; $(ids.legend).innerHTML=P.legend;
   const pick=$(ids.pick); pick.classList.toggle('lock',!!Y.run); pick.innerHTML=P.pick;
   const pb=$(ids.play); pb.innerHTML=Y.run?IC_PAUSE:IC_PLAY; pb.disabled=!!pending;
   pb.setAttribute('aria-label',Y.run?'공부 기록 정지':'공부 기록 시작');
@@ -3176,7 +3205,7 @@ document.addEventListener('click',e=>{
 const groupVisible=()=>['view-home','view-ypt'].some(id=>{const v=document.getElementById(id);return v&&v.classList.contains('on')});
 let tick=0;
 setInterval(()=>{
-  if(Y.run){const c=hms(myTotal());$('homeStudy').textContent=c;$('yvStudy').textContent=c;if(Y.run)$('yvSubs').innerHTML=subjectList()}
+  if(Y.run){const c=hms(clockMs());$('homeStudy').textContent=c;$('yvStudy').textContent=c;if(Y.run)$('yvSubs').innerHTML=subjectList()}
   if(!document.hidden&&(Y.run||members.some(m=>m.on)))
     document.querySelectorAll('#yptMembers .mem.study, #yvMembers .mem.study').forEach(el=>{const m=members[+el.dataset.mi];if(m){const t=el.querySelector('.tm');if(t)t.textContent=hms(liveMs(m))}});
   if(!Y.jwt||document.hidden) return;
