@@ -10,7 +10,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Fly Sky">
 <meta name="theme-color" content="#c9cfe2">
-<script>window.FLY_BUILD="2026.11.18-r74";
+<script>window.FLY_BUILD="2026.11.18-r75";
 /* 새로고침 버튼이 붙인 ?r=… 는 주소창에서 바로 지움 */
 if(/[?&]r=\d/.test(location.search))history.replaceState(history.state,"",location.pathname+location.hash);</script>
 <script>
@@ -1508,20 +1508,20 @@ function drawHands(sec){
     else A={s:mv.from.s+(near(mv.from.s,A.s)-mv.from.s)*e, m:mv.from.m+(near(mv.from.m,A.m)-mv.from.m)*e, h:mv.from.h+(near(mv.from.h,A.h)-mv.from.h)*e};
   }
   handA=A;
-  if(beige){
-    bS.setAttribute('transform',`rotate(${A.s+BO} ${BX} ${BY})`);
-    bM.setAttribute('transform',`rotate(${A.m+BO} ${BX} ${BY})`);
-    bH.setAttribute('transform',`rotate(${A.h+BO} ${BX} ${BY})`);
-    return;
-  }
-  hS.setAttribute('transform',`rotate(${A.s} ${CX} ${CY})`);
-  hM.setAttribute('transform',`rotate(${A.m} ${CX} ${CY})`);
-  hH.setAttribute('transform',`rotate(${A.h} ${CX} ${CY})`);
+  /* 성능: 값이 바뀐 바늘만 다시 그림 (초침은 1초마다 0.16초 동안만 움직이고, 분침 · 시침은 아주 천천히 움직임) */
+  const set=(el,a,ox,oy)=>{const v=(Math.round(a*50)/50)+' '+ox+' '+oy;if(el._r!==v){el._r=v;el.setAttribute('transform','rotate('+v+')')}};
+  if(beige){set(bS,A.s+BO,BX,BY);set(bM,A.m+BO,BX,BY);set(bH,A.h+BO,BX,BY);return}
+  set(hS,A.s,CX,CY);set(hM,A.m,CX,CY);set(hH,A.h,CX,CY);
 }
 
 /* ---------- 수능 상태 ---------- */
 const $=id=>document.getElementById(id);
 let lastIdx=-2, alerted={};
+/* 성능: 매 프레임 글자 · 막대를 다시 쓰면 휴대폰(특히 안드로이드)에서 매번 레이아웃을 다시 계산함
+   → 값이 실제로 바뀔 때만 씀 (막대는 0.1% 단위; 원래 0.7초 전환이 있어 보기엔 똑같음) */
+const setT=(id,v)=>{const e=$(id);if(e._t!==v){e._t=v;e.textContent=v}};
+const setH=(id,v)=>{const e=$(id);if(e._h!==v){e._h=v;e.innerHTML=v}};
+const setW=(id,pct)=>{const e=$(id),v=(Math.round(pct*10)/10)+'%';if(e._w!==v){e._w=v;e.style.width=v}};
 function examStatus(sec){
   let idx=P.findIndex(p=>sec>=p.S && sec<p.E);
   const first=P[0], last=P[P.length-1];
@@ -1547,9 +1547,9 @@ function examStatus(sec){
       if(remain<=1.2 && !alerted[key+'e']){alerted[key+'e']=1;notify(`${p.n} 종료`,3)}
     }
   }
-  $('stPeriod').textContent=period; $('stSubject').textContent=subject;
-  $('stRemain').textContent=fmtMS(remain); $('stRemainL').textContent=remainL;
-  $('stBar').style.width=prog+'%'; $('stNext').textContent=next; $('stNextT').textContent=nextT;
+  setT('stPeriod',period); setT('stSubject',subject);
+  setT('stRemain',fmtMS(remain)); setT('stRemainL',remainL);
+  setW('stBar',prog); setT('stNext',next); setT('stNextT',nextT);
 
   if(idx!==lastIdx){
     lastIdx=idx;
@@ -1764,13 +1764,13 @@ function loop(){
   if(shown) drawHands(sec);
   const day=((sec%86400)+86400)%86400;
   if(mode==='exam') examStatus(day);
-  if(mode==='sw') $('swDigits').innerHTML=fmtSW(swEl());
+  if(mode==='sw') setH('swDigits',fmtSW(swEl()));
   if(mode==='tm'){
     let left=tmLeft();
     if(left<=0 && tm.running){tm.running=false;tm.done=true;tm.acc=tm.total*1000;$('tmStart').textContent='완료';notify('타이머 종료',3)}
     left=Math.max(0,left);
-    $('tmDigits').textContent=fmtMS(left);
-    $('tmBar').style.width=(left/tm.total*100)+'%';
+    setT('tmDigits',fmtMS(left));
+    setW('tmBar',left/tm.total*100);
   }
   if(shown) requestAnimationFrame(loop); else setTimeout(loop,250);
 }
