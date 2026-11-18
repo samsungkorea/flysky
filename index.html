@@ -2643,15 +2643,18 @@ function quickCheck(){
 /* 내 정보(오늘 기록)에 들어 있는 지금 상태: 그룹을 안 골랐거나 내가 그 그룹에 없어도 알 수 있음 */
 function liveFrom(dl,asked){if(!info||!dl||typeof dl!=='object'||!('is' in dl))return;
   const st=typeof dl.st==='string'?Date.parse(dl.st):+dl.st||0;
-  info.live={on:sbool(dl.is)&&!sbool(dl.ia),paused:sbool(dl.ia),since:st>0?(st<1e11?st*1000:st):0,sm:+dl.sm||0,at:asked||Date.now()}}
+  info.live={on:sbool(dl.is)&&!sbool(dl.ia),paused:sbool(dl.ia),since:st>0?(st<1e11?st*1000:st):0,sm:+dl.sm||0,sp:T2(dl.sp),at:asked||Date.now()}}
 function reconcile(){
   const g=members.find(m=>m.me), L=info&&info.live;
   const useG=g&&(!L||membersAsked>=L.at);
-  const me=useG?g:(L?{on:L.on,paused:L.paused,since:L.since,sm:L.sm,subj:''}:null);   // 더 최근에 출발한 응답
+  const me=useG?g:(L?{on:L.on,paused:L.paused,since:L.since,sm:L.sm,sp:L.sp,subj:''}:null);   // 더 최근에 출발한 응답
   const asked=useG?membersAsked:(L?L.at:0);
   if(!me||fixing||pending||!Y.jwt||stale(asked)) return;    // 버튼 누르기 전 상태면 무시
   const now=Date.now();
-  if(Y.run&&Y.run.base==null&&info){Y.run.base=info.sm;saveY()}   // 예전 버전에서 시작한 기록: 지금 누적을 기준으로
+  {const k=(me.on?'on':me.paused?'paused':'off'); if(k!==reconcile.obs){reconcile.obs=k;
+    ylog('obs-'+k,{s:`${useG?'그룹':'내 기록'} · 누적 ${Math.round((+me.sm||0)/60000)}분${me.since?` · 시작 ${new Date(me.since).toTimeString().slice(0,8)}`:''}${me.sp?` · 멈춤 ${new Date(me.sp).toTimeString().slice(0,8)}`:''}`})}}
+  /* 기록의 기준 누적: 서버가 '공부 중'으로 보여 준 첫 값(지금 공부는 빠진 값) */
+  if(Y.run&&Y.run.base==null){Y.run.base=me.on?(+me.sm||0):(info?info.sm:0);saveY()}
   if(Y.run){
     if(me.on){miss=0;
       /* 같은 공부의 시작 시각만 서버 기준으로 살짝 맞춤 (2분 넘게 다르면 다른 공부이므로 건드리지 않음) */
@@ -2661,7 +2664,8 @@ function reconcile(){
     if(me.paused||now-Y.run.startedAt<60000) return;          // 일시정지거나 막 시작했으면 기다림
     /* '공부 중 아님' 표시만으로는 멈춘 걸로 보지 않음: 진짜로 멈췄다면 서버의 오늘 누적에 이 공부가 더해져 있어야 함 */
     const base=+Y.run.base||0, ran=now-Y.run.startedAt;
-    if(!(+me.sm>=base+ran*0.5)){miss=0;if(!reconcile.noted||now-reconcile.noted>600000){reconcile.noted=now;ylog('off-ignored')}return}
+    const proof=(+me.sm>=base+ran*0.5)||(me.sp>Y.run.startedAt+3000);   // 누적이 늘었거나, 이 공부 시작 뒤에 멈춘 기록이 있음
+    if(!proof){miss=0;if(!reconcile.noted||now-reconcile.noted>600000){reconcile.noted=now;ylog('off-ignored')}return}
     if(++miss<2){setTimeout(quickCheck,1500);return}            // 한 번 보이면 1.5초 뒤 바로 다시 확인해서 확정
     /* 열품타처럼 '하나의 기기'로: 다른 기기 · 열품타 앱에서 멈췄으면 여기서도 멈춤 */
     miss=0; ylog('server-stopped',{s:Y.run.subject});
@@ -2689,6 +2693,7 @@ function reconcile(){
   }
 }
 let rawMembers=[], rawAt=0;
+const T2=v=>{const t=typeof v==='string'?Date.parse(v):+v||0;return t>0?(t<1e11?t*1000:t):0};
 const sbool=v=>v===true||v===1||v==='1'||v==='true';
 function parseMembers(){
   const prev=new Map(members.map(m=>[m.n,m])), now=Date.now();
@@ -2700,10 +2705,10 @@ function parseMembers(){
        → 화면 시간 = dl.sm + (지금 - dl.st)  (열품타 앱과 같은 계산) */
     const stv=dl.st??dl.ss??m.ss; let since=typeof stv==='string'?Date.parse(stv):+stv||0;
     if(!(since>0)) since=0; else if(since<1e11) since*=1000;   // 초 단위면 ms로
-    const sm=+(dl.sm??dl.tp??m.sm)||0;
+    const sm=+(dl.sm??dl.tp??m.sm)||0, sp=T2(dl.sp);   // sp = 마지막으로 멈춘 시각
     return {n:String(m.n||''),ud:+(m.ud??m.userId)||0,sm,on:studying,paused,
       subj:(typeof dl.sn==='string'?dl.sn:typeof dl.sb==='string'?dl.sb:'')||'',
-      since, cat:String(m.ct||''), raw:m};
+      since, sp, cat:String(m.ct||''), raw:m};
   }).map(m=>{
     if(m.on){const p=prev.get(m.n); m.seenAt=(p&&p.on&&p.sm===m.sm&&p.seenAt)?p.seenAt:now}
     return m;
@@ -2767,7 +2772,7 @@ async function studyStart(subject,auto){
   try{
     const j=await call('POST','/study/start',{subject:title,deviceModel:DEVICE_MODEL,taskId:null});
     if(j.s!==true) throw new YErr(String(j.c||'start'));
-    actionAt=Date.now(); Y.run={startedAt,subject:title,base:j.dl&&+j.dl.sm||(info?info.sm:0)}; Y.runAt=Date.now(); ylog(auto?'auto-restart':'start',{s:title}); saveY();
+    actionAt=Date.now(); Y.run={startedAt,subject:title,base:null}; Y.runAt=Date.now(); ylog(auto?'auto-restart':'start',{s:title}); saveY();
     if(j.dl&&info) info.sm=+j.dl.sm||info.sm;
     toast(auto?`열품타 기록이 끊겨 있어서 바로 다시 시작했어요 · ${title}`:`열품타 기록 시작 · ${title}`);
     render(); loadMembers().then(render,()=>{});   // 그룹에도 바로 반영
@@ -2966,7 +2971,7 @@ function memberDetail(i){
       <span class="st2 ${m.on?'on':m.paused?'pause':'off'}">${state}</span>
     </div>
     ${rows.map(([k,v,big])=>`<div class="mdstat"><span>${k}</span><b${big?'':' class="sm"'}>${esc(v)}</b></div>`).join('')}
-    ${me&&(Y.log||[]).length?`<details class="mdraw"><summary>기록 내역</summary><pre>${esc((Y.log||[]).slice().reverse().map(x=>{const t=new Date(x.t);return `${t.getMonth()+1}/${t.getDate()} ${pad(t.getHours())}:${pad(t.getMinutes())}:${pad(t.getSeconds())}  ${({start:'시작','auto-restart':'끊김 → 자동 재시작',stop:'정지','remote-start':'다른 기기에서 시작','remote-stop':'다른 기기에서 정지','server-stopped':'다른 기기 · 열품타 앱에서 정지',adopt:'열품타 앱 기록 반영','relogin-try':'로그인 만료 → 재로그인 시도',relogin:'재로그인 성공',expired:'로그인 만료','stop-retry':'정지가 반영되지 않아 다시 정지 요청','stop-failed':'정지가 반영되지 않음 → 기록 중으로 되돌림','off-ignored':'서버가 잠깐 \'공부 중 아님\'으로 보냄 → 무시하고 계속'})[x.e]||x.e}${x.s?' · '+x.s:''}  (${x.d})`}).join('\n'))}</pre></details>`:''}
+    ${me&&(Y.log||[]).length?`<details class="mdraw"><summary>기록 내역</summary><pre>${esc((Y.log||[]).slice().reverse().map(x=>{const t=new Date(x.t);return `${t.getMonth()+1}/${t.getDate()} ${pad(t.getHours())}:${pad(t.getMinutes())}:${pad(t.getSeconds())}  ${({start:'시작','auto-restart':'끊김 → 자동 재시작',stop:'정지','remote-start':'다른 기기에서 시작','remote-stop':'다른 기기에서 정지','server-stopped':'다른 기기 · 열품타 앱에서 정지',adopt:'열품타 앱 기록 반영','relogin-try':'로그인 만료 → 재로그인 시도',relogin:'재로그인 성공',expired:'로그인 만료','stop-retry':'정지가 반영되지 않아 다시 정지 요청','stop-failed':'정지가 반영되지 않음 → 기록 중으로 되돌림','obs-on':'서버: 공부 중','obs-off':'서버: 공부 중 아님','obs-paused':'서버: 일시정지','off-ignored':'서버가 잠깐 \'공부 중 아님\'으로 보냄 → 무시하고 계속'})[x.e]||x.e}${x.s?' · '+x.s:''}  (${x.d})`}).join('\n'))}</pre></details>`:''}
     <div class="mfoot"><button type="button" class="pbtn" onclick="closeModal()">닫기</button></div>`;
   M.classList.add('open');
 }
@@ -3000,7 +3005,7 @@ setInterval(()=>{
   if(!Y.jwt||document.hidden) return;
   ++tick;
   if(tick%300===0) refresh(); else if(Date.now()-membersAt>=(groupVisible()?10000:60000)) refresh({full:false});
-  else if(Y.run&&!loading&&Date.now()-checkAt>=3000) quickCheck();
+  else if(!loading&&Date.now()-checkAt>=(Y.run?3000:5000)) quickCheck();   // 열품타 앱 · 다른 기기에서 시작/정지해도 몇 초 안에
 },1000);
 /* 앱으로 돌아오거나 홈 · 열품타 화면을 열면 바로 최신 상태로 */
 document.addEventListener('visibilitychange',()=>{if(document.hidden||!Y.jwt)return;
