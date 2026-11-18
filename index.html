@@ -2369,11 +2369,11 @@ const stateBody=()=>{const o={...S};delete o._t;return JSON.stringify(o)};
 /* 열품타: 그룹 순서 · 그룹 · 과목 + 로그인 정보(토큰). 로그인 정보는 더 나중에 로그인/로그아웃한 쪽(authAt)이 이김 */
 const YAUTH=['jwt','nick','uid','coid','email','relay','authAt'];
 function yptPrefs(){try{const y=JSON.parse(localStorage.getItem('flysky:ypt'))||{};const o={gorder:y.gorder||null,gid:y.gid||null,subj:y.subj||null};
-  YAUTH.forEach(k=>{if(k in y)o[k]=y[k]}); if('runAt' in y){o.run=y.run||null;o.runAt=y.runAt} return o}catch(e){return {}}}
+  YAUTH.forEach(k=>{if(k in y)o[k]=y[k]}); if('runAt' in y){o.run=y.run||null;o.runAt=y.runAt;o.lastStop=y.lastStop||null} return o}catch(e){return {}}}
 function mergeYpt(r,authOnly){const y=JSON.parse(localStorage.getItem('flysky:ypt'))||{};
   if(!authOnly)['gorder','gid','subj'].forEach(k=>{if(k in r)y[k]=r[k]});
   if((+r.authAt||0)>(+y.authAt||0)) YAUTH.forEach(k=>{if(k in r)y[k]=r[k]});
-  if((+r.runAt||0)>(+y.runAt||0)){y.run=r.run||null;y.runAt=r.runAt}   // 공부 기록 중 상태: 더 나중에 시작/정지한 쪽
+  if((+r.runAt||0)>(+y.runAt||0)){y.run=r.run||null;y.runAt=r.runAt;if(r.lastStop)y.lastStop=r.lastStop}   // 공부 기록 중 상태: 더 나중에 시작/정지한 쪽
   localStorage.setItem('flysky:ypt',JSON.stringify(y))}
 function applyRemote(d){
   try{const n=JSON.parse(d.state); if(!n||!Array.isArray(n.ddays)) return; S=n}catch(e){return}
@@ -2493,7 +2493,7 @@ if(Y.jwt&&!Y.authAt){Y.authAt=1;try{localStorage.setItem(YKEY,JSON.stringify(Y))
 if(Y.smKey){delete Y.smKey;try{localStorage.setItem(YKEY,JSON.stringify(Y))}catch(e){}}   // 예전 버전의 칸 자동 찾기 흔적 정리
 if(Y.run&&!Y.runAt){Y.runAt=1;try{localStorage.setItem(YKEY,JSON.stringify(Y))}catch(e){}}   // 예전에 연결해 둔 토큰도 다른 기기로 넘어가게
 document.addEventListener('flysky:yptprefs',()=>{try{const n=JSON.parse(localStorage.getItem(YKEY))||{};['gorder','gid','subj'].forEach(k=>{if(k in n)Y[k]=n[k]});
-  if((+n.runAt||0)>(+Y.runAt||0)){Y.run=n.run||null;Y.runAt=n.runAt;ylog(Y.run?'remote-start':'remote-stop');loadMembers().then(render,()=>{})}   // 다른 기기에서 기록 시작/정지
+  if((+n.runAt||0)>(+Y.runAt||0)){Y.run=n.run||null;Y.runAt=n.runAt;if(n.lastStop)Y.lastStop=n.lastStop;ylog(Y.run?'remote-start':'remote-stop');loadMembers().then(render,()=>{})}   // 다른 기기에서 기록 시작/정지
   if((+n.authAt||0)>(+Y.authAt||0)){                        // 다른 기기에서 열품타에 로그인/로그아웃함
     const was=Y.jwt; ['jwt','nick','uid','coid','email','relay','authAt'].forEach(k=>{if(k in n)Y[k]=n[k]});
     if(Y.jwt&&Y.jwt!==was){err='';info=null;groups=[];members=[];render();refresh({full:true});return}
@@ -2651,10 +2651,17 @@ function reconcile(){
     if(++miss<2){setTimeout(quickCheck,1500);return}            // 한 번 보이면 1.5초 뒤 바로 다시 확인해서 확정
     /* 열품타처럼 '하나의 기기'로: 다른 기기 · 열품타 앱에서 멈췄으면 여기서도 멈춤 */
     miss=0; ylog('server-stopped',{s:Y.run.subject});
-    Y.run=null; Y.runAt=now; saveY();
+    Y.lastStop={since:Y.run.startedAt,at:now}; Y.run=null; Y.runAt=now; saveY();
     toast('다른 기기에서 공부를 멈췄어요');
     loadDay().then(render,()=>render());
   }else if(me.on&&me.since>0&&me.since<=now&&now-me.since<864e5){
+    /* 방금 멈춘 그 공부를 서버가 아직 '공부 중'으로 보내는 경우(반영 지연)는 다시 켜지 않음:
+       멈춘 세션보다 나중에 시작한 '새' 공부만 반영 */
+    const LS=Y.lastStop;
+    if(LS&&me.since<=Math.max(LS.since,LS.at-5000)+5000){
+      if(now-LS.at>30000&&!LS.retried&&Y.jwt){LS.retried=1;saveY();ylog('stop-retry');   // 30초가 지나도 그대로면 정지 요청을 한 번 더
+        call('POST','/study/stop',{startedAt:me.since,deviceModel:DEVICE_MODEL}).then(()=>loadDay().then(render),()=>{})}
+      return}
     Y.run={startedAt:me.since,subject:me.subj||curSubj()}; ylog('adopt',{s:Y.run.subject}); saveY();   // 열품타 앱 등에서 시작한 공부
   }
 }
@@ -2751,7 +2758,7 @@ async function studyStop(){
     const j=await call('POST','/study/stop',{startedAt,deviceModel:DEVICE_MODEL});
     if(j.s!==true) throw new YErr(String(j.c||'stop'));
     if(info) info.sm=j.dl?(+j.dl.sm||0):info.sm+(Date.now()-startedAt);
-    Y.run=null; Y.runAt=Date.now(); ylog('stop'); saveY(); toast('열품타에 기록했어요');
+    Y.lastStop={since:startedAt,at:Date.now()}; Y.run=null; Y.runAt=Date.now(); ylog('stop'); saveY(); toast('열품타에 기록했어요');
     loadDay().then(()=>loadMembers()).then(render,()=>render());
   }catch(e){toast('열품타 기록을 멈추지 못했어요 · '+msg(e))}
   render();
@@ -2935,7 +2942,7 @@ function memberDetail(i){
       <span class="st2 ${m.on?'on':m.paused?'pause':'off'}">${state}</span>
     </div>
     ${rows.map(([k,v,big])=>`<div class="mdstat"><span>${k}</span><b${big?'':' class="sm"'}>${esc(v)}</b></div>`).join('')}
-    ${me&&(Y.log||[]).length?`<details class="mdraw"><summary>기록 내역</summary><pre>${esc((Y.log||[]).slice().reverse().map(x=>{const t=new Date(x.t);return `${t.getMonth()+1}/${t.getDate()} ${pad(t.getHours())}:${pad(t.getMinutes())}:${pad(t.getSeconds())}  ${({start:'시작','auto-restart':'끊김 → 자동 재시작',stop:'정지','remote-start':'다른 기기에서 시작','remote-stop':'다른 기기에서 정지','server-stopped':'다른 기기 · 열품타 앱에서 정지',adopt:'열품타 앱 기록 반영','relogin-try':'로그인 만료 → 재로그인 시도',relogin:'재로그인 성공',expired:'로그인 만료'})[x.e]||x.e}${x.s?' · '+x.s:''}  (${x.d})`}).join('\n'))}</pre></details>`:''}
+    ${me&&(Y.log||[]).length?`<details class="mdraw"><summary>기록 내역</summary><pre>${esc((Y.log||[]).slice().reverse().map(x=>{const t=new Date(x.t);return `${t.getMonth()+1}/${t.getDate()} ${pad(t.getHours())}:${pad(t.getMinutes())}:${pad(t.getSeconds())}  ${({start:'시작','auto-restart':'끊김 → 자동 재시작',stop:'정지','remote-start':'다른 기기에서 시작','remote-stop':'다른 기기에서 정지','server-stopped':'다른 기기 · 열품타 앱에서 정지',adopt:'열품타 앱 기록 반영','relogin-try':'로그인 만료 → 재로그인 시도',relogin:'재로그인 성공',expired:'로그인 만료','stop-retry':'정지가 반영되지 않아 다시 정지 요청'})[x.e]||x.e}${x.s?' · '+x.s:''}  (${x.d})`}).join('\n'))}</pre></details>`:''}
     <div class="mfoot"><button type="button" class="pbtn" onclick="closeModal()">닫기</button></div>`;
   M.classList.add('open');
 }
