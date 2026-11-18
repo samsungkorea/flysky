@@ -10,7 +10,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Fly Sky">
 <meta name="theme-color" content="#c9cfe2">
-<script>window.FLY_BUILD="2026.11.18-r67";
+<script>window.FLY_BUILD="2026.11.18-r68";
 /* 새로고침 버튼이 붙인 ?r=… 는 주소창에서 바로 지움 */
 if(/[?&]r=\d/.test(location.search))history.replaceState(history.state,"",location.pathname+location.hash);</script>
 <script>
@@ -2689,7 +2689,22 @@ function toast(m){const t=$('toast');t.textContent=m;t.classList.add('show');cle
 
 /* 상태: relay, jwt, email, nick, coid(국가 ID), gid(선택한 그룹), subj(고른 과목), run({startedAt, subject}) */
 let Y={}; try{Y=JSON.parse(localStorage.getItem(YKEY))||{}}catch(e){}
-const saveY=()=>{try{localStorage.setItem(YKEY,JSON.stringify(Y))}catch(e){} document.dispatchEvent(new CustomEvent('flysky:yptsave'))};
+/* 현재 집중 시간(세션): 열품타는 세션을 끝낸 뒤 15초 안에 다시 시작하면 같은 세션으로 이어 줌 → 똑같이 이어서 셈 (쉰 15초는 빼고)
+   Y.sess={st:이번 구간 시작, acc:앞서 이어진 구간들의 합, end:끝난 시각(진행 중이면 0)} */
+let sessEndHint=0;
+function trackSess(){
+  const s=Y.sess;
+  if(Y.run){const st=Y.run.startedAt;
+    if(!s) Y.sess={st,acc:0,end:0};
+    else if(s.st!==st){
+      if(s.end){const gap=st-s.end; Y.sess={st,acc:gap>=-1000&&gap<=15000?s.acc+Math.max(0,s.end-s.st):0,end:0}}
+      else s.st=st;                                   // 진행 중에 서버가 시작 시각을 바로잡은 것
+    }
+  } else if(s&&!s.end){s.end=sessEndHint>s.st&&sessEndHint<=Date.now()?sessEndHint:Date.now()}
+  sessEndHint=0;
+}
+const sessMs=()=>Y.run?(Y.sess&&Y.sess.st===Y.run.startedAt?Y.sess.acc:0)+Date.now()-Y.run.startedAt:0;
+const saveY=()=>{trackSess();try{localStorage.setItem(YKEY,JSON.stringify(Y))}catch(e){} document.dispatchEvent(new CustomEvent('flysky:yptsave'))};
 if(Y.jwt&&!Y.authAt){Y.authAt=1;try{localStorage.setItem(YKEY,JSON.stringify(Y))}catch(e){}}
 if(Y.smKey){delete Y.smKey;try{localStorage.setItem(YKEY,JSON.stringify(Y))}catch(e){}}   // 예전 버전의 칸 자동 찾기 흔적 정리
 if(Y.run&&!Y.runAt){Y.runAt=1;try{localStorage.setItem(YKEY,JSON.stringify(Y))}catch(e){}}   // 예전에 연결해 둔 토큰도 다른 기기로 넘어가게
@@ -2870,7 +2885,7 @@ function apply(){
   const v=view(); if(!v) return;
   if(v.on){const st=v.st||Date.now();
     if(!Y.run||Math.abs(Y.run.startedAt-st)>1000){Y.run={startedAt:st,subject:(Y.run&&Y.run.subject)||v.subj||curSubj()};saveY()}}
-  else if(Y.run){Y.run=null;saveY()}
+  else if(Y.run){sessEndHint=v.sp||0;Y.run=null;saveY()}
   if(info&&!pend) info.sm=v.sm;
 }
 function reconcile(){}   // (예전 이름 호환)
@@ -3007,7 +3022,7 @@ const CLK={total:'오늘 공부 시간',subj:'과목 공부 시간',sess:'현재
 const clkMode=()=>{const p=window.flyPref?window.flyPref.get():{};return CLK[p.yclock]?p.yclock:'total'};
 const selSubj=()=>Y.run?Y.run.subject:curSubj();
 function subjMs(t){const x=(info?info.subjects:[]).find(s=>s.t===t);return (x?x.sm:0)+(Y.run&&Y.run.subject===t?runMs():0)}
-function clockMs(k){k=k||clkMode();return k==='sess'?runMs():k==='subj'?subjMs(selSubj()):myTotal()}
+function clockMs(k){k=k||clkMode();return k==='sess'?sessMs():k==='subj'?subjMs(selSubj()):myTotal()}
 function clockName(){const k=clkMode(),t=selSubj();return k==='subj'?(t?`${t} 공부 시간`:'과목 공부 시간'):CLK[k]}
 function clkMenu(btn){
   const old=document.querySelector('.clkmenu'); if(old){old.remove();document.querySelectorAll('.clkpick').forEach(b=>b.setAttribute('aria-expanded','false'));if(old._b===btn)return}
