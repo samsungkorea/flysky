@@ -2493,7 +2493,7 @@ if(Y.jwt&&!Y.authAt){Y.authAt=1;try{localStorage.setItem(YKEY,JSON.stringify(Y))
 if(Y.smKey){delete Y.smKey;try{localStorage.setItem(YKEY,JSON.stringify(Y))}catch(e){}}   // 예전 버전의 칸 자동 찾기 흔적 정리
 if(Y.run&&!Y.runAt){Y.runAt=1;try{localStorage.setItem(YKEY,JSON.stringify(Y))}catch(e){}}   // 예전에 연결해 둔 토큰도 다른 기기로 넘어가게
 document.addEventListener('flysky:yptprefs',()=>{try{const n=JSON.parse(localStorage.getItem(YKEY))||{};['gorder','gid','subj'].forEach(k=>{if(k in n)Y[k]=n[k]});
-  if((+n.runAt||0)>(+Y.runAt||0)){Y.run=n.run||null;Y.runAt=n.runAt;if(n.lastStop)Y.lastStop=n.lastStop;ylog(Y.run?'remote-start':'remote-stop');loadMembers().then(render,()=>{})}   // 다른 기기에서 기록 시작/정지
+  if((+n.runAt||0)>(+Y.runAt||0)){actionAt=Date.now();Y.run=n.run||null;Y.runAt=n.runAt;if(n.lastStop)Y.lastStop=n.lastStop;ylog(Y.run?'remote-start':'remote-stop');loadMembers().then(render,()=>{})}   // 다른 기기에서 기록 시작/정지
   if((+n.authAt||0)>(+Y.authAt||0)){                        // 다른 기기에서 열품타에 로그인/로그아웃함
     const was=Y.jwt; ['jwt','nick','uid','coid','email','relay','authAt'].forEach(k=>{if(k in n)Y[k]=n[k]});
     if(Y.jwt&&Y.jwt!==was){err='';info=null;groups=[];members=[];render();refresh({full:true});return}
@@ -2549,10 +2549,11 @@ function expire(){
 function doExpire(){Y.jwt='';Y.authAt=Date.now();info=null;groups=[];members=[];saveY();render()}
 
 /* ---------- API ---------- */
-function applyInfo(j){
+function applyInfo(j,asked){
   const ss=(Array.isArray(j.ss)?j.ss:[]).filter(x=>!truthy(x.dl))
     .map(x=>({id:+(x.id??x.sid??x.subjectId??x.subjectID??x.si)||0,t:String(x.tt??x.t??x.title??''),sm:+x.sm||0,or:+x.or||0})).filter(x=>x.t).sort((a,b)=>a.or-b.or);
-  info={sm:+(j.dl&&j.dl.sm)||0,subjects:ss,at:Date.now()}; liveFrom(j.dl);
+  const prevSm=info?info.sm:0, nsm=+(j.dl&&j.dl.sm)||0;
+  info={sm:stale(asked)?Math.max(prevSm,nsm):nsm,subjects:ss,at:Date.now(),live:info&&info.live}; liveFrom(j.dl,asked);
   if(j.n) Y.nick=String(j.n);
   {const u=+(j.ud??(j.p&&j.p.ud))||0; if(u) Y.uid=u;}
   if(+j.coid) Y.coid=+j.coid;
@@ -2577,9 +2578,10 @@ async function socialLogin(){
   Y.jwt=String(j.jwt); Y.email=gu.email||''; Y.authAt=Date.now(); applyInfo(j);
 }
 async function reloadInfo(){
+  const asked=Date.now();
   const j=await call('POST','/user/v2/reload/info',{pv:0,cd:{su:null,sbu:null,cu:null,eu:null,du:null,tu:null}});
   if(j.s===false) throw new YErr(String(j.c||'reload'));
-  applyInfo(j);
+  applyInfo(j,asked);
 }
 function logMs(e){
   const direct=+(e.sm??e.studyMs??e.studyTime??e.ms??e.sd)||0; if(direct>0) return direct;
@@ -2589,6 +2591,7 @@ function logMs(e){
 async function loadDay(){
   if(!Y.jwt||!info) return;
   const now=new Date(), dstr=now.getFullYear()+'-'+pad(now.getMonth()+1)+'-'+pad(now.getDate());
+  const asked=Date.now();
   let j; try{j=await call('GET','/logs/day?date='+dstr)}catch(e){return}
   if(j&&j.s===false) return;
   const byId={}, byTitle={}, titleByIndex={};
@@ -2605,8 +2608,8 @@ async function loadDay(){
   addList(dl.ls); addList(j.ls); addList(j.ss); addList(j.ts);
   let any=false;
   info.subjects.forEach(sb=>{const v=(sb.id&&byId[sb.id]); const w=(v!=null?v:byTitle[sb.t]); if(w!=null){sb.sm=w;any=true}});
-  if(+dl.sm) info.sm=+dl.sm;
-  liveFrom(dl); reconcile();
+  if(+dl.sm) info.sm=stale(asked)?Math.max(info.sm,+dl.sm):+dl.sm;   // 버튼 누르기 전에 출발한 응답이면 줄이지 않음
+  liveFrom(dl,asked); reconcile();
   info.dayLoaded=any||Object.keys(byTitle).length>0||Object.keys(byId).length>0;
 }
 async function loadGroups(){
@@ -2620,14 +2623,17 @@ async function loadGroups(){
 }
 async function loadMembers(){
   if(!Y.gid){members=[];return}
-  const gid=Y.gid; membersAt=Date.now();   // 시도한 시각 (실패해도 다음 주기까지 기다림)
+  const gid=Y.gid, asked=Date.now(); membersAt=asked;   // 시도한 시각 (실패해도 다음 주기까지 기다림)
   const j=await call('GET',`/logs/group/members/v2?groupID=${gid}&countryID=${Y.coid||0}&isLooking=true&version=810046`);
   if(gid!==Y.gid) return;   // 그사이 다른 그룹을 골랐으면 버림
   rawMembers=Array.isArray(j.ms)?j.ms:[]; rawAt=Date.now();
-  parseMembers(); markMe(); reconcile();
+  parseMembers(); markMe(); membersAsked=asked; reconcile();
 }
 /* 서버와 대조: 내 실제 상태(그룹 데이터의 '나')와 Fly Sky의 기록 중 상태를 맞춤 */
-let miss=0, fixing=false, checkAt=0, checking=false;
+let miss=0, fixing=false, checkAt=0, checking=false, actionAt=0, membersAsked=0;
+/* 버튼(시작 · 정지)이나 다른 기기의 시작 · 정지가 있은 뒤 1.5초 안에 출발한 서버 응답은 '그 이전 상태'일 수 있음
+   → 그 결과를 뒤집는 데 쓰지 않음 */
+const stale=asked=>!(asked>actionAt+1500);
 /* 기록 중에는 내 상태만 빠르게 확인 (다른 기기 · 열품타 앱에서 멈추면 몇 초 안에 반영) */
 function quickCheck(){
   if(checking||!Y.jwt||document.hidden) return; checking=true; checkAt=Date.now();
@@ -2635,17 +2641,21 @@ function quickCheck(){
   (inGroup?loadMembers():loadDay()).then(()=>{render()},()=>{}).finally(()=>{checking=false});
 }
 /* 내 정보(오늘 기록)에 들어 있는 지금 상태: 그룹을 안 골랐거나 내가 그 그룹에 없어도 알 수 있음 */
-function liveFrom(dl){if(!info||!dl||typeof dl!=='object'||!('is' in dl))return;
+function liveFrom(dl,asked){if(!info||!dl||typeof dl!=='object'||!('is' in dl))return;
   const st=typeof dl.st==='string'?Date.parse(dl.st):+dl.st||0;
-  info.live={on:sbool(dl.is)&&!sbool(dl.ia),paused:sbool(dl.ia),since:st>0?(st<1e11?st*1000:st):0,at:Date.now()}}
+  info.live={on:sbool(dl.is)&&!sbool(dl.ia),paused:sbool(dl.ia),since:st>0?(st<1e11?st*1000:st):0,at:asked||Date.now()}}
 function reconcile(){
   const g=members.find(m=>m.me), L=info&&info.live;
-  const me=g&&(!L||membersAt>=L.at)?g:(L?{on:L.on,paused:L.paused,since:L.since,subj:''}:g);   // 더 최근에 받은 쪽
-  if(!me||fixing||pending||!Y.jwt) return;
+  const useG=g&&(!L||membersAsked>=L.at);
+  const me=useG?g:(L?{on:L.on,paused:L.paused,since:L.since,subj:''}:null);   // 더 최근에 출발한 응답
+  const asked=useG?membersAsked:(L?L.at:0);
+  if(!me||fixing||pending||!Y.jwt||stale(asked)) return;    // 버튼 누르기 전 상태면 무시
   const now=Date.now();
   if(Y.run){
     if(me.on){miss=0;
-      if(me.since>0&&me.since<=now&&Math.abs(me.since-Y.run.startedAt)>5000&&now-me.since<864e5){Y.run.startedAt=me.since;saveY()}   // 서버 시작 시각에 맞춤
+      /* 같은 공부의 시작 시각만 서버 기준으로 살짝 맞춤 (2분 넘게 다르면 다른 공부이므로 건드리지 않음) */
+      const d=me.since-Y.run.startedAt;
+      if(me.since>0&&me.since<=now&&Math.abs(d)>5000&&Math.abs(d)<120000){Y.run.startedAt=me.since;saveY()}
       return}
     if(me.paused||now-Y.run.startedAt<60000) return;          // 일시정지거나 막 시작했으면 기다림
     if(++miss<2){setTimeout(quickCheck,1500);return}            // 한 번 보이면 1.5초 뒤 바로 다시 확인해서 확정
@@ -2740,11 +2750,11 @@ async function studyStart(subject,auto){
   const subs=info?info.subjects:[];
   const s=subs.find(x=>x.t===subject)||subs[0];
   const title=s?s.t:(subject||'공부');
-  const startedAt=Date.now();
+  const startedAt=Date.now(); actionAt=startedAt;
   try{
     const j=await call('POST','/study/start',{subject:title,deviceModel:DEVICE_MODEL,taskId:null});
     if(j.s!==true) throw new YErr(String(j.c||'start'));
-    Y.run={startedAt,subject:title}; Y.runAt=Date.now(); ylog(auto?'auto-restart':'start',{s:title}); saveY();
+    actionAt=Date.now(); Y.run={startedAt,subject:title}; Y.runAt=Date.now(); ylog(auto?'auto-restart':'start',{s:title}); saveY();
     if(j.dl&&info) info.sm=+j.dl.sm||info.sm;
     toast(auto?`열품타 기록이 끊겨 있어서 바로 다시 시작했어요 · ${title}`:`열품타 기록 시작 · ${title}`);
     render(); loadMembers().then(render,()=>{});   // 그룹에도 바로 반영
@@ -2753,18 +2763,20 @@ async function studyStart(subject,auto){
 }
 async function studyStop(){
   if(!Y.run) return;
-  const {startedAt}=Y.run;
+  const {startedAt}=Y.run; actionAt=Date.now();
   try{
     const j=await call('POST','/study/stop',{startedAt,deviceModel:DEVICE_MODEL});
     if(j.s!==true) throw new YErr(String(j.c||'stop'));
     if(info) info.sm=j.dl?(+j.dl.sm||0):info.sm+(Date.now()-startedAt);
-    Y.lastStop={since:startedAt,at:Date.now()}; Y.run=null; Y.runAt=Date.now(); ylog('stop'); saveY(); toast('열품타에 기록했어요');
+    actionAt=Date.now(); Y.lastStop={since:startedAt,at:Date.now()}; Y.run=null; Y.runAt=Date.now(); ylog('stop'); saveY(); toast('열품타에 기록했어요');
     loadDay().then(()=>loadMembers()).then(render,()=>render());
   }catch(e){toast('열품타 기록을 멈추지 못했어요 · '+msg(e))}
   render();
 }
+let lastTap=0;
 const playClick=()=>{
-  if(pending) return;
+  if(pending||Date.now()-lastTap<800) return;   // 실수로 두 번 눌린 건 무시
+  lastTap=Date.now();
   if(!Y.jwt) return openSheet();
   enqueue(()=>Y.run?studyStop():studyStart(curSubj()));
 };
