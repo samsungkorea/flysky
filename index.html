@@ -817,15 +817,10 @@ header.hhead .brand{font-size:54px;justify-self:start;margin-left:-5.5px;transfo
 }
 </style>
 <style>
-/* 열품타 기록 중: 프로필 사진 둘레 후광 (사진 자체에 빛을 둘러서 어떤 브라우저에서도 가려지지 않음) */
+/* 열품타 기록 중: 프로필 사진 둘레 후광 (켜지고 꺼질 때만 부드럽게, 켜져 있는 동안은 고정) */
 .side .acct>.avatar{box-shadow:0 0 0 0 rgba(93,108,168,0),0 0 0 0 rgba(93,108,168,0),0 0 0 0 rgba(93,108,168,0);
   transition:box-shadow .8s cubic-bezier(.22,1,.36,1),transform .5s var(--spring,ease)}
-.side .acct>.avatar.rec{box-shadow:0 0 0 3px rgba(93,108,168,.55),0 0 16px 5px rgba(93,108,168,.55),0 0 34px 12px rgba(93,108,168,.25);
-  animation:flyHalo 2.8s ease-in-out 1s infinite}
-@keyframes flyHalo{
-  0%,100%{box-shadow:0 0 0 3px rgba(93,108,168,.55),0 0 16px 5px rgba(93,108,168,.55),0 0 34px 12px rgba(93,108,168,.25)}
-  50%{box-shadow:0 0 0 4px rgba(93,108,168,.65),0 0 22px 8px rgba(93,108,168,.7),0 0 44px 16px rgba(93,108,168,.32)}}
-@media (prefers-reduced-motion:reduce){.side .acct>.avatar.rec{animation:none}}
+.side .acct>.avatar.rec{box-shadow:0 0 0 3px rgba(93,108,168,.55),0 0 16px 5px rgba(93,108,168,.55),0 0 34px 12px rgba(93,108,168,.25);}
 </style>
 </head>
 <body>
