@@ -10,7 +10,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Fly Sky">
 <meta name="theme-color" content="#c9cfe2">
-<script>window.FLY_BUILD="2026.11.18-r63";</script>
+<script>window.FLY_BUILD="2026.11.18-r64";</script>
 <script>
 /* 홈 화면 웹앱으로 실행 중이면 html.pwa (iPad 창 모드 등에서 safe-area 값이 0으로 오는 경우 대비) */
 try{if(navigator.standalone||matchMedia('(display-mode: standalone)').matches||matchMedia('(display-mode: fullscreen)').matches)document.documentElement.classList.add('pwa')}catch(e){}
@@ -3249,30 +3249,34 @@ document.addEventListener('keydown',e=>{if((e.ctrlKey||e.metaKey)&&['+','-','=',
    로고를 지날 때 'Fly'보다는 앞, 뒤 단어(Sky 등)보다는 뒤 → 두 단어 사이를 통과하는 것처럼 보임 */
 (function(){
   const PLANE='<svg viewBox="0 0 24 24" fill="currentColor" stroke="none" style="width:100%;height:100%;display:block;fill:currentColor;stroke:none;filter:drop-shadow(0 4px 6px rgba(40,50,110,.25))"><path d="M12 1.6c.85 0 1.45.95 1.45 2.15v5.3l7.75 4.7v2.05l-7.75-2.35v4.7l2.25 1.65v1.35L12 20.1l-3.7 1.05V19.8l2.25-1.65v-4.7L2.8 15.8v-2.05l7.75-4.7v-5.3c0-1.2.6-2.15 1.45-2.15z"/></svg>';
-  let busy=false;
+  let live=0;                                   // 동시에 나는 비행기 수 (많이 눌러도 렉 없게 최대 24대)
+  let n=0, cover=null;
   const rnd=(a,b)=>a+Math.random()*(b-a);
   function fly(logo){
-    if(busy||!logo||matchMedia('(prefers-reduced-motion: reduce)').matches) return; busy=true;
+    if(live>=24||!logo||matchMedia('(prefers-reduced-motion: reduce)').matches) return; live++;
     const r=logo.getBoundingClientRect(), vb=logo.viewBox.baseVal, VW=innerWidth, VH=innerHeight;
     const cut=Math.min(.9,374/(vb&&vb.width||808));                   // 'Fly'와 뒤 단어 사이 (로고 좌표 374)
     /* 뒤 단어만 잘라 낸 복사본을 비행기 위에 덮어서 '뒤 단어보다 뒤'를 만듦 */
-    const top=logo.cloneNode(true); top.removeAttribute('class');
-    Object.assign(top.style,{position:'fixed',left:r.left+'px',top:r.top+'px',width:r.width+'px',height:r.height+'px',zIndex:46,pointerEvents:'none',
-      color:getComputedStyle(logo).color,clipPath:`inset(-40% -5% -40% ${(cut*100).toFixed(2)}%)`});
+    /* 여러 대가 동시에 날아도 덮개는 하나만 (겹치면 글자가 두꺼워 보임) */
+    if(!cover){cover=logo.cloneNode(true); cover.removeAttribute('class');
+    Object.assign(cover.style,{position:'fixed',left:r.left+'px',top:r.top+'px',width:r.width+'px',height:r.height+'px',zIndex:46,pointerEvents:'none',
+      color:getComputedStyle(logo).color,clipPath:`inset(-40% -5% -40% ${(cut*100).toFixed(2)}%)`}); document.body.appendChild(cover)}
     /* 경로: 로고 안 (두 단어 경계 근처) 한 점을 지나는 직선, 왼쪽 끝 → 위쪽 끝 */
     const px=r.left+r.width*(cut+rnd(-.16,.16)), py=r.top+r.height*rnd(.3,.7);
     /* 기울기 k(오른쪽 1칸에 위로 k칸)를 아무렇게나 골라, 그 점을 지나는 직선의 왼쪽 끝 · 위쪽 끝을 구함 */
     const kMin=Math.max(.6,py/Math.max(40,VW-30-px)), kMax=Math.max(kMin+.1,Math.min(3.2,(VH-20-py)/Math.max(1,px)));
     const k=rnd(kMin,kMax), sx=0, sy=py+k*px;
     const ex=px+py/k, ey=0, len=Math.hypot(ex-sx,ey-sy), ux=(ex-sx)/len, uy=(ey-sy)/len;
-    const A=[sx-ux*60,sy-uy*60], B=[ex+ux*80,ey+uy*80], deg=Math.atan2(ux,-uy)*180/Math.PI, S=60;
+    const A=[sx-ux*60,sy-uy*60], B=[ex+ux*80,ey+uy*80], deg=Math.atan2(ux,-uy)*180/Math.PI, S=Math.round(rnd(48,66));
     const pl=document.createElement('div'); pl.className='egplane'; pl.innerHTML=PLANE;
-    Object.assign(pl.style,{position:'fixed',left:0,top:0,width:S+'px',height:S+'px',zIndex:45,pointerEvents:'none',color:'var(--accent)'});
-    document.body.append(pl,top);
+    /* 첫 대는 강조색, 그다음부터는 강조색 언저리(파랑 ~ 보라 ~ 하늘)에서 조금씩 다른 색 */
+    const col=n++===0?'var(--accent)':`hsl(${Math.round(rnd(200,290))} ${Math.round(rnd(38,62))}% ${Math.round(rnd(50,70))}%)`;
+    Object.assign(pl.style,{position:'fixed',left:0,top:0,width:S+'px',height:S+'px',zIndex:45,pointerEvents:'none',color:col});
+    document.body.insertBefore(pl,cover);
     const at=(t,sc)=>`translate(${(A[0]+(B[0]-A[0])*t-S/2).toFixed(1)}px,${(A[1]+(B[1]-A[1])*t-S/2).toFixed(1)}px) rotate(${deg.toFixed(1)}deg) scale(${sc})`;
     const an=pl.animate([{transform:at(0,1.5)},{transform:at(1,.5)}],   // 멀어지며 작아짐
       {duration:Math.min(2000,Math.max(1100,Math.hypot(B[0]-A[0],B[1]-A[1])*2.6)),easing:'cubic-bezier(.3,0,.6,1)'});
-    an.onfinish=an.oncancel=()=>{pl.remove();top.remove();busy=false};
+    an.onfinish=an.oncancel=()=>{pl.remove();if(--live===0){n=0;cover.remove();cover=null}};
   }
   document.addEventListener('click',e=>{const b=e.target.closest('header.hhead .brand');if(b)fly(b.querySelector('svg.brandmark'))});
 })();
