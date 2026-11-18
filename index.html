@@ -10,7 +10,9 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Fly Sky">
 <meta name="theme-color" content="#c9cfe2">
-<script>window.FLY_BUILD="2026.11.18-r64";</script>
+<script>window.FLY_BUILD="2026.11.18-r65";
+/* 새로고침 버튼이 붙인 ?r=… 는 주소창에서 바로 지움 */
+if(/[?&]r=\d/.test(location.search))history.replaceState(history.state,"",location.pathname+location.hash);</script>
 <script>
 /* 홈 화면 웹앱으로 실행 중이면 html.pwa (iPad 창 모드 등에서 safe-area 값이 0으로 오는 경우 대비) */
 try{if(navigator.standalone||matchMedia('(display-mode: standalone)').matches||matchMedia('(display-mode: fullscreen)').matches)document.documentElement.classList.add('pwa')}catch(e){}
@@ -1933,8 +1935,14 @@ function openSettings(){
     <div class="setrow"><div><b>열품타</b><small>${yp.on?'연결됨 · @'+esc(yp.nick||'열품타'):'연결 안 됨'}</small></div>
       <button type="button" class="pbtn soft" id="setYpt">${yp.on?'연결 해제':'연결'}</button></div>
     ${yp.on&&window.__ypt.groups().length>1?`<div class="setrow" style="display:block"><b>열품타 그룹 순서</b><small style="margin-bottom:10px"></small><div class="greorder" id="setGroups"></div></div>`:''}
-    <div class="setrow"><div><b>버전</b><small>${window.FLY_BUILD||''} · ${document.documentElement.classList.contains('pwa')?'웹앱':'브라우저'}</small></div></div>`);
+    <div class="setrow"><div><b>버전</b><small>${window.FLY_BUILD||''} · ${document.documentElement.classList.contains('pwa')?'웹앱':'브라우저'}</small></div>
+      <button type="button" class="pbtn soft" id="setReload" data-mo="spin360"><svg viewBox="0 0 24 24"><path d="M20 11a8 8 0 1 0-2.3 5.7M20 4v7h-7"/></svg>새로고침</button></div>`);
   document.getElementById('setProf').onclick=()=>{closeModal();openProfile()};
+  /* 새로고침 (웹앱엔 F5가 없어서): 저장 후 캐시를 피해 최신 버전을 다시 불러옴 */
+  document.getElementById('setReload').onclick=e=>{
+    e.currentTarget.disabled=true; try{localStorage.setItem(KEY,JSON.stringify(S))}catch(x){}
+    setTimeout(()=>location.replace(location.pathname+'?r='+Date.now()+location.hash),350);
+  };
   document.getElementById('setLogo').onclick=()=>{closeModal();openLogo()};
   document.getElementById('setWake').onclick=e=>{const on=!e.currentTarget.classList.contains('on');e.currentTarget.classList.toggle('on',on);
     window.flyPref.set('wake',on); document.dispatchEvent(new CustomEvent('flysky:prefs'))};
