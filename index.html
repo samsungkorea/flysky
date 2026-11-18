@@ -2673,8 +2673,17 @@ function reconcile(){
        멈춘 세션보다 나중에 시작한 '새' 공부만 반영 */
     const LS=Y.lastStop;
     if(LS&&me.since<=Math.max(LS.since,LS.at-5000)+5000){
-      if(LS.by==='me'&&now-LS.at>30000&&!LS.retried&&Y.jwt){LS.retried=1;saveY();ylog('stop-retry');   // 30초가 지나도 그대로면 정지 요청을 한 번 더
-        call('POST','/study/stop',{startedAt:me.since,deviceModel:DEVICE_MODEL}).then(()=>loadDay().then(render),()=>{})}
+      /* 멈춘 그 공부가 서버에서 계속 이어지고 있음 = 실제로는 안 멈춤 → 실제 상태를 따름 */
+      const age=now-LS.at;
+      if(LS.by==='me'){
+        if(age>15000&&!LS.retried){LS.retried=1;saveY();ylog('stop-retry');   // 정지 요청을 한 번 더
+          call('POST','/study/stop',{startedAt:me.since,deviceModel:DEVICE_MODEL}).then(()=>loadDay().then(render),()=>{});return}
+        if(age<45000) return;                                    // 반영될 때까지 조금 더 기다림
+        ylog('stop-failed');
+      }else if(age<15000) return;
+      Y.lastStop=null;
+      Y.run={startedAt:me.since,subject:me.subj||curSubj(),base:+me.sm||(info?info.sm:0)}; Y.runAt=now; saveY();
+      toast(LS.by==='me'?'정지가 반영되지 않아 아직 기록 중이에요. 다시 눌러 멈춰 주세요':'공부가 계속되고 있어서 다시 기록 중으로 표시해요');
       return}
     Y.run={startedAt:me.since,subject:me.subj||curSubj(),base:+me.sm||(info?info.sm:0)}; ylog('adopt',{s:Y.run.subject}); saveY();   // 열품타 앱 등에서 시작한 공부
   }
@@ -2798,8 +2807,7 @@ const runMs=()=>Y.run?Date.now()-Y.run.startedAt:0;
 /* 내 오늘 공부 시간: Fly Sky에서 기록 중이면 그 시간, 아니면 열품타 앱 등에서 공부 중인 시간까지 */
 function myTotal(){
   const base=info?info.sm:0; if(Y.run) return base+runMs();
-  const me=members.find(m=>m.me);
-  if(me&&me.on&&me.since>0&&me.since<=Date.now()&&Date.now()-me.since<864e5) return Math.max(base,me.sm)+(Date.now()-me.since);
+  const me=members.find(m=>m.me);   // 기록 중이 아니면 시간은 멈춰 있음 (버튼 · 그룹 · 후광과 항상 같은 상태)
   return me?Math.max(base,me.sm):base;
 }
 function orderedGroups(){const ord=Y.gorder||[];return groups.slice().sort((a,b)=>{let ia=ord.indexOf(a.id),ib=ord.indexOf(b.id);if(ia<0)ia=1e9;if(ib<0)ib=1e9;return ia-ib||0})}
@@ -2828,7 +2836,7 @@ function fillStudy(ids,P){
 }
 function groupParts(){
   const on=!!Y.jwt, g=groups.find(x=>x.id===Y.gid), og=orderedGroups();
-  const isMe=m=>!!m.me, live=m=>m.on||(isMe(m)&&!!Y.run);
+  const isMe=m=>!!m.me, live=m=>isMe(m)?!!Y.run:m.on;   // "나"는 버튼과 같은 상태
   const studying=members.filter(live).length;
   const view=members.map((m,i)=>({m,i,t:liveMs(m)})).sort((a,b)=>b.t-a.t);
   let body;
@@ -2958,7 +2966,7 @@ function memberDetail(i){
       <span class="st2 ${m.on?'on':m.paused?'pause':'off'}">${state}</span>
     </div>
     ${rows.map(([k,v,big])=>`<div class="mdstat"><span>${k}</span><b${big?'':' class="sm"'}>${esc(v)}</b></div>`).join('')}
-    ${me&&(Y.log||[]).length?`<details class="mdraw"><summary>기록 내역</summary><pre>${esc((Y.log||[]).slice().reverse().map(x=>{const t=new Date(x.t);return `${t.getMonth()+1}/${t.getDate()} ${pad(t.getHours())}:${pad(t.getMinutes())}:${pad(t.getSeconds())}  ${({start:'시작','auto-restart':'끊김 → 자동 재시작',stop:'정지','remote-start':'다른 기기에서 시작','remote-stop':'다른 기기에서 정지','server-stopped':'다른 기기 · 열품타 앱에서 정지',adopt:'열품타 앱 기록 반영','relogin-try':'로그인 만료 → 재로그인 시도',relogin:'재로그인 성공',expired:'로그인 만료','stop-retry':'정지가 반영되지 않아 다시 정지 요청','off-ignored':'서버가 잠깐 \'공부 중 아님\'으로 보냄 → 무시하고 계속'})[x.e]||x.e}${x.s?' · '+x.s:''}  (${x.d})`}).join('\n'))}</pre></details>`:''}
+    ${me&&(Y.log||[]).length?`<details class="mdraw"><summary>기록 내역</summary><pre>${esc((Y.log||[]).slice().reverse().map(x=>{const t=new Date(x.t);return `${t.getMonth()+1}/${t.getDate()} ${pad(t.getHours())}:${pad(t.getMinutes())}:${pad(t.getSeconds())}  ${({start:'시작','auto-restart':'끊김 → 자동 재시작',stop:'정지','remote-start':'다른 기기에서 시작','remote-stop':'다른 기기에서 정지','server-stopped':'다른 기기 · 열품타 앱에서 정지',adopt:'열품타 앱 기록 반영','relogin-try':'로그인 만료 → 재로그인 시도',relogin:'재로그인 성공',expired:'로그인 만료','stop-retry':'정지가 반영되지 않아 다시 정지 요청','stop-failed':'정지가 반영되지 않음 → 기록 중으로 되돌림','off-ignored':'서버가 잠깐 \'공부 중 아님\'으로 보냄 → 무시하고 계속'})[x.e]||x.e}${x.s?' · '+x.s:''}  (${x.d})`}).join('\n'))}</pre></details>`:''}
     <div class="mfoot"><button type="button" class="pbtn" onclick="closeModal()">닫기</button></div>`;
   M.classList.add('open');
 }
@@ -2986,7 +2994,7 @@ document.addEventListener('click',e=>{
 const groupVisible=()=>['view-home','view-ypt'].some(id=>{const v=document.getElementById(id);return v&&v.classList.contains('on')});
 let tick=0;
 setInterval(()=>{
-  if(Y.run||members.some(m=>m.me&&m.on)){const c=hms(myTotal());$('homeStudy').textContent=c;$('yvStudy').textContent=c;if(Y.run)$('yvSubs').innerHTML=subjectList()}
+  if(Y.run){const c=hms(myTotal());$('homeStudy').textContent=c;$('yvStudy').textContent=c;if(Y.run)$('yvSubs').innerHTML=subjectList()}
   if(!document.hidden&&(Y.run||members.some(m=>m.on)))
     document.querySelectorAll('#yptMembers .mem.study, #yvMembers .mem.study').forEach(el=>{const m=members[+el.dataset.mi];if(m){const t=el.querySelector('.tm');if(t)t.textContent=hms(liveMs(m))}});
   if(!Y.jwt||document.hidden) return;
