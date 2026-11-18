@@ -10,7 +10,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Fly Sky">
 <meta name="theme-color" content="#c9cfe2">
-<script>window.FLY_BUILD="2026.11.18-r68";
+<script>window.FLY_BUILD="2026.11.18-r69";
 /* 새로고침 버튼이 붙인 ?r=… 는 주소창에서 바로 지움 */
 if(/[?&]r=\d/.test(location.search))history.replaceState(history.state,"",location.pathname+location.hash);</script>
 <script>
@@ -2570,10 +2570,11 @@ function fbStart(){
 const stateBody=()=>{const o={...S};delete o._t;return JSON.stringify(o)};
 /* 열품타: 그룹 순서 · 그룹 · 과목 + 로그인 정보(토큰). 로그인 정보는 더 나중에 로그인/로그아웃한 쪽(authAt)이 이김 */
 const YAUTH=['jwt','nick','uid','coid','email','relay','authAt'];
-function yptPrefs(){try{const y=JSON.parse(localStorage.getItem('flysky:ypt'))||{};const o={gorder:y.gorder||null,gid:y.gid||null,subj:y.subj||null};
+function yptPrefs(){try{const y=JSON.parse(localStorage.getItem('flysky:ypt'))||{};const o={gorder:y.gorder||null,gid:y.gid||null,subj:y.subj||null,stopped:y.stopped||[]};
   YAUTH.forEach(k=>{if(k in y)o[k]=y[k]}); return o}catch(e){return {}}}   // 기록 중 상태는 동기화하지 않음: 모든 기기가 열품타 서버만 보고 판단
 function mergeYpt(r,authOnly){const y=JSON.parse(localStorage.getItem('flysky:ypt'))||{};
   if(!authOnly)['gorder','gid','subj'].forEach(k=>{if(k in r)y[k]=r[k]});
+  if(Array.isArray(r.stopped)) y.stopped=[...new Set([...(y.stopped||[]),...r.stopped].map(Number).filter(Boolean))].sort((a,b)=>a-b).slice(-30);   // 멈춘 세션 목록은 합치기만 (되돌아가는 일 없음)
   if((+r.authAt||0)>(+y.authAt||0)) YAUTH.forEach(k=>{if(k in r)y[k]=r[k]});
   localStorage.setItem('flysky:ypt',JSON.stringify(y))}
 function applyRemote(d){
@@ -2709,6 +2710,7 @@ if(Y.jwt&&!Y.authAt){Y.authAt=1;try{localStorage.setItem(YKEY,JSON.stringify(Y))
 if(Y.smKey){delete Y.smKey;try{localStorage.setItem(YKEY,JSON.stringify(Y))}catch(e){}}   // 예전 버전의 칸 자동 찾기 흔적 정리
 if(Y.run&&!Y.runAt){Y.runAt=1;try{localStorage.setItem(YKEY,JSON.stringify(Y))}catch(e){}}   // 예전에 연결해 둔 토큰도 다른 기기로 넘어가게
 document.addEventListener('flysky:yptprefs',()=>{try{const n=JSON.parse(localStorage.getItem(YKEY))||{};['gorder','gid','subj'].forEach(k=>{if(k in n)Y[k]=n[k]});
+  if(Array.isArray(n.stopped)){const m=mergeStops(Y.stopped,n.stopped);if(m.length!==(Y.stopped||[]).length){Y.stopped=m;if(Y.run&&wasStopped(Y.run.startedAt)){srv=null;Y.run=null;saveY();render()}}}
   if((+n.authAt||0)>(+Y.authAt||0)){                        // 다른 기기에서 열품타에 로그인/로그아웃함
     const was=Y.jwt; ['jwt','nick','uid','coid','email','relay','authAt'].forEach(k=>{if(k in n)Y[k]=n[k]});
     if(Y.jwt&&Y.jwt!==was){err='';info=null;groups=[];members=[];render();refresh({full:true});return}
@@ -2863,6 +2865,8 @@ function myTotal(){
   return v.sm+(v.on&&v.st?Math.max(0,Date.now()-v.st):0);
 }
 /* 서버가 보여 준 내 상태 받기 */
+const wasStopped=st=>(Y.stopped||[]).some(x=>Math.abs(x-st)<3000);
+const mergeStops=(a,b)=>[...new Set([...(a||[]),...(b||[])].map(Number).filter(Boolean))].sort((x,y)=>x-y).slice(-30);
 function observe(o){
   if(!Y.jwt||stale(o.asked)||(srv&&o.asked<srv.asked)) return;
   /* 안정성 보장: 기록 중이면 '이 기록이 시작된 뒤에 멈춘 시각(sp)'이 서버에 있을 때만 멈춘 걸로 봄
@@ -2871,12 +2875,19 @@ function observe(o){
     if(!observe.kept||Date.now()-observe.kept>600000){observe.kept=Date.now();ylog('off-ignored')}
     o=Object.assign({},o,{on:true,st:Y.run.startedAt});
   }
+  /* Fly에서 멈춘 세션: 열품타 서버가 그 세션의 멈춘 시각(sp)을 안 남겨서 계속 '공부 중'으로 보일 때가 있음 (서버의 공부 중 표시 is는 꺼져 있음)
+     → 내가(어느 Fly 기기에서든) 이미 멈춘 그 세션이면 공부 중이 아님. 새로 시작한 세션(시작 시각이 다름)은 그대로 따름.
+     누적 시간은 줄어들지 않게 (서버가 늦게 반영하는 동안 방금 기록한 시간이 빠져 보이지 않도록) */
+  if(o.on&&o.st&&!o.is&&wasStopped(o.st)&&!(o.sp&&o.sp>o.st)){
+    if(observe.ign!==o.st){observe.ign=o.st;ylog('on-ignored',{s:'이미 멈춘 세션 · 시작 '+new Date(o.st).toTimeString().slice(0,8)})}
+    o=Object.assign({},o,{on:false,ghost:true,sm:Math.max(o.sm||0,srv?srv.sm:0,pend?pend.sm:0)});
+  }
   if(srv&&srv.on!==o.on&&!(pend&&pend.on===o.on)){          // 상태가 바뀌었다는 신호는 두 번 연속일 때만 믿음 (잡음 거르기)
     if(!cand||cand.on!==o.on){cand=o;setTimeout(quickCheck,1500);return}
   }
   cand=null; const was=srv; srv=o;
   if(o.on!==(was?was.on:null)) ylog(o.on?'obs-on':'obs-off',{s:`누적 ${Math.round(o.sm/60000)}분${o.st?' · 시작 '+new Date(o.st).toTimeString().slice(0,8):''}${o.sp?' · 멈춤 '+new Date(o.sp).toTimeString().slice(0,8):''} · is ${o.is?'켜짐':'꺼짐'}`});
-  if(pend&&(pend.on===o.on||Date.now()-pend.at>30000)) pend=null;   // 서버가 따라왔거나, 30초가 지나면 서버가 맞음
+  if(pend&&((pend.on===o.on&&!o.ghost)||Date.now()-pend.at>30000)) pend=null;   // 서버가 따라왔거나, 30초가 지나면 서버가 맞음
   if(!pend&&was&&was.on&&!o.on&&Date.now()-actionAt>30000) toast('다른 기기에서 공부를 멈췄어요');
   apply();
 }
@@ -2994,6 +3005,7 @@ async function studyStop(){
     const j=await call('POST','/study/stop',{startedAt,deviceModel:DEVICE_MODEL});
     if(j.s!==true) throw new YErr(String(j.c||'stop'));
     const total=myTotal(); actionAt=Date.now(); pend={on:false,st:0,sm:Math.max(total,j.dl&&+j.dl.sm||0),at:actionAt};
+    Y.stopped=mergeStops(Y.stopped,[startedAt]);           // 멈춘 세션 기억 (기기 간 동기화) → 서버가 늦게 반영해도 다시 켜지지 않음
     Y.run=null; ylog('stop'); saveY(); toast('열품타에 기록했어요');
     loadDay().then(()=>loadMembers()).then(render,()=>render());
   }catch(e){toast('열품타 기록을 멈추지 못했어요 · '+msg(e))}
