@@ -802,9 +802,9 @@ header.hhead .brand{font-size:54px;justify-self:start;margin-left:-5.5px;transfo
 </style>
 <style>
 /* 웹앱에서 상태바 아래로 내용이 올라가므로, 상태바(안전 영역)만큼만 띄움 */
-.app{padding-top:max(28px,calc(env(safe-area-inset-top) + 14px))}
-@media (min-width:901px){.side{top:max(28px,calc(env(safe-area-inset-top) + 10px))}}
-@media (max-width:900px){.app{padding-top:max(18px,calc(env(safe-area-inset-top) + 8px))}}
+.app{padding-top:max(28px,calc(env(safe-area-inset-top) + 34px))}   /* 웹앱: 상태바 + 그 아래 흐림 영역을 피함 */
+@media (min-width:901px){.side{top:max(28px,calc(env(safe-area-inset-top) + 26px))}}
+@media (max-width:900px){.app{padding-top:max(18px,calc(env(safe-area-inset-top) + 22px))}}
 </style>
 <style>
 /* 휴대폰 하단 바: 홈 · 타이머 · 열품타 · ··· (나머지는 '모든 기능'에) + 프로필, 버튼은 찌그러지지 않는 정원 */
