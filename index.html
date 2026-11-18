@@ -2369,11 +2369,10 @@ const stateBody=()=>{const o={...S};delete o._t;return JSON.stringify(o)};
 /* 열품타: 그룹 순서 · 그룹 · 과목 + 로그인 정보(토큰). 로그인 정보는 더 나중에 로그인/로그아웃한 쪽(authAt)이 이김 */
 const YAUTH=['jwt','nick','uid','coid','email','relay','authAt'];
 function yptPrefs(){try{const y=JSON.parse(localStorage.getItem('flysky:ypt'))||{};const o={gorder:y.gorder||null,gid:y.gid||null,subj:y.subj||null};
-  YAUTH.forEach(k=>{if(k in y)o[k]=y[k]}); if('runAt' in y){o.run=y.run||null;o.runAt=y.runAt;o.lastStop=y.lastStop||null} return o}catch(e){return {}}}
+  YAUTH.forEach(k=>{if(k in y)o[k]=y[k]}); return o}catch(e){return {}}}   // 기록 중 상태는 동기화하지 않음: 모든 기기가 열품타 서버만 보고 판단
 function mergeYpt(r,authOnly){const y=JSON.parse(localStorage.getItem('flysky:ypt'))||{};
   if(!authOnly)['gorder','gid','subj'].forEach(k=>{if(k in r)y[k]=r[k]});
   if((+r.authAt||0)>(+y.authAt||0)) YAUTH.forEach(k=>{if(k in r)y[k]=r[k]});
-  if((+r.runAt||0)>(+y.runAt||0)){y.run=r.run||null;y.runAt=r.runAt;if(r.lastStop)y.lastStop=r.lastStop}   // 공부 기록 중 상태: 더 나중에 시작/정지한 쪽
   localStorage.setItem('flysky:ypt',JSON.stringify(y))}
 function applyRemote(d){
   try{const n=JSON.parse(d.state); if(!n||!Array.isArray(n.ddays)) return; S=n}catch(e){return}
@@ -2398,7 +2397,7 @@ async function startSync(uid){
   try{
     const snap=await FB.F.getDoc(syncRef), r=snap.exists()?snap.data():null;
     const first=localStorage.getItem('flysky:synced')!==uid;
-    if(r&&r.ypt&&((+r.ypt.authAt||0)>(+yptPrefs().authAt||0)||(+r.ypt.runAt||0)>(+yptPrefs().runAt||0))){   // 클라우드의 열품타 로그인이 더 최신이면 먼저 받아 둠 (이 기기 데이터를 올릴 때 덮어쓰지 않게)
+    if(r&&r.ypt&&(+r.ypt.authAt||0)>(+yptPrefs().authAt||0)){   // 클라우드의 열품타 로그인이 더 최신이면 먼저 받아 둠 (이 기기 데이터를 올릴 때 덮어쓰지 않게)
       try{mergeYpt(r.ypt,true)}catch(e){} document.dispatchEvent(new CustomEvent('flysky:yptprefs'))}
     if(r&&r.state){
       const rt=+r.t||0, lt=+S._t||0;
@@ -2411,7 +2410,7 @@ async function startSync(uid){
     }else await pushNow();
     localStorage.setItem('flysky:synced',uid);
     syncOn=true; syncAt=Date.now(); syncErr='';
-    {const ly=yptPrefs(), ry=(r&&r.ypt)||{}; if((+ly.authAt||0)>(+ry.authAt||0)||(+ly.runAt||0)>(+ry.runAt||0)) await pushNow();}   // 이 기기의 열품타 로그인이 더 최신이면 올림
+    {const ly=yptPrefs(), ry=(r&&r.ypt)||{}; if((+ly.authAt||0)>(+ry.authAt||0)) await pushNow();}   // 이 기기의 열품타 로그인이 더 최신이면 올림
     unsub=FB.F.onSnapshot(syncRef,sn=>{if(sn.metadata&&sn.metadata.hasPendingWrites)return;const d=sn.data();if(d&&(+d.t||0)>(+S._t||0))applyRemote(d)});
   }catch(e){syncErr=String(e&&e.code||'').includes('permission')?'Firestore 보안 규칙을 확인해 주세요':'동기화를 시작하지 못했어요'}
 }
@@ -2493,7 +2492,6 @@ if(Y.jwt&&!Y.authAt){Y.authAt=1;try{localStorage.setItem(YKEY,JSON.stringify(Y))
 if(Y.smKey){delete Y.smKey;try{localStorage.setItem(YKEY,JSON.stringify(Y))}catch(e){}}   // 예전 버전의 칸 자동 찾기 흔적 정리
 if(Y.run&&!Y.runAt){Y.runAt=1;try{localStorage.setItem(YKEY,JSON.stringify(Y))}catch(e){}}   // 예전에 연결해 둔 토큰도 다른 기기로 넘어가게
 document.addEventListener('flysky:yptprefs',()=>{try{const n=JSON.parse(localStorage.getItem(YKEY))||{};['gorder','gid','subj'].forEach(k=>{if(k in n)Y[k]=n[k]});
-  if((+n.runAt||0)>(+Y.runAt||0)){actionAt=Date.now();Y.run=n.run||null;Y.runAt=n.runAt;if(n.lastStop)Y.lastStop=n.lastStop;ylog(Y.run?'remote-start':'remote-stop');loadMembers().then(render,()=>{})}   // 다른 기기에서 기록 시작/정지
   if((+n.authAt||0)>(+Y.authAt||0)){                        // 다른 기기에서 열품타에 로그인/로그아웃함
     const was=Y.jwt; ['jwt','nick','uid','coid','email','relay','authAt'].forEach(k=>{if(k in n)Y[k]=n[k]});
     if(Y.jwt&&Y.jwt!==was){err='';info=null;groups=[];members=[];render();refresh({full:true});return}
