@@ -2551,7 +2551,7 @@ function applyInfo(j,asked){
   const ss=(Array.isArray(j.ss)?j.ss:[]).filter(x=>!truthy(x.dl))
     .map(x=>({id:+(x.id??x.sid??x.subjectId??x.subjectID??x.si)||0,t:String(x.tt??x.t??x.title??''),sm:+x.sm||0,or:+x.or||0})).filter(x=>x.t).sort((a,b)=>a.or-b.or);
   const prevSm=info?info.sm:0, nsm=+(j.dl&&j.dl.sm)||0;
-  info={sm:stale(asked)?Math.max(prevSm,nsm):nsm,subjects:ss,at:Date.now(),live:info&&info.live}; liveFrom(j.dl,asked);
+  info={sm:srv?prevSm:nsm,subjects:ss,at:Date.now()}; liveFrom(j.dl,asked);
   if(j.n) Y.nick=String(j.n);
   {const u=+(j.ud??(j.p&&j.p.ud))||0; if(u) Y.uid=u;}
   if(+j.coid) Y.coid=+j.coid;
@@ -2606,8 +2606,8 @@ async function loadDay(){
   addList(dl.ls); addList(j.ls); addList(j.ss); addList(j.ts);
   let any=false;
   info.subjects.forEach(sb=>{const v=(sb.id&&byId[sb.id]); const w=(v!=null?v:byTitle[sb.t]); if(w!=null){sb.sm=w;any=true}});
-  if(+dl.sm) info.sm=stale(asked)?Math.max(info.sm,+dl.sm):+dl.sm;   // 버튼 누르기 전에 출발한 응답이면 줄이지 않음
-  liveFrom(dl,asked); reconcile();
+  if(+dl.sm&&!srv) info.sm=+dl.sm;
+  liveFrom(dl,asked);
   info.dayLoaded=any||Object.keys(byTitle).length>0||Object.keys(byId).length>0;
 }
 async function loadGroups(){
@@ -2625,70 +2625,51 @@ async function loadMembers(){
   const j=await call('GET',`/logs/group/members/v2?groupID=${gid}&countryID=${Y.coid||0}&isLooking=true&version=810046`);
   if(gid!==Y.gid) return;   // 그사이 다른 그룹을 골랐으면 버림
   rawMembers=Array.isArray(j.ms)?j.ms:[]; rawAt=Date.now();
-  parseMembers(); markMe(); membersAsked=asked; reconcile();
+  parseMembers(); markMe();
+  {const g=members.find(m=>m.me); if(g) observe({on:g.on,st:g.since,sm:g.sm,asked,subj:g.subj});}
 }
 /* 서버와 대조: 내 실제 상태(그룹 데이터의 '나')와 Fly Sky의 기록 중 상태를 맞춤 */
-let miss=0, fixing=false, checkAt=0, checking=false, actionAt=0, membersAsked=0;
-/* 버튼(시작 · 정지)이나 다른 기기의 시작 · 정지가 있은 뒤 1.5초 안에 출발한 서버 응답은 '그 이전 상태'일 수 있음
-   → 그 결과를 뒤집는 데 쓰지 않음 */
-const stale=asked=>!(asked>actionAt+1500);
-/* 기록 중에는 내 상태만 빠르게 확인 (다른 기기 · 열품타 앱에서 멈추면 몇 초 안에 반영) */
+/* ================= 열품타 '기기 하나'처럼: 기준은 서버가 보여 주는 내 상태 하나 =================
+   srv  = 서버가 보여 준 내 상태 (공부 중 · 시작 시각 · 오늘 끝낸 누적)
+   pend = 내가 방금 누른 버튼 결과. 서버가 같은 상태를 보내거나 30초가 지나면 사라지고 서버를 따름
+   화면(시간 · 버튼 · 그룹의 '나' · 후광)은 전부 view() 하나로 계산 → 서로 어긋나거나 숫자가 튀지 않음 */
+let checkAt=0, checking=false, actionAt=0, srv=null, cand=null, pend=null;
+const stale=asked=>!(asked>actionAt+1500);          // 버튼 누르기 전에 출발한 응답
 function quickCheck(){
   if(checking||!Y.jwt||document.hidden) return; checking=true; checkAt=Date.now();
   const inGroup=members.some(m=>m.me);
   (inGroup?loadMembers():loadDay()).then(()=>{render()},()=>{}).finally(()=>{checking=false});
 }
-/* 내 정보(오늘 기록)에 들어 있는 지금 상태: 그룹을 안 골랐거나 내가 그 그룹에 없어도 알 수 있음 */
-function liveFrom(dl,asked){if(!info||!dl||typeof dl!=='object'||!('is' in dl))return;
-  const st=typeof dl.st==='string'?Date.parse(dl.st):+dl.st||0;
-  info.live={on:sbool(dl.is)&&!sbool(dl.ia),paused:sbool(dl.ia),since:st>0?(st<1e11?st*1000:st):0,sm:+dl.sm||0,sp:T2(dl.sp),at:asked||Date.now()}}
-function reconcile(){
-  const g=members.find(m=>m.me), L=info&&info.live;
-  const useG=g&&(!L||membersAsked>=L.at);
-  const me=useG?g:(L?{on:L.on,paused:L.paused,since:L.since,sm:L.sm,sp:L.sp,subj:''}:null);   // 더 최근에 출발한 응답
-  const asked=useG?membersAsked:(L?L.at:0);
-  if(!me||fixing||pending||!Y.jwt||stale(asked)) return;    // 버튼 누르기 전 상태면 무시
-  const now=Date.now();
-  {const k=(me.on?'on':me.paused?'paused':'off'); if(k!==reconcile.obs){reconcile.obs=k;
-    ylog('obs-'+k,{s:`${useG?'그룹':'내 기록'} · 누적 ${Math.round((+me.sm||0)/60000)}분${me.since?` · 시작 ${new Date(me.since).toTimeString().slice(0,8)}`:''}${me.sp?` · 멈춤 ${new Date(me.sp).toTimeString().slice(0,8)}`:''}`})}}
-  /* 기록의 기준 누적: 서버가 '공부 중'으로 보여 준 첫 값(지금 공부는 빠진 값) */
-  if(Y.run&&Y.run.base==null){Y.run.base=me.on?(+me.sm||0):(info?info.sm:0);saveY()}
-  if(Y.run){
-    if(me.on){miss=0;
-      /* 같은 공부의 시작 시각만 서버 기준으로 살짝 맞춤 (2분 넘게 다르면 다른 공부이므로 건드리지 않음) */
-      const d=me.since-Y.run.startedAt;
-      if(me.since>0&&me.since<=now&&Math.abs(d)>5000&&Math.abs(d)<120000){Y.run.startedAt=me.since;saveY()}
-      return}
-    if(me.paused||now-Y.run.startedAt<60000) return;          // 일시정지거나 막 시작했으면 기다림
-    /* '공부 중 아님' 표시만으로는 멈춘 걸로 보지 않음: 진짜로 멈췄다면 서버의 오늘 누적에 이 공부가 더해져 있어야 함 */
-    const base=+Y.run.base||0, ran=now-Y.run.startedAt;
-    const proof=(+me.sm>=base+ran*0.5)||(me.sp>Y.run.startedAt+3000);   // 누적이 늘었거나, 이 공부 시작 뒤에 멈춘 기록이 있음
-    if(!proof){miss=0;if(!reconcile.noted||now-reconcile.noted>600000){reconcile.noted=now;ylog('off-ignored')}return}
-    if(++miss<2){setTimeout(quickCheck,1500);return}            // 한 번 보이면 1.5초 뒤 바로 다시 확인해서 확정
-    /* 열품타처럼 '하나의 기기'로: 다른 기기 · 열품타 앱에서 멈췄으면 여기서도 멈춤 */
-    miss=0; ylog('server-stopped',{s:Y.run.subject});
-    Y.lastStop={since:Y.run.startedAt,at:now,by:'remote'}; Y.run=null; Y.runAt=now; saveY();
-    toast('다른 기기에서 공부를 멈췄어요');
-    loadDay().then(render,()=>render());
-  }else if(me.on&&me.since>0&&me.since<=now&&now-me.since<864e5){
-    /* 방금 멈춘 그 공부를 서버가 아직 '공부 중'으로 보내는 경우(반영 지연)는 다시 켜지 않음:
-       멈춘 세션보다 나중에 시작한 '새' 공부만 반영 */
-    const LS=Y.lastStop;
-    if(LS&&me.since<=Math.max(LS.since,LS.at-5000)+5000){
-      /* 멈춘 그 공부가 서버에서 계속 이어지고 있음 = 실제로는 안 멈춤 → 실제 상태를 따름 */
-      const age=now-LS.at;
-      if(LS.by==='me'){
-        if(age>15000&&!LS.retried){LS.retried=1;saveY();ylog('stop-retry');   // 정지 요청을 한 번 더
-          call('POST','/study/stop',{startedAt:me.since,deviceModel:DEVICE_MODEL}).then(()=>loadDay().then(render),()=>{});return}
-        if(age<45000) return;                                    // 반영될 때까지 조금 더 기다림
-        ylog('stop-failed');
-      }else if(age<15000) return;
-      Y.lastStop=null;
-      Y.run={startedAt:me.since,subject:me.subj||curSubj(),base:+me.sm||(info?info.sm:0)}; Y.runAt=now; saveY();
-      toast(LS.by==='me'?'정지가 반영되지 않아 아직 기록 중이에요. 다시 눌러 멈춰 주세요':'공부가 계속되고 있어서 다시 기록 중으로 표시해요');
-      return}
-    Y.run={startedAt:me.since,subject:me.subj||curSubj(),base:+me.sm||(info?info.sm:0)}; ylog('adopt',{s:Y.run.subject}); saveY();   // 열품타 앱 등에서 시작한 공부
+function view(){return pend||srv}
+function myTotal(){
+  const v=view(); if(!v) return (info?info.sm:0)+(Y.run?Date.now()-Y.run.startedAt:0);
+  return v.sm+(v.on&&v.st?Math.max(0,Date.now()-v.st):0);
+}
+/* 서버가 보여 준 내 상태 받기 */
+function observe(o){
+  if(!Y.jwt||stale(o.asked)||(srv&&o.asked<srv.asked)) return;
+  if(srv&&srv.on!==o.on&&!(pend&&pend.on===o.on)){          // 상태가 바뀌었다는 신호는 두 번 연속일 때만 믿음 (잡음 거르기)
+    if(!cand||cand.on!==o.on){cand=o;setTimeout(quickCheck,1500);return}
   }
+  cand=null; const was=srv; srv=o;
+  if(o.on!==(was?was.on:null)) ylog(o.on?'obs-on':'obs-off',{s:`누적 ${Math.round(o.sm/60000)}분${o.st?' · 시작 '+new Date(o.st).toTimeString().slice(0,8):''}`});
+  if(pend&&(pend.on===o.on||Date.now()-pend.at>30000)) pend=null;   // 서버가 따라왔거나, 30초가 지나면 서버가 맞음
+  if(!pend&&was&&was.on&&!o.on&&Date.now()-actionAt>30000) toast('다른 기기에서 공부를 멈췄어요');
+  apply();
+}
+/* view()를 Y.run(정지 요청에 쓰는 시작 시각 · 과목)과 화면에 반영 */
+function apply(){
+  const v=view(); if(!v) return;
+  if(v.on){const st=v.st||Date.now();
+    if(!Y.run||Math.abs(Y.run.startedAt-st)>1000){Y.run={startedAt:st,subject:(Y.run&&Y.run.subject)||v.subj||curSubj()};saveY()}}
+  else if(Y.run){Y.run=null;saveY()}
+  if(info&&!pend) info.sm=v.sm;
+}
+function reconcile(){}   // (예전 이름 호환)
+/* 내 정보(오늘 기록)의 지금 상태: 그룹에 내가 없을 때만 씀 (출처를 섞지 않음) */
+function liveFrom(dl,asked){
+  if(!info||!dl||typeof dl!=='object'||!('is' in dl)||members.some(m=>m.me)) return;
+  observe({on:sbool(dl.is)&&!sbool(dl.ia),st:T2(dl.st),sm:+dl.sm||0,asked:asked||Date.now(),subj:''});
 }
 let rawMembers=[], rawAt=0;
 const T2=v=>{const t=typeof v==='string'?Date.parse(v):+v||0;return t>0?(t<1e11?t*1000:t):0};
@@ -2770,9 +2751,9 @@ async function studyStart(subject,auto){
   try{
     const j=await call('POST','/study/start',{subject:title,deviceModel:DEVICE_MODEL,taskId:null});
     if(j.s!==true) throw new YErr(String(j.c||'start'));
-    actionAt=Date.now(); Y.run={startedAt,subject:title,base:null}; Y.runAt=Date.now(); ylog(auto?'auto-restart':'start',{s:title}); saveY();
-    if(j.dl&&info) info.sm=+j.dl.sm||info.sm;
-    toast(auto?`열품타 기록이 끊겨 있어서 바로 다시 시작했어요 · ${title}`:`열품타 기록 시작 · ${title}`);
+    const before=myTotal(); actionAt=Date.now(); pend={on:true,st:startedAt,sm:before,at:actionAt,subj:title};
+    Y.run={startedAt,subject:title}; ylog('start',{s:title}); saveY();
+    toast(`열품타 기록 시작 · ${title}`);
     render(); loadMembers().then(render,()=>{});   // 그룹에도 바로 반영
   }catch(e){toast('열품타 기록을 시작하지 못했어요 · '+msg(e))}
   render();
@@ -2783,8 +2764,8 @@ async function studyStop(){
   try{
     const j=await call('POST','/study/stop',{startedAt,deviceModel:DEVICE_MODEL});
     if(j.s!==true) throw new YErr(String(j.c||'stop'));
-    if(info) info.sm=j.dl?(+j.dl.sm||0):info.sm+(Date.now()-startedAt);
-    actionAt=Date.now(); Y.lastStop={since:startedAt,at:Date.now(),by:'me'}; Y.run=null; Y.runAt=Date.now(); ylog('stop'); saveY(); toast('열품타에 기록했어요');
+    const total=myTotal(); actionAt=Date.now(); pend={on:false,st:0,sm:Math.max(total,j.dl&&+j.dl.sm||0),at:actionAt};
+    Y.run=null; ylog('stop'); saveY(); toast('열품타에 기록했어요');
     loadDay().then(()=>loadMembers()).then(render,()=>render());
   }catch(e){toast('열품타 기록을 멈추지 못했어요 · '+msg(e))}
   render();
@@ -2807,12 +2788,6 @@ document.addEventListener('click',e=>{
 const COLORS=['var(--accent-deep)','var(--accent)','var(--accent-light)','#d8ddee'];
 const MEMC=['var(--accent-deep)','#8592c4','#9aa0b0','#3f4a6b','var(--accent)'];
 const runMs=()=>Y.run?Date.now()-Y.run.startedAt:0;
-/* 내 오늘 공부 시간: Fly Sky에서 기록 중이면 그 시간, 아니면 열품타 앱 등에서 공부 중인 시간까지 */
-function myTotal(){
-  const base=info?info.sm:0; if(Y.run) return base+runMs();
-  const me=members.find(m=>m.me);   // 기록 중이 아니면 시간은 멈춰 있음 (버튼 · 그룹 · 후광과 항상 같은 상태)
-  return me?Math.max(base,me.sm):base;
-}
 function orderedGroups(){const ord=Y.gorder||[];return groups.slice().sort((a,b)=>{let ia=ord.indexOf(a.id),ib=ord.indexOf(b.id);if(ia<0)ia=1e9;if(ib<0)ib=1e9;return ia-ib||0})}
 function moveGroup(id,dir){const og=orderedGroups().map(g=>g.id),i=og.indexOf(id),j=i+dir;if(i<0||j<0||j>=og.length)return;[og[i],og[j]]=[og[j],og[i]];Y.gorder=og;saveY();render()}
 function curSubj(){const subs=info?info.subjects:[];return (subs.find(x=>x.t===Y.subj)||subs[0]||{t:''}).t}
