@@ -10,7 +10,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Fly Sky">
 <meta name="theme-color" content="#c9cfe2">
-<script>window.FLY_BUILD="2026.11.18-r56";</script>
+<script>window.FLY_BUILD="2026.11.18-r57";</script>
 <script>
 /* 홈 화면 웹앱으로 실행 중이면 html.pwa (iPad 창 모드 등에서 safe-area 값이 0으로 오는 경우 대비) */
 try{if(navigator.standalone||matchMedia('(display-mode: standalone)').matches||matchMedia('(display-mode: fullscreen)').matches)document.documentElement.classList.add('pwa')}catch(e){}
@@ -2628,7 +2628,7 @@ async function loadMembers(){
   if(gid!==Y.gid) return;   // 그사이 다른 그룹을 골랐으면 버림
   rawMembers=Array.isArray(j.ms)?j.ms:[]; rawAt=Date.now();
   parseMembers(); markMe();
-  {const g=members.find(m=>m.me); if(g) observe({on:g.on,st:g.since,sm:g.sm,asked,subj:g.subj});}
+  {const g=members.find(m=>m.me); if(g){const d=(g.raw&&g.raw.dl)||{}; observe({on:g.on,st:g.since,sp:g.sp,is:sbool(d.is),sm:g.sm,asked,subj:g.subj})}}
 }
 /* 서버와 대조: 내 실제 상태(그룹 데이터의 '나')와 Fly Sky의 기록 중 상태를 맞춤 */
 /* ================= 열품타 '기기 하나'처럼: 기준은 서버가 보여 주는 내 상태 하나 =================
@@ -2654,7 +2654,7 @@ function observe(o){
     if(!cand||cand.on!==o.on){cand=o;setTimeout(quickCheck,1500);return}
   }
   cand=null; const was=srv; srv=o;
-  if(o.on!==(was?was.on:null)) ylog(o.on?'obs-on':'obs-off',{s:`누적 ${Math.round(o.sm/60000)}분${o.st?' · 시작 '+new Date(o.st).toTimeString().slice(0,8):''}`});
+  if(o.on!==(was?was.on:null)) ylog(o.on?'obs-on':'obs-off',{s:`누적 ${Math.round(o.sm/60000)}분${o.st?' · 시작 '+new Date(o.st).toTimeString().slice(0,8):''}${o.sp?' · 멈춤 '+new Date(o.sp).toTimeString().slice(0,8):''} · is ${o.is?'켜짐':'꺼짐'}`});
   if(pend&&(pend.on===o.on||Date.now()-pend.at>30000)) pend=null;   // 서버가 따라왔거나, 30초가 지나면 서버가 맞음
   if(!pend&&was&&was.on&&!o.on&&Date.now()-actionAt>30000) toast('다른 기기에서 공부를 멈췄어요');
   apply();
@@ -2670,18 +2670,24 @@ function apply(){
 function reconcile(){}   // (예전 이름 호환)
 /* 내 정보(오늘 기록)의 지금 상태: 그룹에 내가 없을 때만 씀 (출처를 섞지 않음) */
 function liveFrom(dl,asked){
-  if(!info||!dl||typeof dl!=='object'||!('is' in dl)||members.some(m=>m.me)) return;
-  observe({on:sbool(dl.is)&&!sbool(dl.ia),st:T2(dl.st),sm:+dl.sm||0,asked:asked||Date.now(),subj:''});
+  if(!info||!dl||typeof dl!=='object'||!('is' in dl||'st' in dl)||members.some(m=>m.me)) return;
+  const L=liveOf(dl);
+  observe({on:L.on,st:L.st,sp:L.sp,is:sbool(dl.is),sm:+dl.sm||0,asked:asked||Date.now(),subj:''});
 }
 let rawMembers=[], rawAt=0;
 const T2=v=>{const t=typeof v==='string'?Date.parse(v):+v||0;return t>0?(t<1e11?t*1000:t):0};
+/* 공부 중 판단: 열품타 앱에서 시작하면 is가 꺼진 채로 오는 경우가 있음 →
+   '마지막 시작(st)이 마지막 멈춤(sp)보다 뒤'면 공부 중 (둘 다 있을 때). 없으면 is. 일시정지(ia)는 공부 중 아님 */
+function liveOf(dl){const st=T2(dl.st), sp=T2(dl.sp), paused=sbool(dl.ia);
+  const on=paused?false:(st&&sp?st>sp:sbool(dl.is));
+  return {on,paused,st,sp}}
 const sbool=v=>v===true||v===1||v==='1'||v==='true';
 function parseMembers(){
   const prev=new Map(members.map(m=>[m.n,m])), now=Date.now();
   members=rawMembers.map(m=>{
     const dl=m.dl&&typeof m.dl==='object'?m.dl:{};
-    const paused=sbool(dl.ia??dl.ip??m.ia??m.ip);
-    const studying=sbool(dl.is??m.is??m.isStudying)&&!paused;
+    const L=liveOf(dl), paused=L.paused||sbool(dl.ip??m.ia??m.ip);
+    const studying=L.on&&!paused;
     /* dl.sm = 오늘 끝낸 공부(지금 진행 중인 건 빠짐), dl.st = 지금 공부를 시작한 시각(ISO 문자열)
        → 화면 시간 = dl.sm + (지금 - dl.st)  (열품타 앱과 같은 계산) */
     const stv=dl.st??dl.ss??m.ss; let since=typeof stv==='string'?Date.parse(stv):+stv||0;
