@@ -805,6 +805,7 @@ header.hhead .brand{font-size:54px;justify-self:start;margin-left:-5.5px;transfo
 .app{padding-top:max(28px,calc(env(safe-area-inset-top) + 34px))}   /* 웹앱: 상태바 + 그 아래 흐림 영역을 피함 */
 @media (min-width:901px){.side{top:max(28px,calc(env(safe-area-inset-top) + 26px))}}
 @media (max-width:900px){.app{padding-top:max(18px,calc(env(safe-area-inset-top) + 22px))}}
+.toast{top:calc(24px + env(safe-area-inset-top) * 1.4)}   /* 알림 메시지도 상태바 흐림 아래로 */
 </style>
 <style>
 /* 휴대폰 하단 바: 홈 · 타이머 · 열품타 · ··· (나머지는 '모든 기능'에) + 프로필, 버튼은 찌그러지지 않는 정원 */
