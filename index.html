@@ -10,7 +10,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Fly Sky">
 <meta name="theme-color" content="#c9cfe2">
-<script>window.FLY_BUILD="2026.11.18-r71";
+<script>window.FLY_BUILD="2026.11.18-r72";
 /* 새로고침 버튼이 붙인 ?r=… 는 주소창에서 바로 지움 */
 if(/[?&]r=\d/.test(location.search))history.replaceState(history.state,"",location.pathname+location.hash);</script>
 <script>
@@ -2874,15 +2874,16 @@ const dayKey=()=>{const d=new Date(Date.now()-5*3600e3);return d.getFullYear()*1
 function monoSeen(sp,sm){
   const m=Y.mono&&Y.mono.day===dayKey()?Y.mono:{day:dayKey(),sp:(Y.mono&&Y.mono.sp)||0,sm:0};
   let ch=m!==Y.mono;
-  if(sp&&sp>m.sp){m.sp=sp;ch=true}
-  if(sm&&sm>m.sm){m.sm=sm;ch=true}
+  if(sp&&sp>m.sp){m.sp=sp;if(sm){m.sm=sm}ch=true}        // 더 새 멈춤 시각이 담긴 자료의 누적이 최신 (열품타 하루가 바뀌어 줄어든 것도 그대로)
+  else if(sm&&sm>m.sm){m.sm=sm;ch=true}
   if(ch){Y.mono=m;saveY()}
 }
 function isOld(o){
   const m=Y.mono; if(!m) return '';
   if(o.sp&&m.sp&&o.sp<m.sp-1000) return '예전 멈춤 시각';
   if(o.on&&o.st&&m.sp&&o.st<m.sp-1000) return '이미 끝난 세션';
-  if(o.on&&o.st&&wasStopped(o.st)&&m.day===dayKey()&&m.sm&&o.sm<m.sm-1000) return '멈추기 전 누적';
+  /* 멈춘 시각은 같은데 누적이 더 적음 = 마지막 기록이 반영되기 전 사본 (새로 시작한 세션은 제외) */
+  if(m.day===dayKey()&&m.sm&&o.sm<m.sm-1000&&!(o.sp&&o.sp>m.sp+1000)&&!(o.on&&o.st&&o.st>m.sp+1000&&!wasStopped(o.st))) return '마지막 기록 전 사본';
   return '';
 }
 function observe(o){
@@ -2903,12 +2904,15 @@ function observe(o){
     if(observe.ign!==o.st){observe.ign=o.st;ylog('on-ignored',{s:'이미 멈춘 세션 · 시작 '+new Date(o.st).toTimeString().slice(0,8)})}
     o=Object.assign({},o,{on:false,ghost:true,sm:Math.max(o.sm||0,srv?srv.sm:0,pend?pend.sm:0)});
   }
-  if(srv&&srv.on!==o.on&&!(pend&&pend.on===o.on)){          // 상태가 바뀌었다는 신호는 두 번 연속일 때만 믿음 (잡음 거르기)
+  /* 옛날 사본은 위에서 이미 걸렀으니, '더 새 멈춤 시각'(새 정지)이나 '더 새 시작 시각'(새 세션)은 확실한 새 소식 → 바로 반영 */
+  const news=srv&&((!o.on&&o.sp&&o.sp>(srv.sp||0)+1000)||(o.on&&o.st&&o.st>Math.max(srv.st||0,(Y.mono&&Y.mono.sp)||0)+1000));
+  if(srv&&srv.on!==o.on&&!news&&!(pend&&pend.on===o.on)){          // 상태가 바뀌었다는 신호는 두 번 연속일 때만 믿음 (잡음 거르기)
     if(!cand||cand.on!==o.on){cand=o;setTimeout(quickCheck,1500);return}
   }
   cand=null; const was=srv; srv=o;
   if(o.on!==(was?was.on:null)) ylog(o.on?'obs-on':'obs-off',{s:`누적 ${Math.round(o.sm/60000)}분${o.st?' · 시작 '+new Date(o.st).toTimeString().slice(0,8):''}${o.sp?' · 멈춤 '+new Date(o.sp).toTimeString().slice(0,8):''} · is ${o.is?'켜짐':'꺼짐'}`});
-  if(pend&&((pend.on===o.on&&!o.ghost)||Date.now()-pend.at>30000)) pend=null;   // 서버가 따라왔거나, 30초가 지나면 서버가 맞음
+  /* 내 요청을 서버가 따라왔거나, 30초가 지나면 서버가 맞음. 내가 시작한 뒤의 정지 / 내가 멈춘 뒤의 새 시작이 보이면 그게 최신이라 바로 따름 */
+  if(pend&&((pend.on===o.on&&!o.ghost)||Date.now()-pend.at>30000||(pend.on&&!o.on&&o.sp&&o.sp>(pend.st||0)+1000)||(!pend.on&&o.on&&o.st&&o.st>pend.at+1000))) pend=null;   // 서버가 따라왔거나, 30초가 지나면 서버가 맞음
   if(!pend&&was&&was.on&&!o.on&&Date.now()-actionAt>30000&&!(was.st&&wasStopped(was.st))) toast('다른 기기에서 공부를 멈췄어요');   // 내가 멈춘 세션이면 알리지 않음
   apply();
 }
@@ -3183,6 +3187,7 @@ function renderPane(){
 }
 /* 설정 창에서 쓰는 열품타 상태 · 연결 해제 */
 window.__ypt={
+  dbg:()=>({srv,pend,cand,run:Y.run,mono:Y.mono,info:info?info.sm:null}),   // 문제 추적용 (기록 내역과 같은 정보)
   status:()=>({on:!!Y.jwt,nick:Y.nick||'',run:!!Y.run}),
   groups:()=>orderedGroups().map(g=>({id:g.id,t:g.t})),
   move:(id,dir)=>moveGroup(id,dir),
