@@ -21,7 +21,7 @@ const ROUTES = [
   ['GET', '/logs/day'],
 ];
 
-const DEFAULT_ORIGINS = 'https://samsungkorea.github.io';
+const DEFAULT_ORIGINS = 'https://samsungkorea.github.io,https://samsungkorea.kr';
 
 export default {
   async fetch(request, env) {
