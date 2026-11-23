@@ -10,7 +10,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Fly Sky">
 <meta name="theme-color" content="#c9cfe2">
-<script>window.FLY_BUILD="2026.11.23-r94";
+<script>window.FLY_BUILD="2026.11.23-r95";
 /* 새로고침 버튼이 붙인 ?r=… 는 주소창에서 바로 지움 */
 if(/[?&]r=\d/.test(location.search))history.replaceState(history.state,"",location.pathname+location.hash);</script>
 <script>
@@ -546,7 +546,7 @@ try{if(navigator.standalone||matchMedia('(display-mode: standalone)').matches||m
   .appc .un{font-size:22px;font-weight:700;letter-spacing:-.5px;margin-top:12px}
   .appc .mj{font-size:14px;color:var(--sub);margin-top:2px}
   .appc .rule .cnt{background:var(--ink);color:#fff}
-  .appc .rule{font-size:13px;margin-top:14px;display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+  .appc .rule{font-size:13px;margin:14px 0 16px;display:flex;gap:6px;flex-wrap:wrap;align-items:center}   /* 아래 날짜 줄 구분선과 띄움 */
   .appc .dates{margin-top:auto;padding-top:14px;border-top:1px solid var(--line);display:grid;grid-template-columns:1fr 1fr;gap:6px 14px;font-size:13px;color:var(--sub)}   /* 서류 · 면접 / 1차 · 최종 발표 2줄로 가지런히 */
   .appc .dates span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .appc .dates b{color:var(--ink);font-weight:600}
@@ -2160,7 +2160,7 @@ function readApp(fd,a){
 function bindMinToggle(){const c=$('hasMin');if(c)c.onchange=()=>$('minBox').style.display=c.checked?'':'none';
   const e=$('ruleEdit');if(e)e.onclick=()=>{const f=$('mForm');f.elements.rule.value='';f.elements.minText.value='';$('ruleBox').style.display='none';$('minSimple').style.display=''}}
 /* 목록에서 고른 원서는 모집요강 값이라 잠가 둠 (대학 · 학과 · 전형 · 날짜 · 최저). 필요하면 '직접 고치기'로 풀기 */
-const LOCKF=['univ','major','type','doc','itv','r1','res'];
+const LOCKF=['univ','major','type','doc','itv'];   // 1차 · 최종 발표는 조기 발표가 있어 잠가도 고칠 수 있게
 function lockPicked(on){
   const f=$('mForm'); f.classList.toggle('locked',on);
   LOCKF.forEach(n=>{const el=f.elements[n];if(el){el.readOnly=on;el.tabIndex=on?-1:0}});
