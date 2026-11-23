@@ -10,7 +10,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Fly Sky">
 <meta name="theme-color" content="#c9cfe2">
-<script>window.FLY_BUILD="2026.11.23-r91";
+<script>window.FLY_BUILD="2026.11.23-r92";
 /* 새로고침 버튼이 붙인 ?r=… 는 주소창에서 바로 지움 */
 if(/[?&]r=\d/.test(location.search))history.replaceState(history.state,"",location.pathname+location.hash);</script>
 <script>
@@ -2249,6 +2249,7 @@ function appCard(a,label){
     </div>`;
 }
 function renderApps(){
+  if(window.__appDrag){clearTimeout(renderApps._t);renderApps._t=setTimeout(renderApps,300);return}   // 끄는 중에는 다시 그리지 않음
   /* 6장 안 원서는 1~6번 칸, 과학기술원 등 6장 밖 원서는 그 뒤에 따로 + 언제든 더 넣는 칸 */
   const yr=curApps(), inn=yr.filter(a=>!isEx(a)), out=yr.filter(isEx);
   let h='';
@@ -2280,7 +2281,11 @@ function renderApps(){
     c.style.transform=`translate(${x-dr.gx-b.left}px,${y-dr.gy-b.top}px) scale(1.04)`};
   const noScroll=e=>{if(dr)e.preventDefault()};
   function start(c,x,y){
-    const r=c.getBoundingClientRect(); dr={c,gx:x-r.left,gy:y-r.top,ex:c.classList.contains('ex'),moved:false};
+    const r=c.getBoundingClientRect(), g=grid.getBoundingClientRect(), ex=c.classList.contains('ex');
+    /* 칸 자리(격자 기준)를 처음에 한 번 재 둠 → 다른 카드가 비켜나는 애니메이션 중에도 자리 판단이 흔들리지 않음 */
+    const slots=cards().filter(e=>e.classList.contains('ex')===ex).map(e=>{const b=e.getBoundingClientRect();return {l:b.left-g.left,t:b.top-g.top,w:b.width,h:b.height}});
+    dr={c,gx:x-r.left,gy:y-r.top,ex,moved:false,slots}; window.__appDrag=true;
+    document.querySelector('.app').style.overflowAnchor='none';   // 카드 순서가 바뀔 때 브라우저가 스크롤을 '보정'해 화면이 튀던 것(→ 순서가 앞뒤로 뒤집힘) 방지
     c.classList.add('dragging'); dr.x=x;dr.y=y; place(x,y); if(navigator.vibrate)navigator.vibrate(12); dr.raf=requestAnimationFrame(edge);
     document.addEventListener('touchmove',noScroll,{passive:false});
   }
@@ -2290,15 +2295,16 @@ function renderApps(){
     if(v){sc.scrollTop+=v;move(dr.x,dr.y,true)} dr.raf=requestAnimationFrame(edge)}
   function move(x,y,auto){
     if(!auto){dr.x=x;dr.y=y}
-    place(x,y); const c=dr.c; c.style.pointerEvents='none';
-    const hit=document.elementFromPoint(x,y); c.style.pointerEvents='';
-    const t=hit&&hit.closest('.appc[data-id]');
-    if(!t||t===c||t.classList.contains('ex')!==dr.ex) return;
-    const L=cards(), after=L.indexOf(t)>L.indexOf(c);
-    flip(L,()=>t.parentNode.insertBefore(c,after?t.nextSibling:t)); dr.moved=true; place(x,y);
+    place(x,y); const c=dr.c, g=grid.getBoundingClientRect(), px=x-g.left, py=y-g.top;
+    const i=dr.slots.findIndex(r=>px>=r.l&&px<=r.l+r.w&&py>=r.t&&py<=r.t+r.h);   // 손가락이 들어간 칸
+    if(i<0) return;
+    const G=cards().filter(e=>e.classList.contains('ex')===dr.ex), cur=G.indexOf(c);
+    if(i===cur) return;
+    const L=cards(), ref=G[i];
+    flip(L,()=>grid.insertBefore(c,i>cur?ref.nextSibling:ref)); dr.moved=true; place(x,y);
   }
   function end(){
-    const {c,moved,raf}=dr; cancelAnimationFrame(raf); dr=null; document.removeEventListener('touchmove',noScroll,{passive:false});
+    const {c,moved,raf}=dr; cancelAnimationFrame(raf); dr=null; window.__appDrag=false; document.querySelector('.app').style.overflowAnchor=''; document.removeEventListener('touchmove',noScroll,{passive:false});
     const b=c.getBoundingClientRect(); c.style.transform='none'; const a=c.getBoundingClientRect(); c.classList.remove('dragging');
     if(c.animate) c.animate([{transform:`translate(${b.left-a.left}px,${b.top-a.top}px) scale(1.04)`},{transform:'none'}],{duration:260,easing:'cubic-bezier(.22,1,.36,1)'});
     eat=true; setTimeout(()=>eat=false,350);
