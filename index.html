@@ -10,7 +10,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Fly Sky">
 <meta name="theme-color" content="#c9cfe2">
-<script>window.FLY_BUILD="2026.11.23-r108";
+<script>window.FLY_BUILD="2026.11.23-r109";
 /* 새로고침 버튼이 붙인 ?r=… 는 주소창에서 바로 지움 */
 if(/[?&]r=\d/.test(location.search))history.replaceState(history.state,"",location.pathname+location.hash);</script>
 <script>
@@ -692,6 +692,9 @@ try{if(navigator.standalone||matchMedia('(display-mode: standalone)').matches||m
   .bl .ct2{font-size:12px;color:var(--sub);background:var(--chip);padding:4px 10px;border-radius:999px}
   .bl .ibtn{opacity:0}.bl li:hover .ibtn{opacity:1}
   .inline select{font:inherit;font-size:14px;background:var(--chip);border:0;border-radius:999px;padding:0 14px;outline:none}
+  /* 기본 화살표 대신 안쪽으로 들인 가는 화살표 (윈도우에서 끝에 붙던 것) */
+  #goalSel{-webkit-appearance:none;appearance:none;color:var(--ink);background:var(--chip) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%238a8fa0' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E") no-repeat right 18px center/16px}
+  #goalSel:disabled{color:var(--sub);opacity:1}
 
   /* ===== 모든 기능 ===== */
   .cat{margin-bottom:26px}
@@ -1304,7 +1307,7 @@ html.pwa .toast{top:calc(max(env(safe-area-inset-top),24px) + 34px)}
           <div class="label">목표 대학</div>
           <ul class="rows" id="goalList"></ul>
           <form class="inline" id="goalForm">
-            <select name="app" id="goalSel" style="flex:1;min-width:0;padding:12px 16px"></select>
+            <select name="app" id="goalSel" style="flex:1;min-width:0;padding:12px 44px 12px 18px"></select>
             <button class="pbtn">추가</button>
           </form>
         </section>
