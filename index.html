@@ -2099,10 +2099,13 @@ function bindPicker(a){
     if(has){has.checked=!!mn;$('minBox').style.display=mn?'':'none'}
     if(mn){put('n',String(mn.n));put('k',mn.k);put('sci',mn.sci==='avg'?'avg':'best');put('hist',mn.hist?String(mn.hist):'');
       f.querySelectorAll('input[name=subs]').forEach(c=>c.checked=(mn.subs||[]).includes(c.value))}
-    const note=m.note||t.note; const memo=f.elements.memo;
-    if(note&&memo&&!memo.value.includes(note)) memo.value=(memo.value?memo.value+'\n':'')+note;
+    /* 앱이 계산할 수 없는 최저(영어 별도 등급 등)는 최저 칸은 비우고 원문 기준을 메모에 */
+    const mt='minText' in m?m.minText:t.minText, complex=!mn&&!!mt;
+    const memo=f.elements.memo, add=x=>{if(x&&memo&&!memo.value.includes(x))memo.value=(memo.value?memo.value+'\n':'')+x};
+    if(complex) add('수능 최저: '+mt);
+    add(m.note||t.note);
     f.dataset.src=JSON.stringify({y:+Y.value,u:u.n,t:t.n,m:m.n});
-    setMsg(`<b>${esc(u.n)} ${esc(m.n)} · ${esc(t.n)}</b> 정보를 채웠어요. 아래에서 고칠 수 있어요.`);
+    setMsg(`<b>${esc(u.n)} ${esc(m.n)} · ${esc(t.n)}</b> 정보를 채웠어요. 아래에서 고칠 수 있어요.`+(complex?'<br>수능 최저 기준이 자동 계산 형식과 달라 메모에 원문을 넣었어요.':''));
   }
   Y.onchange=load; U.onchange=pickU; U.oninput=()=>{if((D&&D.univs||[]).some(x=>x.n===U.value.trim()))pickU()}; T.onchange=pickT; M.onchange=pickM;
   load();
