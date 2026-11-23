@@ -10,7 +10,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Fly Sky">
 <meta name="theme-color" content="#c9cfe2">
-<script>window.FLY_BUILD="2026.11.23-r95";
+<script>window.FLY_BUILD="2026.11.23-r96";
 /* 새로고침 버튼이 붙인 ?r=… 는 주소창에서 바로 지움 */
 if(/[?&]r=\d/.test(location.search))history.replaceState(history.state,"",location.pathname+location.hash);</script>
 <script>
@@ -1956,6 +1956,13 @@ function ruleText(r){
   if(r.cap) for(const [k2,v] of Object.entries(r.cap)) if(v) p.push(`${RN[k2]}${v}`);
   return p.join(' · ');
 }
+/* 카드용 짧은 최저: '2합5', '1등급 2개', 둘 중 하나면 '2합4/2합5' (자세한 건 원서 창 · 최저 계산기에) */
+function ruleShort(r){if(!r)return '';const p=[];
+  if(r.alt) p.push(r.alt.map(ruleShort).join('/'));
+  if(r.sum) p.push(`${r.sum.n}합${r.sum.k}`);
+  if(r.ones) p.push(`${r.ones.g}등급 ${r.ones.c}개`);
+  return p.join(' ')||'최저 있음'}
+const minShort=a=>a.rule||a.min?ruleShort(ruleOf(a)):(a.minText?'최저 있음':'최저 없음');
 const minLabel=a=>a.rule||a.min?ruleText(ruleOf(a)):(a.minText?'최저 있음(원문 참고)':'최저 없음');
 
 /* ============ 모든 일정 모으기 ============ */
@@ -2263,7 +2270,7 @@ function appCard(a,label){
   return `<div class="card appc${isEx(a)?' ex':''}" data-act="app-edit" data-id="${a.id}">
       <div class="label"><span class="no">${label}</span><span class="pill ${st}">${esc(a.status)}</span></div>
       <div class="un">${esc(a.univ)}</div><div class="mj">${esc(a.major)} · ${esc(a.type)}</div>
-      <div class="rule">${a.cnt?`<span class="pill cnt">모집 ${a.cnt}명</span>`:''}<span class="pill">${esc(minLabel(a))}</span>${ev?`<span class="pill ${ev.ok?'ok':'no'}">${ev.ok?'최저 충족':'최저 미충족'}</span>`:''}</div>
+      <div class="rule">${a.cnt?`<span class="pill cnt">모집 ${a.cnt}명</span>`:''}<span class="pill" title="${esc(minLabel(a))}">${esc(minShort(a))}</span>${ev?`<span class="pill ${ev.ok?'ok':'no'}">${ev.ok?'최저 충족':'최저 미충족'}</span>`:''}</div>
       <div class="dates">${[['서류','doc',0],['면접','itv',1],['1차','r1',0],['발표','res',1]].map(([n,k,dd])=>`<span>${n} <b>${a[k]?fmtMD(a[k])+(dd&&ddayN(a[k])>=0?' · '+ddayTxt(ddayN(a[k])):''):'-'}</b></span>`).join('')}</div>
     </div>`;
 }
