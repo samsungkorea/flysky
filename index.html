@@ -10,7 +10,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Fly Sky">
 <meta name="theme-color" content="#c9cfe2">
-<script>window.FLY_BUILD="2026.11.18-r76";
+<script>window.FLY_BUILD="2026.11.23-r77";
 /* 새로고침 버튼이 붙인 ?r=… 는 주소창에서 바로 지움 */
 if(/[?&]r=\d/.test(location.search))history.replaceState(history.state,"",location.pathname+location.hash);</script>
 <script>
@@ -2629,13 +2629,17 @@ async function startSync(uid){
       try{mergeYpt(r.ypt,true)}catch(e){} document.dispatchEvent(new CustomEvent('flysky:yptprefs'))}
     if(r&&r.state){
       const rt=+r.t||0, lt=+S._t||0;
-      if(first&&r.state!==stateBody()){
-        const when=new Date(rt), w=`${when.getMonth()+1}/${when.getDate()} ${pad(when.getHours())}:${pad(when.getMinutes())}`;
-        if(confirm(`클라우드에 저장된 데이터가 있어요 (${w} 저장).\n\n[확인] 클라우드 데이터를 이 기기로 가져와요.\n[취소] 이 기기 데이터로 클라우드를 덮어써요.`)) applyRemote(r);
-        else {S._t=Date.now();await pushNow()}
-      }else if(rt>lt) applyRemote(r);
+      if(first&&r.state!==stateBody()) applyRemote(r);   // 이 기기에서 처음 로그인: 묻지 않고 클라우드(서버) 데이터로 맞춤
+      else if(rt>lt) applyRemote(r);
       else if(lt>rt) await pushNow();
-    }else await pushNow();
+    }else{
+      /* 이 계정의 최초 로그인(서버에 아직 아무것도 없음): 이 기기에서 쓰던 내용이 있으면 계정에 올릴지 한 번만 물음 */
+      if(S._t&&!confirm('이 계정으로 처음 로그인했어요.\n\n[확인] 이 기기에서 쓰던 내용을 계정에 저장해요.\n[취소] 이 기기 내용은 두고 새로 시작해요.')){
+        const keep=S.prefs; S=JSON.parse(JSON.stringify(SEED)); if(keep) S.prefs=keep; S._t=Date.now();
+        try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){} renderAll();
+      }
+      await pushNow();
+    }
     localStorage.setItem('flysky:synced',uid);
     syncOn=true; syncAt=Date.now(); syncErr='';
     {const ly=yptPrefs(), ry=(r&&r.ypt)||{}; if((+ly.authAt||0)>(+ry.authAt||0)) await pushNow();}   // 이 기기의 열품타 로그인이 더 최신이면 올림
