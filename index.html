@@ -10,7 +10,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Fly Sky">
 <meta name="theme-color" content="#c9cfe2">
-<script>window.FLY_BUILD="2026.11.23-r97";
+<script>window.FLY_BUILD="2026.11.23-r98";
 /* 새로고침 버튼이 붙인 ?r=… 는 주소창에서 바로 지움 */
 if(/[?&]r=\d/.test(location.search))history.replaceState(history.state,"",location.pathname+location.hash);</script>
 <script>
@@ -1975,10 +1975,8 @@ function allEvents(){
   S.events.forEach(e=>L.push({...e,type:'local'}));
   S.ddays.forEach(d=>L.push({date:d.date,title:d.name,type:'dday'}));
   S.apps.forEach(a=>{
-    if(a.doc) L.push({date:a.doc,title:`${a.univ} 서류 마감`,type:'wsr'});
-    if(a.itv) L.push({date:a.itv,title:`${a.univ} 면접`,type:'wsr'});
-    if(a.r1) L.push({date:a.r1,title:`${a.univ} 1차 발표`,type:'wsr'});
-    if(a.res) L.push({date:a.res,title:`${a.univ} 최종 발표`,type:'wsr'});
+    [['doc','서류 마감'],['itv','면접'],['r1','1차 발표'],['res','최종 발표']].forEach(([f,n])=>{
+      if(a[f]) L.push({date:a[f],title:`${a.univ} ${n}`,type:'wsr',aid:a.id,af:f,fail:a.status==='불합격'})});
   });
   GEV.forEach(e=>L.push({...e,type:'google'}));
   return L.sort((a,b)=>(a.time||'00:00').localeCompare(b.time||'00:00'));
@@ -2420,8 +2418,8 @@ function renderCal(){
   $('selLabel').textContent=sel===TS?'오늘':ddayTxt(ddayN(sel));
   $('selTitle').textContent=fmtLong(sel);
   $('selCount').textContent=list.length;
-  $('selList').innerHTML=(list.length?list.map(e=>`<li ${e.type==='local'?`data-act="ev-edit" data-id="${e.id}" style="cursor:pointer"`:e.type==='google'?`data-act="ev-gedit" data-gid="${esc(e.gid)}" style="cursor:pointer"`:''}>
-      <span class="bar2 ${e.type}"></span><div class="et"><b>${esc(e.title)}</b><small>${e.time||'종일'} · ${typeName(e.type)}</small></div></li>`).join(''):'<li class="empty2">일정 없음</li>')
+  $('selList').innerHTML=(list.length?list.map(e=>`<li ${e.type==='local'?`data-act="ev-edit" data-id="${e.id}" style="cursor:pointer"`:e.type==='google'?`data-act="ev-gedit" data-gid="${esc(e.gid)}" style="cursor:pointer"`:e.aid?`data-act="app-edit" data-id="${e.aid}" style="cursor:pointer"`:''}>
+      <span class="bar2 ${e.type}"></span><div class="et"><b>${esc(e.title)}</b><small>${e.time||'종일'} · ${typeName(e.type)}${e.fail?' · 불합격':''}</small></div>${e.fail?`<button class="ibtn" data-act="ev-appdel" data-aid="${e.aid}" data-f="${e.af}" aria-label="캘린더에서 지우기">${X}</button>`:''}</li>`).join(''):'<li class="empty2">일정 없음</li>')
     +`<li style="border:0;padding-top:16px"><button class="pbtn soft" data-act="ev-new" style="width:100%;justify-content:center">일정 추가</button></li>`;
   $('calLegend').innerHTML=gMode()
     ?'<span><i></i>내 일정</span><span><i style="background:var(--ink)"></i>D-day</span><span><i style="background:var(--accent-light)"></i>원서</span>'+(S.events.length?'<span><i style="background:#8a93a8"></i>이 기기에만</span>':'')
@@ -2827,6 +2825,11 @@ document.addEventListener('click',e=>{
   else if(act==='ev-new') editEvent(null,sel);
   else if(act==='ev-edit') editEvent(id);
   else if(act==='ev-gedit') editGEvent(el.dataset.gid);
+  else if(act==='ev-appdel'){   /* 불합격한 원서의 일정을 캘린더에서 지우기 */
+    const a=S.apps.find(x=>x.id===el.dataset.aid), f=el.dataset.f; if(!a) return;
+    const n={doc:'서류 마감',itv:'면접',r1:'1차 발표',res:'최종 발표'}[f];
+    flyAsk(`${a.univ} ${n} 날짜가 원서와 캘린더에서 지워져요.`,{title:'이 일정을 지울까요?',ok:'지우기',danger:true}).then(y=>{if(y){a[f]='';save();toast('지웠어요')}});
+  }
   else if(act==='ev-migrate') migrateLocal();
   else if(act==='bk-del'){S.bucket=S.bucket.filter(x=>x.id!==id);save()}
   else if(act==='bk-cat') editBkCat(el.dataset.c);
