@@ -10,7 +10,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Fly Sky">
 <meta name="theme-color" content="#c9cfe2">
-<script>window.FLY_BUILD="2026.11.23-r102";
+<script>window.FLY_BUILD="2026.11.23-r103";
 /* 새로고침 버튼이 붙인 ?r=… 는 주소창에서 바로 지움 */
 if(/[?&]r=\d/.test(location.search))history.replaceState(history.state,"",location.pathname+location.hash);</script>
 <script>
@@ -86,7 +86,7 @@ try{if(navigator.standalone||matchMedia('(display-mode: standalone)').matches||m
 
   /* Hero D-day */
   .hero{grid-row:1;display:flex;min-height:400px;padding:0}
-  .hero .date{width:44%;background:#f3f5fb;border-radius:24px;margin:12px;padding:28px;position:relative;overflow:hidden;display:flex;flex-direction:column}
+  .hero .date{width:44%;background:#f3f5fb;border-radius:calc(var(--r) - 12px);margin:12px;padding:28px;position:relative;overflow:hidden;display:flex;flex-direction:column}
   .hero .date::after{content:"";position:absolute;width:260px;height:260px;left:30%;top:42%;border-radius:50%;
     background:radial-gradient(circle,rgba(93,108,168,.42),rgba(93,108,168,0) 68%);filter:blur(8px)}
   .day{font-size:76px;line-height:.95;font-weight:600;letter-spacing:-3px;position:relative;z-index:1}
