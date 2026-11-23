@@ -10,7 +10,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Fly Sky">
 <meta name="theme-color" content="#c9cfe2">
-<script>window.FLY_BUILD="2026.11.23-r92";
+<script>window.FLY_BUILD="2026.11.23-r93";
 /* 새로고침 버튼이 붙인 ?r=… 는 주소창에서 바로 지움 */
 if(/[?&]r=\d/.test(location.search))history.replaceState(history.state,"",location.pathname+location.hash);</script>
 <script>
@@ -486,6 +486,7 @@ try{if(navigator.standalone||matchMedia('(display-mode: standalone)').matches||m
   .fx input[type=date]::-webkit-date-and-time-value{text-align:left}
   #mForm.locked .fx input[readonly]{background:transparent;padding-left:2px;pointer-events:none;font-weight:600}
   #mForm.locked .fx input[readonly][type=date]::-webkit-calendar-picker-indicator{display:none}
+  .clrfut{margin:-4px 0 14px;font-size:12px;padding:7px 12px;border-radius:999px;background:#f6e9e9;color:#a14848;border:0}
   .apick .unlock{align-self:flex-start;font-size:12px;padding:6px 12px;border-radius:999px;background:#fff;border:0}
   .apick .fx2{grid-template-columns:1fr}
   .apick{background:var(--accent-soft);border-radius:20px;padding:14px;margin-bottom:16px;display:flex;flex-direction:column;gap:8px}
@@ -2127,6 +2128,7 @@ function appForm(a){
   <div class="fx"><label>면접일</label><input type="date" name="itv" value="${a.itv||''}"></div></div>
   <div class="fx2"><div class="fx"><label>1차 발표</label><input type="date" name="r1" value="${a.r1||''}"></div>
   <div class="fx"><label>최종 발표</label><input type="date" name="res" value="${a.res||''}"></div></div>
+  <button type="button" class="tag clrfut" id="clrFut" style="display:none">남은 면접 · 발표 일정 지우기</button>
   <div class="fx" id="ruleBox" style="${a.rule||(!a.min&&a.minText)?'':'display:none'}"><label>수능 최저 (모집요강 기준)</label>
     <div class="rulebox"><b id="ruleTx">${esc(a.rule?ruleText(a.rule):(a.minText||''))}</b><small id="ruleReq">${esc((a.rule&&a.rule.req)||(!a.rule&&a.minText?'자동 판정이 안 되는 기준이에요':''))}</small>
     <button type="button" class="tag" id="ruleEdit">직접 입력으로 바꾸기</button></div>
@@ -2231,10 +2233,25 @@ function editApp(id){
     onSave:fd=>{
       const src=$('mForm').dataset.src;
       if(!fd.get('ex')&&curApps().filter(y=>y!==a&&!isEx(y)).length>=6){toast('수시 6장을 다 채웠어요 · 과학기술원 등은 6장 밖으로 더 넣을 수 있어요');return false}
-      const x=a?readApp(fd,a):readApp(fd,{id:uid(),y:ayear()});if(src)x.src=JSON.parse(src);if($('mForm').dataset.unsrc)delete x.src;if(!a)S.apps.push(x);save()},
+      /* 불합격으로 바꾸면: 남은 면접 · 발표 일정을 지울지 한 번 물음 (캘린더 · 다음 일정에서 빠짐) */
+      const F=$('mForm'), fut=['itv','r1','res'].filter(k=>fd.get(k)&&ddayN(fd.get(k))>=0);
+      if(fd.get('status')==='불합격'&&fut.length&&!F.dataset.asked&&!(a&&a.keepFut)){
+        F.dataset.asked='1';
+        flyAsk('남은 면접 · 발표 일정을 지우면 캘린더와 다음 일정에서 빠져요.',{title:'남은 일정을 지울까요?',ok:'지우기'}).then(y=>{
+          if(y) fut.forEach(k=>{F.elements[k].value=''}); else F.dataset.keep='1';
+          F.requestSubmit()});
+        return false;
+      }
+      const x=a?readApp(fd,a):readApp(fd,{id:uid(),y:ayear()});if(src)x.src=JSON.parse(src);if($('mForm').dataset.unsrc)delete x.src;
+      if(F.dataset.keep) x.keepFut=true; else if(x.status!=='불합격') delete x.keepFut;
+      if(!a)S.apps.push(x);save()},
     onDelete:a?()=>{S.apps=S.apps.filter(x=>x!==a);save()}:null
   });
-  bindMinToggle(); const F=$('mForm'); F.dataset.src=''; delete F.dataset.unsrc; bindPicker(a);
+  bindMinToggle(); const F=$('mForm'); F.dataset.src=''; delete F.dataset.unsrc; delete F.dataset.asked; delete F.dataset.keep; bindPicker(a);
+  /* 불합격 원서: '남은 일정 지우기' 버튼 */
+  const clr=$('clrFut'), syncClr=()=>{const st=F.elements.status.value, has=['itv','r1','res'].some(k=>F.elements[k].value&&ddayN(F.elements[k].value)>=0);clr.style.display=st==='불합격'&&has?'':'none'};
+  clr.onclick=()=>{['itv','r1','res'].forEach(k=>{const el=F.elements[k];if(el.value&&ddayN(el.value)>=0)el.value=''});F.dataset.asked='1';delete F.dataset.keep;syncClr();toast('저장하면 남은 일정이 지워져요')};
+  F.elements.status.addEventListener('change',syncClr); syncClr();
   if(a&&a.src) lockPicked(true);
   /* 직접 고치기: 잠금을 풀고 모집요강 연결을 끊음 → '직접 입력한 원서'가 됨 */
   $('unlockApp').onclick=()=>{lockPicked(false);F.dataset.unsrc='1';F.dataset.src='';if(!F.elements.rule.value&&!F.elements.minText.value)showRule(null)};
