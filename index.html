@@ -10,7 +10,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Fly Sky">
 <meta name="theme-color" content="#c9cfe2">
-<script>window.FLY_BUILD="2026.11.23-r114";
+<script>window.FLY_BUILD="2026.11.23-r115";
 /* 동작 줄이기: 스크립트 애니메이션(카드 비켜나기 · 달 넘기기 · 모달 열림 등)도 움직임은 빼고 투명도만 */
 if(window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches&&Element.prototype.animate){const _an=Element.prototype.animate;
   Element.prototype.animate=function(k,o){if(Array.isArray(k)&&k.some(f=>f&&('transform' in f||'height' in f||'width' in f))){const op=k.some(f=>'opacity' in f);
@@ -938,6 +938,7 @@ header.hhead{grid-template-columns:1fr auto;min-height:46px;margin:0 0 22px}
 header.hhead{margin-bottom:14px}
 header.hhead .brand{font-size:54px;justify-self:start;margin-left:-5.5px;transform:translateY(4px);display:flex;align-items:center;gap:.18em}
 .ybadge{display:inline-flex;align-items:center;justify-content:center;border:1.5px solid currentColor;border-radius:999px;padding:.2em .62em;font:500 .34em/1 Pretendard,-apple-system,BlinkMacSystemFont,sans-serif;letter-spacing:.02em;color:var(--ink);font-variant-numeric:tabular-nums;transform:translateY(-.32em);flex-shrink:0;cursor:pointer}   /* 알약 · 로고 글자 높이 가운데에 맞춤 (로고 그림 아래쪽은 y 꼬리 자리) */
+.ybadge{display:none!important}   /* 연도는 설정에만 (로고 옆에는 안 보임) */
 @media (max-width:900px){header.hhead{margin-bottom:22px}header.hhead .brand{font-size:44px;margin-left:-4.5px;transform:translateY(3px)}}
 </style>
 <style>
