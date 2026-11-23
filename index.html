@@ -10,7 +10,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Fly Sky">
 <meta name="theme-color" content="#c9cfe2">
-<script>window.FLY_BUILD="2026.11.23-r84";
+<script>window.FLY_BUILD="2026.11.23-r85";
 /* 새로고침 버튼이 붙인 ?r=… 는 주소창에서 바로 지움 */
 if(/[?&]r=\d/.test(location.search))history.replaceState(history.state,"",location.pathname+location.hash);</script>
 <script>
@@ -892,8 +892,7 @@ body.fs .app{padding:20px;height:auto}
 header.hhead{grid-template-columns:1fr auto;min-height:46px;margin:0 0 22px}
 header.hhead{margin-bottom:14px}
 header.hhead .brand{font-size:54px;justify-self:start;margin-left:-5.5px;transform:translateY(4px);display:flex;align-items:center;gap:.18em}
-.ybadge{display:inline-flex;height:.7em;color:var(--ink);transform:translateY(-.06em) rotate(-2deg);cursor:pointer}
-.ybadge svg{height:100%;width:auto;display:block;stroke:currentColor;fill:none}
+.ybadge{display:inline-flex;align-items:center;justify-content:center;border:.055em solid currentColor;border-radius:50%;padding:.22em .62em;font:700 .34em/1 Pretendard,-apple-system,BlinkMacSystemFont,sans-serif;letter-spacing:.01em;color:var(--ink);font-variant-numeric:tabular-nums;transform:translateY(.04em);flex-shrink:0;cursor:pointer}
 @media (max-width:900px){header.hhead{margin-bottom:22px}header.hhead .brand{font-size:44px;margin-left:-4.5px;transform:translateY(3px)}}
 </style>
 <style>
@@ -1898,17 +1897,8 @@ function applyYear(){
   if(d.name!==nm||d.date!==SUNEUNG[y]){d.name=nm;d.date=SUNEUNG[y];return true}
   return false;
 }
-/* 로고 옆 손글씨 연도 배지 */
-const HDG={0:'M15 2C4 2 2 14 2 22C2 32 6 42 15 42C25 42 28 31 28 22C28 12 25 2 15 2Z',1:'M8 10L17 3L17 42',2:'M4 11C5 3 14 1 20 3C27 6 27 14 22 20L3 41L28 40',
-  3:'M5 6C11 1 25 1 25 11C25 18 17 21 11 21C20 20 27 25 27 32C27 41 12 44 4 38',4:'M20 42L20 3L3 29L29 29',5:'M25 3L7 3L5 20C11 16 26 15 27 29C28 40 14 45 4 38',
-  6:'M24 4C14 0 4 8 3 24C2 37 8 43 16 42C25 41 28 33 27 27C26 19 18 16 12 19C6 22 4 27 4 30',7:'M3 4L27 3L12 42M8 23L22 23',
-  8:'M15 21C7 19 5 14 6 9C8 2 23 1 24 9C25 15 20 19 15 21C6 23 3 29 4 34C6 42 25 43 26 33C27 27 22 23 15 21',9:'M26 16C26 6 18 2 12 3C4 5 3 15 7 18C12 22 23 20 26 14L24 42'};
-function yearBadge(y){
-  const t=String(y), W=t.length*29+44, H=70;
-  const ring=`M${W*.6} 5C${W*.93} 3 ${W-3} ${H*.22} ${W-3} ${H*.5}C${W-4} ${H*.84} ${W*.8} ${H-3} ${W*.5} ${H-4}C${W*.2} ${H-3} 3 ${H*.8} 3 ${H*.48}C3 ${H*.17} ${W*.25} 5 ${W*.52} 4C${W*.63} 3.5 ${W*.72} 5 ${W*.8} 9`;
-  const dg=[...t].map((c,i)=>`<path transform="translate(${24+i*29},17) scale(.84) skewX(-7)" d="${HDG[c]}"/>`).join('');
-  return `<svg viewBox="0 0 ${W} ${H}" aria-label="${y}학년도"><g fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="${ring}" stroke-width="3.2"/><g stroke-width="5.6">${dg}</g></g></svg>`;
-}
+/* 로고 옆 연도 배지 (깔끔한 타원 + 글자) */
+const yearBadge=y=>String(y);
 
 /* ============ 최저 ============ */
 const SUBN={kor:'국',math:'수',eng:'영',sci:'탐'}, SUBF={kor:'국어',math:'수학',eng:'영어',sci:'탐구'};
@@ -2118,7 +2108,7 @@ function appForm(a){
   <div class="apick" id="apick">
     <div class="aph"><b>목록에서 고르기</b><select id="apY">${ADM_YEARS.map(y=>`<option value="${y}" ${y==admYear(a)?'selected':''}>${y}학년도</option>`).join('')}</select></div>
     <input id="apU" list="apUL" placeholder="대학 이름 검색" autocomplete="off"><datalist id="apUL"></datalist>
-    <div class="fx2"><select id="apT" disabled><option>전형</option></select><select id="apM" disabled><option>학과</option></select></div>
+    <div class="fx2"><select id="apT" disabled><option>전형</option></select><input id="apM" list="apML" placeholder="학과 검색" autocomplete="off" disabled><datalist id="apML"></datalist></div>
     <p class="apmsg" id="apMsg"></p>
   </div>
   <div class="fx2"><div class="fx"><label>대학</label><input name="univ" value="${esc(a.univ)}" required></div>
@@ -2174,13 +2164,13 @@ function admLoad(y){
   return ADM[y];
 }
 function bindPicker(a){
-  const Y=$('apY'),U=$('apU'),UL=$('apUL'),T=$('apT'),M=$('apM'),msg=$('apMsg'),f=$('mForm');
+  const Y=$('apY'),U=$('apU'),UL=$('apUL'),T=$('apT'),M=$('apM'),ML=$('apML'),msg=$('apMsg'),f=$('mForm');
   if(!Y) return;
   let D=null,u=null,t=null;
   const opt=(arr,ph)=>`<option value="">${ph}</option>`+arr.map((x,i)=>`<option value="${i}">${esc(x)}</option>`).join('');
   const setMsg=h=>msg.innerHTML=h;
   async function load(){
-    D=null;u=t=null;U.value='';T.innerHTML=opt([],'전형');M.innerHTML=opt([],'학과');T.disabled=M.disabled=true;
+    D=null;u=t=null;U.value='';T.innerHTML=opt([],'전형');M.value='';ML.innerHTML='';M.placeholder='학과';T.disabled=M.disabled=true;
     setMsg('불러오는 중…');
     const d=await admLoad(+Y.value); D=d;
     const us=(d.univs||[]);
@@ -2189,17 +2179,19 @@ function bindPicker(a){
     setMsg(d.err?'자료를 불러오지 못했어요 · 아래에 직접 입력해 주세요':!us.length?`${Y.value}학년도 자료는 아직 준비 중이에요 · 아래에 직접 입력해 주세요`:`${us.length}개 대학 · 대학을 고르면 전형 · 학과를 고를 수 있어요`);
   }
   function pickU(){
-    u=(D&&D.univs||[]).find(x=>x.n===U.value.trim())||null; t=null;
+    const nu=(D&&D.univs||[]).find(x=>x.n===U.value.trim())||null; if(nu&&nu===u) return;   // 같은 대학이면 그대로 (포커스 이동 때 다시 불리는 것)
+    u=nu; t=null;
     T.innerHTML=opt(u?u.types.map(x=>`${x.n}${x.cat?' · '+x.cat:''}`):[],u?'전형 고르기':'전형');T.disabled=!u;
-    M.innerHTML=opt([],'학과');M.disabled=true;
+    M.value='';ML.innerHTML='';M.placeholder='학과';M.disabled=true;
     if(u) setMsg(`${esc(u.n)} · 전형 ${u.types.length}개`);
   }
   function pickT(){
     t=u&&u.types[+T.value]||null;
-    M.innerHTML=opt(t?(t.majors||[]).map(x=>x.n+(x.cnt?` (${x.cnt}명)`:'')):[],t?'학과 고르기':'학과');M.disabled=!t;
+    M.value=''; ML.innerHTML=t?(t.majors||[]).map(x=>`<option value="${esc(x.n)}">${x.cnt?x.cnt+'명':''}</option>`).join(''):'';
+    M.placeholder=t?`학과 검색 (${(t.majors||[]).length}개)`:'학과'; M.disabled=!t; if(t) setTimeout(()=>M.focus(),50);
   }
   function pickM(){
-    const m=t&&(t.majors||[])[+M.value]; if(!m) return;
+    const m=t&&(t.majors||[]).find(x=>x.n===M.value.trim()); if(!m) return;
     const put=(nm,v)=>{const el=f.elements[nm];if(el)el.value=v};
     put('univ',u.n); put('major',m.n); put('type',t.n+(t.cat&&t.cat!==t.n?` (${t.cat})`:''));
     put('doc',m.doc||t.doc||''); put('itv',m.itv||t.itv||''); put('r1',m.r1||t.r1||''); put('res',m.res||t.res||'');
@@ -2215,7 +2207,7 @@ function bindPicker(a){
     f.dataset.src=JSON.stringify({y:+Y.value,u:u.n,t:t.n,m:m.n});
     setMsg(`<b>${esc(u.n)} ${esc(m.n)} · ${esc(t.n)}</b> 정보를 채웠어요. 아래에서 고칠 수 있어요.`);
   }
-  Y.onchange=load; U.onchange=pickU; U.oninput=()=>{if((D&&D.univs||[]).some(x=>x.n===U.value.trim()))pickU()}; T.onchange=pickT; M.onchange=pickM;
+  Y.onchange=load; U.onchange=pickU; U.oninput=()=>{if((D&&D.univs||[]).some(x=>x.n===U.value.trim()))pickU()}; T.onchange=pickT; M.onchange=pickM; M.oninput=()=>{if(t&&(t.majors||[]).some(x=>x.n===M.value.trim()))pickM()};
   load();
 }
 function editApp(id){
@@ -2714,7 +2706,7 @@ function openFeat(f){
 /* ============ 홈 ============ */
 const home=document.getElementById('view-home');
 function renderHome(){
-  applyYear(); {const b=$('yBadge'); if(b&&b._y!==ayear()){b._y=ayear();b.innerHTML=yearBadge(ayear())}}
+  applyYear(); {const b=$('yBadge'); if(b&&b._y!==ayear()){b._y=ayear();b.textContent=yearBadge(ayear());b.setAttribute('aria-label',ayear()+'학년도')}}
   const d=mainDday();
   if(d){
     const dt=parse(d.date), n=ddayN(d.date);
