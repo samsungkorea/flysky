@@ -10,7 +10,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Fly Sky">
 <meta name="theme-color" content="#c9cfe2">
-<script>window.FLY_BUILD="2026.11.23-r87";
+<script>window.FLY_BUILD="2026.11.23-r88";
 /* 새로고침 버튼이 붙인 ?r=… 는 주소창에서 바로 지움 */
 if(/[?&]r=\d/.test(location.search))history.replaceState(history.state,"",location.pathname+location.hash);</script>
 <script>
@@ -2115,7 +2115,6 @@ function appForm(a){
     <input id="apU" list="apUL" placeholder="대학 이름 검색" autocomplete="off"><datalist id="apUL"></datalist>
     <div class="fx2"><select id="apT" disabled><option>전형</option></select><input id="apM" list="apML" placeholder="학과 검색" autocomplete="off" disabled><datalist id="apML"></datalist></div>
     <p class="apmsg" id="apMsg"></p>
-    <button type="button" class="tag unlock" id="unlockApp" style="display:none">직접 고치기</button>
   </div>
   <div class="fx2"><div class="fx"><label>대학</label><input name="univ" value="${esc(a.univ)}" required></div>
   <div class="fx"><label>학과</label><input name="major" value="${esc(a.major)}" required></div></div>
@@ -2140,7 +2139,7 @@ function appForm(a){
     <div class="fx"><label>한국사</label><select name="hist"><option value="">조건 없음</option>${[3,4,5,6].map(x=>`<option value="${x}" ${x==m.hist?'selected':''}>${x}등급 이내</option>`).join('')}</select></div></div>
   </div>
   </div>
-  <div class="fx"><div class="checks"><label><input type="checkbox" name="ex" id="exChk" ${isEx(a)?'checked':''}> 6장 제한에서 빼기 (과학기술원 · 경찰대 · 사관학교 등)</label></div></div>
+  <div class="fx" id="exRow"><div class="checks"><label><input type="checkbox" name="ex" id="exChk" ${isEx(a)?'checked':''}> 6장 제한에서 빼기 (과학기술원 · 경찰대 · 사관학교 등)</label></div></div>
   <div class="fx"><label>메모</label><textarea name="memo" >${esc(a.memo||'')}</textarea></div>`;
 }
 function readApp(fd,a){
@@ -2155,14 +2154,14 @@ function readApp(fd,a){
 function bindMinToggle(){const c=$('hasMin');if(c)c.onchange=()=>$('minBox').style.display=c.checked?'':'none';
   const e=$('ruleEdit');if(e)e.onclick=()=>{const f=$('mForm');f.elements.rule.value='';f.elements.minText.value='';$('ruleBox').style.display='none';$('minSimple').style.display=''}}
 /* 목록에서 고른 원서는 모집요강 값이라 잠가 둠 (대학 · 학과 · 전형 · 날짜 · 최저). 필요하면 '직접 고치기'로 풀기 */
-const LOCKF=['univ','major','type','doc','itv','r1','res'];
+const LOCKF=['univ','major','type','doc','itv','r1','res'];   // 직접 입력은 목록에 없는 대학일 때만 (목록 대학은 다시 고르면 됨)
 function lockPicked(on){
   const f=$('mForm'); f.classList.toggle('locked',on);
   LOCKF.forEach(n=>{const el=f.elements[n];if(el){el.readOnly=on;el.tabIndex=on?-1:0}});
   const rb=$('ruleBox'), ms=$('minSimple'), ed=$('ruleEdit');
   if(on){rb.style.display='';ms.style.display='none';if(!f.elements.rule.value&&!f.elements.minText.value){$('ruleTx').textContent='최저 없음';$('ruleReq').textContent=''}}
   if(ed) ed.style.display=on?'none':'';
-  const un=$('unlockApp'); if(un) un.style.display=on?'':'none';
+  const er=$('exRow'); if(er) er.style.display=on?'none':'';   // 6장 제외도 목록 값(과학기술원 등)으로 정해짐
 }
 /* 목록에서 고른 최저 규칙 표시 (rule: 계산 가능 / text만: 원문 표시) */
 function showRule(rule,text){
@@ -2234,7 +2233,6 @@ function editApp(id){
   });
   bindMinToggle(); const F=$('mForm'); F.dataset.src=''; delete F.dataset.unsrc; bindPicker(a);
   if(a&&a.src) lockPicked(true);
-  $('unlockApp').onclick=()=>{lockPicked(false);F.dataset.unsrc='1';if(!F.elements.rule.value&&!F.elements.minText.value)showRule(null)};
 }
 function appCard(a,label){
   const ev=evalMin(a), st=/합격/.test(a.status)&&a.status!=='불합격'?'ok':a.status==='불합격'?'no':'';
