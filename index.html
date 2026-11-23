@@ -10,7 +10,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Fly Sky">
 <meta name="theme-color" content="#c9cfe2">
-<script>window.FLY_BUILD="2026.11.23-r83";
+<script>window.FLY_BUILD="2026.11.23-r84";
 /* 새로고침 버튼이 붙인 ?r=… 는 주소창에서 바로 지움 */
 if(/[?&]r=\d/.test(location.search))history.replaceState(history.state,"",location.pathname+location.hash);</script>
 <script>
@@ -891,7 +891,9 @@ body.fs .app{padding:20px;height:auto}
 /* 홈 상단: 로고를 다른 화면 제목(.phead h2) 자리에 맞춰 왼쪽 정렬 */
 header.hhead{grid-template-columns:1fr auto;min-height:46px;margin:0 0 22px}
 header.hhead{margin-bottom:14px}
-header.hhead .brand{font-size:54px;justify-self:start;margin-left:-5.5px;transform:translateY(4px)}
+header.hhead .brand{font-size:54px;justify-self:start;margin-left:-5.5px;transform:translateY(4px);display:flex;align-items:center;gap:.18em}
+.ybadge{display:inline-flex;height:.7em;color:var(--ink);transform:translateY(-.06em) rotate(-2deg);cursor:pointer}
+.ybadge svg{height:100%;width:auto;display:block;stroke:currentColor;fill:none}
 @media (max-width:900px){header.hhead{margin-bottom:22px}header.hhead .brand{font-size:44px;margin-left:-4.5px;transform:translateY(3px)}}
 </style>
 <style>
@@ -963,7 +965,7 @@ html.pwa .toast{top:calc(max(env(safe-area-inset-top),24px) + 34px)}
 
   <main id="view-home" class="view on">
     <header class="hhead">
-      <h1 class="brand" onclick="showView('home')" style="cursor:pointer"><svg class="brandmark" viewBox="0 0 808 380" role="img" aria-label="Fly Sky"><use href="#fslogo"/></svg></h1>
+      <h1 class="brand" onclick="showView('home')" style="cursor:pointer"><svg class="brandmark" viewBox="0 0 808 380" role="img" aria-label="Fly Sky"><use href="#fslogo"/></svg><span class="ybadge" id="yBadge" title="입시 연도 · 설정에서 바꿀 수 있어요"></span></h1>
       <div class="head-r">
         <button class="circle" id="hdSearch" aria-label="검색"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg></button>
         <button class="circle" id="hdBell" aria-label="알림"><svg viewBox="0 0 24 24"><path d="M6 16V11a6 6 0 1 1 12 0v5l2 2H4zM10 21h4"/></svg><i class="bdot" id="bellDot" hidden></i></button>
@@ -1883,6 +1885,31 @@ if(!S||!S.ddays) S=JSON.parse(JSON.stringify(SEED));
 window.flyPref={get:()=>S.prefs||{},set:(k,v)=>{S.prefs=S.prefs||{};if(S.prefs[k]===v)return;S.prefs[k]=v;save()}};
 function save(){S._t=Date.now();try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){} renderAll(); schedulePush()}
 
+/* ============ 입시 연도 (설정에서 바꿈 · 기기 간 동기화) ============
+   바꾸면: 로고 옆 연도 배지, 수능 D-day(이름 · 날짜), 원서 목록(그 학년도 원서만), 원서 고르기 기본 학년도 */
+const SUNEUNG={2027:'2026-11-19',2028:'2027-11-18'};   // 수능 시행일 (교육부 발표)
+const ayear=()=>{const y=+(S.prefs&&S.prefs.ayear);return SUNEUNG[y]?y:2027};
+const appYear=a=>+(a.y||(a.src&&a.src.y)||2027);
+const curApps=()=>S.apps.filter(a=>appYear(a)===ayear());
+function applyYear(){
+  const y=ayear(), nm=`${y}학년도 수능`;
+  let d=S.ddays.find(x=>x.suneung&&/^\d{4}학년도 수능$/.test(x.name))||S.ddays.find(x=>x.suneung);
+  if(!d){d={id:uid(),name:nm,date:SUNEUNG[y],main:!S.ddays.some(x=>x.main),suneung:true};S.ddays.push(d);return true}
+  if(d.name!==nm||d.date!==SUNEUNG[y]){d.name=nm;d.date=SUNEUNG[y];return true}
+  return false;
+}
+/* 로고 옆 손글씨 연도 배지 */
+const HDG={0:'M15 2C4 2 2 14 2 22C2 32 6 42 15 42C25 42 28 31 28 22C28 12 25 2 15 2Z',1:'M8 10L17 3L17 42',2:'M4 11C5 3 14 1 20 3C27 6 27 14 22 20L3 41L28 40',
+  3:'M5 6C11 1 25 1 25 11C25 18 17 21 11 21C20 20 27 25 27 32C27 41 12 44 4 38',4:'M20 42L20 3L3 29L29 29',5:'M25 3L7 3L5 20C11 16 26 15 27 29C28 40 14 45 4 38',
+  6:'M24 4C14 0 4 8 3 24C2 37 8 43 16 42C25 41 28 33 27 27C26 19 18 16 12 19C6 22 4 27 4 30',7:'M3 4L27 3L12 42M8 23L22 23',
+  8:'M15 21C7 19 5 14 6 9C8 2 23 1 24 9C25 15 20 19 15 21C6 23 3 29 4 34C6 42 25 43 26 33C27 27 22 23 15 21',9:'M26 16C26 6 18 2 12 3C4 5 3 15 7 18C12 22 23 20 26 14L24 42'};
+function yearBadge(y){
+  const t=String(y), W=t.length*29+44, H=70;
+  const ring=`M${W*.6} 5C${W*.93} 3 ${W-3} ${H*.22} ${W-3} ${H*.5}C${W-4} ${H*.84} ${W*.8} ${H-3} ${W*.5} ${H-4}C${W*.2} ${H-3} 3 ${H*.8} 3 ${H*.48}C3 ${H*.17} ${W*.25} 5 ${W*.52} 4C${W*.63} 3.5 ${W*.72} 5 ${W*.8} 9`;
+  const dg=[...t].map((c,i)=>`<path transform="translate(${24+i*29},17) scale(.84) skewX(-7)" d="${HDG[c]}"/>`).join('');
+  return `<svg viewBox="0 0 ${W} ${H}" aria-label="${y}학년도"><g fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="${ring}" stroke-width="3.2"/><g stroke-width="5.6">${dg}</g></g></svg>`;
+}
+
 /* ============ 최저 ============ */
 const SUBN={kor:'국',math:'수',eng:'영',sci:'탐'}, SUBF={kor:'국어',math:'수학',eng:'영어',sci:'탐구'};
 const sciG=m=>m.sci==='avg'?Math.floor((S.grades.sci1+S.grades.sci2)/2):m.sci==='avgx'?(S.grades.sci1+S.grades.sci2)/2:Math.min(S.grades.sci1,S.grades.sci2);   // avgx: 2과목 평균 그대로(예: 1.5)
@@ -2034,6 +2061,8 @@ function openSettings(){
       <button type="button" class="pbtn soft" id="setLogo">바꾸기</button></div>
     <div class="setrow"><div><b>타이머 화면 꺼짐 방지</b><small>${'wakeLock' in navigator?'수능 시계 · 스톱워치 · 타이머를 보는 동안 화면이 꺼지지 않아요':'이 브라우저에서는 지원하지 않아요'}</small></div>
       <button type="button" class="setsw${S.prefs&&S.prefs.wake?' on':''}" id="setWake" aria-label="타이머 화면 꺼짐 방지" ${'wakeLock' in navigator?'':'disabled'}></button></div>
+    <div class="setrow"><div><b>입시 연도</b><small>로고 옆 연도 · 수능 D-day · 원서 목록이 이 학년도로 바뀌어요</small></div>
+      <div class="wpick" id="setYear">${Object.keys(SUNEUNG).map(y=>`<button type="button" data-y="${y}" class="${+y===ayear()?'on':''}">${y}</button>`).join('')}</div></div>
     <div class="setrow"><div><b>기기 간 동기화</b><small>${syncTxt}</small></div></div>
     <div class="setrow"><div><b>열품타</b><small>${yp.on?'연결됨 · @'+esc(yp.nick||'열품타'):'연결 안 됨'}</small></div>
       <button type="button" class="pbtn soft" id="setYpt">${yp.on?'연결 해제':'연결'}</button></div>
@@ -2041,6 +2070,9 @@ function openSettings(){
     <div class="setrow"><div><b>버전</b><small>${window.FLY_BUILD||''} · ${document.documentElement.classList.contains('pwa')?'웹앱':'브라우저'}</small></div>
       <button type="button" class="pbtn soft" id="setReload" data-mo="spin360"><svg viewBox="0 0 24 24"><path d="M20 11a8 8 0 1 0-2.3 5.7M20 4v7h-7"/></svg>새로고침</button></div>`);
   document.getElementById('setProf').onclick=()=>{closeModal();openProfile()};
+  document.getElementById('setYear').onclick=e=>{const b=e.target.closest('[data-y]');if(!b)return;
+    document.querySelectorAll('#setYear button').forEach(x=>x.classList.toggle('on',x===b));
+    S.prefs=S.prefs||{};S.prefs.ayear=+b.dataset.y;applyYear();save();toast(`${b.dataset.y}학년도로 바꿨어요`)};
   /* 새로고침 (웹앱엔 F5가 없어서): 저장 후 캐시를 피해 최신 버전을 다시 불러옴 */
   document.getElementById('setReload').onclick=e=>{
     e.currentTarget.disabled=true; try{localStorage.setItem(KEY,JSON.stringify(S))}catch(x){}
@@ -2135,7 +2167,7 @@ function showRule(rule,text){
 /* ===== 원서: 목록에서 고르기 (대학 → 전형 → 학과 → 아래 칸 자동 입력) =====
    데이터는 admissions/<학년도>.json (원서 창을 열 때만 불러옴 → 앱 속도와 무관) */
 const ADM_YEARS=[2028,2027];
-const admYear=a=>(a&&a.src&&a.src.y)||ADM_YEARS[0];
+const admYear=a=>(a&&a.src&&a.src.y)||(a&&a.y)||ayear();
 const ADM={};
 function admLoad(y){
   if(!ADM[y]) ADM[y]=fetch(`admissions/${y}.json?v=${encodeURIComponent(window.FLY_BUILD||'')}`).then(r=>r.ok?r.json():{univs:[]}).catch(()=>({univs:[],err:1}));
@@ -2191,8 +2223,8 @@ function editApp(id){
   openModal(a?`${a.univ} 원서`:'원서 추가',appForm(a),{
     onSave:fd=>{
       const src=$('mForm').dataset.src;
-      if(!fd.get('ex')&&S.apps.filter(y=>y!==a&&!isEx(y)).length>=6){toast('수시 6장을 다 채웠어요 · 과학기술원 등은 6장 밖으로 더 넣을 수 있어요');return false}
-      const x=a?readApp(fd,a):readApp(fd,{id:uid()});if(src)x.src=JSON.parse(src);if(!a)S.apps.push(x);save()},
+      if(!fd.get('ex')&&curApps().filter(y=>y!==a&&!isEx(y)).length>=6){toast('수시 6장을 다 채웠어요 · 과학기술원 등은 6장 밖으로 더 넣을 수 있어요');return false}
+      const x=a?readApp(fd,a):readApp(fd,{id:uid(),y:ayear()});if(src)x.src=JSON.parse(src);if(!a)S.apps.push(x);save()},
     onDelete:a?()=>{S.apps=S.apps.filter(x=>x!==a);save()}:null
   });
   bindMinToggle(); $('mForm').dataset.src=''; bindPicker(a);
@@ -2208,7 +2240,7 @@ function appCard(a,label){
 }
 function renderApps(){
   /* 6장 안 원서는 1~6번 칸, 과학기술원 등 6장 밖 원서는 그 뒤에 따로 + 언제든 더 넣는 칸 */
-  const inn=S.apps.filter(a=>!isEx(a)), out=S.apps.filter(isEx);
+  const yr=curApps(), inn=yr.filter(a=>!isEx(a)), out=yr.filter(isEx);
   let h='';
   for(let i=0;i<6;i++){
     const a=inn[i];
@@ -2219,10 +2251,10 @@ function renderApps(){
   h+=`<button class="card appc empty exadd" data-act="app-new-ex"><svg class="ic" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>과학기술원 등 추가<small>6장 제한 밖</small></button>`;
   $('appGrid').innerHTML=h;
   $('appCount').innerHTML=`${inn.length}<small>/ 6장${out.length?` · 6장 외 ${out.length}`:''}</small>`;
-  $('appSubmitted').textContent=S.apps.filter(a=>a.status!=='준비 중').length+'장';
-  const withMin=S.apps.filter(a=>ruleOf(a));
+  $('appSubmitted').textContent=yr.filter(a=>a.status!=='준비 중').length+'장';
+  const withMin=yr.filter(a=>ruleOf(a));
   $('appMinOk').textContent=withMin.length?`${withMin.filter(a=>evalMin(a).ok).length} / ${withMin.length}`:'-';
-  const up=[];S.apps.forEach(a=>{[['doc','서류 마감'],['itv','면접'],['r1','1차 발표'],['res','최종 발표']].forEach(([k,n])=>{if(a[k]&&ddayN(a[k])>=0)up.push({d:a[k],t:`${a.univ} ${n}`})})});
+  const up=[];yr.forEach(a=>{[['doc','서류 마감'],['itv','면접'],['r1','1차 발표'],['res','최종 발표']].forEach(([k,n])=>{if(a[k]&&ddayN(a[k])>=0)up.push({d:a[k],t:`${a.univ} ${n}`})})});
   up.sort((x,y)=>x.d.localeCompare(y.d));
   $('appNext').textContent=up[0]?`${up[0].t} ${ddayTxt(ddayN(up[0].d))}`:'없음';
 }
@@ -2281,7 +2313,7 @@ const GN=[['kor','국어'],['math','수학'],['eng','영어'],['hist','한국사
 function renderMin(){
   $('grades').innerHTML=GN.map(([k,n])=>`<div class="gr"><div class="gn">${n}${k==='sci1'||k==='sci2'?` <button class="sty" data-act="sty" data-k="${k==='sci1'?'st1':'st2'}">${S.grades[k==='sci1'?'st1':'st2']==='s'?'사탐':'과탐'}</button>`:''}</div><div class="gv">${S.grades[k]}</div>
     <div class="gs"><button data-act="gr" data-k="${k}" data-d="-1">−</button><button data-act="gr" data-k="${k}" data-d="1">+</button></div></div>`).join('');
-  const list=S.apps;
+  const list=curApps();
   if(!list.length){$('minRes').innerHTML='<li class="empty2">원서 없음</li>';$('minTag').textContent='-';return}
   let ok=0,cnt=0;
   $('minRes').innerHTML=list.map(a=>{
@@ -2682,6 +2714,7 @@ function openFeat(f){
 /* ============ 홈 ============ */
 const home=document.getElementById('view-home');
 function renderHome(){
+  applyYear(); {const b=$('yBadge'); if(b&&b._y!==ayear()){b._y=ayear();b.innerHTML=yearBadge(ayear())}}
   const d=mainDday();
   if(d){
     const dt=parse(d.date), n=ddayN(d.date);
@@ -2703,7 +2736,7 @@ function renderHome(){
 
   $('homeBkTag').textContent=S.bucket.length+'개';
   $('homeBucket').innerHTML=S.bucket.slice(0,3).map(x=>`<li><span>${esc(x.text)}</span></li>`).join('')||'<li><span style="color:var(--sub)">없음</span></li>';
-  const itv=S.apps.filter(a=>a.itv&&ddayN(a.itv)>=0).sort((a,b)=>a.itv.localeCompare(b.itv))[0];
+  const itv=curApps().filter(a=>a.itv&&ddayN(a.itv)>=0).sort((a,b)=>a.itv.localeCompare(b.itv))[0];
   $('itvTitle').textContent=itv?`${itv.univ} 면접`:'면접 연습';
   $('itvTag').textContent=itv?ddayTxt(ddayN(itv.itv)):'';
   $('itvSub').textContent=itv?fmtLong(itv.itv):'';
@@ -3639,7 +3672,7 @@ document.addEventListener('keydown',e=>{if((e.ctrlKey||e.metaKey)&&['+','-','=',
       {duration:Math.min(2000,Math.max(1100,Math.hypot(B[0]-A[0],B[1]-A[1])*2.6)),easing:'cubic-bezier(.3,0,.6,1)'});
     an.onfinish=an.oncancel=()=>{pl.remove();if(--live===0){n=0;cover.remove();cover=null}};
   }
-  document.addEventListener('click',e=>{const b=e.target.closest('header.hhead .brand');if(b)fly(b.querySelector('svg.brandmark'))});
+  document.addEventListener('click',e=>{if(e.target.closest('.ybadge'))return;const b=e.target.closest('header.hhead .brand');if(b)fly(b.querySelector('svg.brandmark'))});
 })();
 </script>
 <script>
