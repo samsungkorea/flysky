@@ -10,7 +10,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Fly Sky">
 <meta name="theme-color" content="#c9cfe2">
-<script>window.FLY_BUILD="2026.11.23-r77";
+<script>window.FLY_BUILD="2026.11.23-r78";
 /* 새로고침 버튼이 붙인 ?r=… 는 주소창에서 바로 지움 */
 if(/[?&]r=\d/.test(location.search))history.replaceState(history.state,"",location.pathname+location.hash);</script>
 <script>
@@ -480,7 +480,16 @@ try{if(navigator.standalone||matchMedia('(display-mode: standalone)').matches||m
   .fx>label{font-size:12px;color:var(--sub);font-weight:600}
   .fx input,.fx select,.fx textarea{font:inherit;font-size:15px;background:var(--chip);border:0;border-radius:14px;padding:12px 14px;outline:none;width:100%;color:var(--ink)}
   .fx textarea{min-height:76px;resize:vertical}
-  .fx2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .fx2{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:10px}
+  .fx input,.fx select{min-width:0}
+  .apick .fx2{grid-template-columns:1fr}
+  .apick{background:var(--accent-soft);border-radius:20px;padding:14px;margin-bottom:16px;display:flex;flex-direction:column;gap:8px}
+  .apick .aph{display:flex;align-items:center;justify-content:space-between;gap:10px;font-size:14px}
+  .apick input,.apick select{font:inherit;font-size:15px;background:#fff;border:0;border-radius:12px;padding:11px 12px;outline:none;width:100%;color:var(--ink)}
+  .apick .aph select{width:auto;padding:7px 10px;font-size:13px}
+  .apick select:disabled{opacity:.5}
+  .apick .apmsg{font-size:12px;color:var(--sub);margin:0;min-height:0}
+  .apick .apmsg:empty{display:none}
   .checks{display:flex;gap:8px;flex-wrap:wrap}
   .checks label{display:flex;align-items:center;gap:6px;background:var(--chip);border-radius:999px;padding:9px 14px;font-size:13px;font-weight:500;cursor:pointer}
   .checks input{accent-color:var(--accent);width:auto!important;padding:0!important}
@@ -2017,6 +2026,12 @@ function appForm(a){
   a=a||{univ:'',major:'',type:'학생부종합',status:'준비 중',doc:'',itv:'',min:null,memo:''};
   const m=a.min||{n:3,k:4,subs:['kor','math','eng','sci'],sci:'best',hist:''};
   return `
+  <div class="apick" id="apick">
+    <div class="aph"><b>목록에서 고르기</b><select id="apY">${ADM_YEARS.map(y=>`<option value="${y}" ${y==admYear(a)?'selected':''}>${y}학년도</option>`).join('')}</select></div>
+    <input id="apU" list="apUL" placeholder="대학 이름 검색" autocomplete="off"><datalist id="apUL"></datalist>
+    <div class="fx2"><select id="apT" disabled><option>전형</option></select><select id="apM" disabled><option>학과</option></select></div>
+    <p class="apmsg" id="apMsg"></p>
+  </div>
   <div class="fx2"><div class="fx"><label>대학</label><input name="univ" value="${esc(a.univ)}" required></div>
   <div class="fx"><label>학과</label><input name="major" value="${esc(a.major)}" required></div></div>
   <div class="fx2"><div class="fx"><label>전형</label><input name="type" list="typeList" value="${esc(a.type)}">
@@ -2041,13 +2056,64 @@ function readApp(fd,a){
   return a;
 }
 function bindMinToggle(){const c=$('hasMin');if(c)c.onchange=()=>$('minBox').style.display=c.checked?'':'none'}
+/* ===== 원서: 목록에서 고르기 (대학 → 전형 → 학과 → 아래 칸 자동 입력) =====
+   데이터는 admissions/<학년도>.json (원서 창을 열 때만 불러옴 → 앱 속도와 무관) */
+const ADM_YEARS=[2028,2027];
+const admYear=a=>(a&&a.src&&a.src.y)||ADM_YEARS[0];
+const ADM={};
+function admLoad(y){
+  if(!ADM[y]) ADM[y]=fetch(`admissions/${y}.json?v=${encodeURIComponent(window.FLY_BUILD||'')}`).then(r=>r.ok?r.json():{univs:[]}).catch(()=>({univs:[],err:1}));
+  return ADM[y];
+}
+function bindPicker(a){
+  const Y=$('apY'),U=$('apU'),UL=$('apUL'),T=$('apT'),M=$('apM'),msg=$('apMsg'),f=$('mForm');
+  if(!Y) return;
+  let D=null,u=null,t=null;
+  const opt=(arr,ph)=>`<option value="">${ph}</option>`+arr.map((x,i)=>`<option value="${i}">${esc(x)}</option>`).join('');
+  const setMsg=h=>msg.innerHTML=h;
+  async function load(){
+    D=null;u=t=null;U.value='';T.innerHTML=opt([],'전형');M.innerHTML=opt([],'학과');T.disabled=M.disabled=true;
+    setMsg('불러오는 중…');
+    const d=await admLoad(+Y.value); D=d;
+    const us=(d.univs||[]);
+    UL.innerHTML=us.map(x=>`<option value="${esc(x.n)}">${esc(x.g||'')}</option>`).join('');
+    U.disabled=!us.length;
+    setMsg(d.err?'자료를 불러오지 못했어요 · 아래에 직접 입력해 주세요':!us.length?`${Y.value}학년도 자료는 아직 준비 중이에요 · 아래에 직접 입력해 주세요`:`${us.length}개 대학 · 대학을 고르면 전형 · 학과를 고를 수 있어요`);
+  }
+  function pickU(){
+    u=(D&&D.univs||[]).find(x=>x.n===U.value.trim())||null; t=null;
+    T.innerHTML=opt(u?u.types.map(x=>`${x.n}${x.cat?' · '+x.cat:''}`):[],u?'전형 고르기':'전형');T.disabled=!u;
+    M.innerHTML=opt([],'학과');M.disabled=true;
+    if(u) setMsg(`${esc(u.n)} · 전형 ${u.types.length}개`);
+  }
+  function pickT(){
+    t=u&&u.types[+T.value]||null;
+    M.innerHTML=opt(t?(t.majors||[]).map(x=>x.n+(x.cnt?` (${x.cnt}명)`:'')):[],t?'학과 고르기':'학과');M.disabled=!t;
+  }
+  function pickM(){
+    const m=t&&(t.majors||[])[+M.value]; if(!m) return;
+    const put=(nm,v)=>{const el=f.elements[nm];if(el)el.value=v};
+    put('univ',u.n); put('major',m.n); put('type',t.n+(t.cat&&t.cat!==t.n?` (${t.cat})`:''));
+    put('doc',m.doc||t.doc||''); put('itv',m.itv||t.itv||'');
+    const mn='min' in m?m.min:t.min, has=$('hasMin');
+    if(has){has.checked=!!mn;$('minBox').style.display=mn?'':'none'}
+    if(mn){put('n',String(mn.n));put('k',mn.k);put('sci',mn.sci==='avg'?'avg':'best');put('hist',mn.hist?String(mn.hist):'');
+      f.querySelectorAll('input[name=subs]').forEach(c=>c.checked=(mn.subs||[]).includes(c.value))}
+    const note=m.note||t.note; const memo=f.elements.memo;
+    if(note&&memo&&!memo.value.includes(note)) memo.value=(memo.value?memo.value+'\n':'')+note;
+    f.dataset.src=JSON.stringify({y:+Y.value,u:u.n,t:t.n,m:m.n});
+    setMsg(`<b>${esc(u.n)} ${esc(m.n)} · ${esc(t.n)}</b> 정보를 채웠어요. 아래에서 고칠 수 있어요.`);
+  }
+  Y.onchange=load; U.onchange=pickU; U.oninput=()=>{if((D&&D.univs||[]).some(x=>x.n===U.value.trim()))pickU()}; T.onchange=pickT; M.onchange=pickM;
+  load();
+}
 function editApp(id){
   const a=id?S.apps.find(x=>x.id===id):null;
   openModal(a?`${a.univ} 원서`:'원서 추가',appForm(a),{
-    onSave:fd=>{if(a)readApp(fd,a);else S.apps.push(readApp(fd,{id:uid()}));save()},
+    onSave:fd=>{const src=$('mForm').dataset.src;const x=a?readApp(fd,a):readApp(fd,{id:uid()});if(src)x.src=JSON.parse(src);if(!a)S.apps.push(x);save()},
     onDelete:a?()=>{S.apps=S.apps.filter(x=>x!==a);save()}:null
   });
-  bindMinToggle();
+  bindMinToggle(); $('mForm').dataset.src=''; bindPicker(a);
 }
 function renderApps(){
   let h='';
