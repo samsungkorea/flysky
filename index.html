@@ -10,7 +10,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Fly Sky">
 <meta name="theme-color" content="#c9cfe2">
-<script>window.FLY_BUILD="2026.11.23-r109";
+<script>window.FLY_BUILD="2026.11.23-r110";
 /* 새로고침 버튼이 붙인 ?r=… 는 주소창에서 바로 지움 */
 if(/[?&]r=\d/.test(location.search))history.replaceState(history.state,"",location.pathname+location.hash);</script>
 <script>
@@ -2395,13 +2395,22 @@ function renderMin(){
 }
 
 /* ============ 입시: D-day · 목표 대학 ============ */
+/* 지원한 원서의 면접 · 논술 · 발표일을 D-day에 자동으로 (불합격 · 최종 합격 원서, 지난 날짜, 지운 것은 빼고) */
+function autoDdays(){
+  const hide=S.ddHide||[];
+  return curApps().filter(a=>a.status!=='불합격'&&a.status!=='최종 합격').flatMap(a=>
+    [['itv',/논술/.test(a.type||'')?'논술':'면접'],['r1','1차 발표'],['res','최종 발표']].filter(([f])=>a[f]&&ddayN(a[f])>=0)
+      .map(([f,n])=>({id:`app:${a.id}:${f}`,name:`${a.univ} ${n}`,date:a[f],auto:true}))).filter(d=>!hide.includes(d.id));
+}
+const allDdays=()=>[...S.ddays,...autoDdays()];
 function mainDday(){
+  const au=S.ddMain&&autoDdays().find(d=>d.id===S.ddMain); if(au) return au;
   return S.ddays.find(d=>d.main)||[...S.ddays].filter(d=>ddayN(d.date)>=0).sort((a,b)=>a.date.localeCompare(b.date))[0]||S.ddays[0];
 }
 function renderGoal(){
-  const dl=[...S.ddays].sort((a,b)=>a.date.localeCompare(b.date));
+  const dl=allDdays().sort((a,b)=>a.date.localeCompare(b.date)), mid=mainDday()&&mainDday().id;
   $('ddList').innerHTML=dl.length?dl.map(d=>`<li>
-    <button class="ibtn star ${d.main?'on':''}" data-act="dd-star" data-id="${d.id}" title="홈에 표시">${STAR}</button>
+    <button class="ibtn star ${d.id===mid&&(d.main||d.auto)?'on':''}" data-act="dd-star" data-id="${d.id}" title="홈에 표시">${STAR}</button>
     <div class="rt"><b>${esc(d.name)}</b><small>${fmtLong(d.date)}</small></div>
     <span class="dd">${ddayTxt(ddayN(d.date))}</span>
     <button class="ibtn" data-act="dd-del" data-id="${d.id}">${X}</button></li>`).join(''):'<li class="empty2">없음</li>';
@@ -2857,8 +2866,8 @@ document.addEventListener('click',e=>{
   else if(act==='app-edit') editApp(id);
   else if(act==='sty'){const k=el.dataset.k;S.grades[k]=S.grades[k]==='s'?'g':'s';save()}
   else if(act==='gr'){const k=el.dataset.k;S.grades[k]=Math.min(9,Math.max(1,S.grades[k]+ +el.dataset.d));save()}
-  else if(act==='dd-star'){S.ddays.forEach(d=>d.main=d.id===id);save()}
-  else if(act==='dd-del'){S.ddays=S.ddays.filter(d=>d.id!==id);save()}
+  else if(act==='dd-star'){if(id.startsWith('app:')){S.ddMain=id;S.ddays.forEach(d=>d.main=false)}else{S.ddMain=null;S.ddays.forEach(d=>d.main=d.id===id)}save()}
+  else if(act==='dd-del'){if(id.startsWith('app:')){(S.ddHide=S.ddHide||[]).push(id);if(S.ddMain===id)S.ddMain=null}else S.ddays=S.ddays.filter(d=>d.id!==id);save()}
   else if(act==='goal-up'||act==='goal-down'){const i=+el.dataset.i,j=act==='goal-up'?i-1:i+1;if(j<0||j>=S.goals.length)return;[S.goals[i],S.goals[j]]=[S.goals[j],S.goals[i]];save()}
   else if(act==='goal-del'){S.goals.splice(+el.dataset.i,1);save()}
   else if(act==='cal-sel'){sel=el.dataset.d;const d=parse(sel);if(d.getMonth()!==calM){calY=d.getFullYear();calM=d.getMonth()}renderCal()}
