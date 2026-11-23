@@ -10,7 +10,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Fly Sky">
 <meta name="theme-color" content="#c9cfe2">
-<script>window.FLY_BUILD="2026.11.23-r81";
+<script>window.FLY_BUILD="2026.11.23-r82";
 /* 새로고침 버튼이 붙인 ?r=… 는 주소창에서 바로 지움 */
 if(/[?&]r=\d/.test(location.search))history.replaceState(history.state,"",location.pathname+location.hash);</script>
 <script>
@@ -540,6 +540,12 @@ try{if(navigator.standalone||matchMedia('(display-mode: standalone)').matches||m
   .appc .rule{font-size:13px;margin-top:14px;display:flex;gap:6px;flex-wrap:wrap;align-items:center}
   .appc .dates{margin-top:auto;padding-top:16px;border-top:1px solid var(--line);display:flex;flex-wrap:wrap;gap:6px 14px;justify-content:space-between;font-size:13px;color:var(--sub)}
   .appc .dates b{color:var(--ink);font-weight:600}
+  .rulebox{background:var(--chip);border-radius:14px;padding:12px 14px;display:flex;flex-direction:column;gap:4px;align-items:flex-start}
+  .rulebox b{font-size:15px;line-height:1.45}
+  .rulebox small{font-size:12px;color:var(--sub)}
+  .rulebox small:empty{display:none}
+  .rulebox .tag{margin-top:6px;font-size:12px;padding:5px 10px;border-radius:999px;background:#fff}
+  .sty{font-size:10px;padding:2px 6px;border-radius:999px;background:var(--chip);color:var(--sub);margin-left:4px;font-weight:600}
   .appc.ex .no{color:var(--accent);font-weight:700}
   .appc.exadd{flex-direction:column;gap:4px}
   .appc.exadd small{font-size:12px;font-weight:500;opacity:.8}
@@ -1879,13 +1885,51 @@ function save(){S._t=Date.now();try{localStorage.setItem(KEY,JSON.stringify(S))}
 /* ============ 최저 ============ */
 const SUBN={kor:'국',math:'수',eng:'영',sci:'탐'}, SUBF={kor:'국어',math:'수학',eng:'영어',sci:'탐구'};
 const sciG=m=>m.sci==='avg'?Math.floor((S.grades.sci1+S.grades.sci2)/2):m.sci==='avgx'?(S.grades.sci1+S.grades.sci2)/2:Math.min(S.grades.sci1,S.grades.sci2);   // avgx: 2과목 평균 그대로(예: 1.5)
-function evalMin(a){
-  if(!a.min) return null; const m=a.min,g=S.grades;
-  const arr=m.subs.map(k=>k==='sci'?sciG(m):g[k]).sort((x,y)=>x-y);
-  const best=arr.slice(0,m.n).reduce((s,x)=>s+x,0), histOk=!m.hist||g.hist<=+m.hist;
-  return {ok:arr.length>=m.n&&best<=m.k&&histOk,best,histOk};
+/* ===== 최저 규칙 (모집요강 기준을 그대로 계산) =====
+   rule = { sum:{n,k,from,must?}  ← from 중 n개 등급 합 k 이내 (must가 있으면 그중 1개 이상 포함)
+            ones:{c,g,from,must?} ← from 중 g등급 이내가 c개 이상 (must 중 1개 이상 포함)
+            alt:[규칙…]            ← 이 중 하나만 충족하면 됨
+            cap:{eng:3,hist:4}     ← 과목별 등급 이내
+            req:'수학 미적분/기하 · 과탐만' ← 응시 조건(표시만) }
+   항목: kor math eng hist / t 탐구 좋은 1과목 / tg 과탐 좋은 1과목 / ta 탐구 평균(버림) / tx 탐구 평균(그대로) / tk 탐구 평균과 과탐 1과목 중 좋은 것 */
+const RN={kor:'국',math:'수',eng:'영',hist:'한',t:'탐',tg:'과탐',ta:'탐평',tx:'탐평',tk:'탐'};
+function gv(k){
+  const g=S.grades, t1=g.sci1, t2=g.sci2, gw=[g.st1!=='s'?t1:null,g.st2!=='s'?t2:null].filter(x=>x!=null);
+  const tg=gw.length?Math.min(...gw):null;
+  return k==='t'?Math.min(t1,t2):k==='tg'?tg:k==='ta'?Math.floor((t1+t2)/2):k==='tx'?(t1+t2)/2:k==='tk'?(tg!=null?Math.min((t1+t2)/2,tg):(t1+t2)/2):g[k];
 }
-const ruleTxt=m=>!m?'최저 없음':`${m.subs.map(k=>SUBN[k]).join('')} ${m.n}합 ${m.k}`+(m.subs.includes('sci')?(m.sci==='avg'?' · 탐2평균':m.sci==='avgx'?' · 탐2평균(소수)':' · 탐1'):'')+(m.hist?` · 한${m.hist}`:'');
+function minToRule(m){
+  if(!m) return null;
+  const sci=m.sci==='avg'?'ta':m.sci==='avgx'?'tx':'t';
+  return {sum:{n:m.n,k:m.k,from:m.subs.map(k=>k==='sci'?sci:k)},cap:m.hist?{hist:+m.hist}:undefined};
+}
+const ruleOf=a=>a.rule||minToRule(a.min);
+function combos(arr,n){const r=[];(function go(i,c){if(c.length===n){r.push(c.slice());return}for(let j=i;j<arr.length;j++){c.push(arr[j]);go(j+1,c);c.pop()}})(0,[]);return r}
+function evalRule(r){
+  if(!r) return null;
+  const why=[]; let ok=true, cur='';
+  if(r.alt){const ev=r.alt.map(x=>evalRule(x)), best=ev.find(e=>e.ok)||ev[0]; if(!ev.some(e=>e.ok)){ok=false;why.push(...best.why)} cur=best.cur}
+  if(r.sum){const {n,k,from,must}=r.sum; const items=from.filter(x=>gv(x)!=null);
+    let best=null; for(const c of combos(items,n)){ if(must&&!c.some(x=>must.includes(x))) continue; const v=c.reduce((s,x)=>s+gv(x),0); if(best==null||v<best) best=v }
+    if(best==null){ok=false;why.push('반영 과목 부족')} else {cur=`${n}합 ${Math.round(best*10)/10}`; if(best>k){ok=false;why.push(`${Math.round((best-k)*10)/10}등급 부족`)}}}
+  if(r.ones){const {c,g,from,must}=r.ones; const hit=from.filter(x=>gv(x)!=null&&gv(x)<=g);
+    const good=hit.length>=c&&(!must||hit.some(x=>must.includes(x))); cur=`${g}등급 ${hit.length}개`; if(!good){ok=false;why.push(`${g}등급 ${c}개 필요`)}}
+  if(r.cap) for(const [k2,v] of Object.entries(r.cap)) if(v&&gv(k2)>v){ok=false;why.push(`${RN[k2]||k2} ${v}등급 이내 필요`)}
+  return {ok,why,cur};
+}
+function evalMin(a){const r=ruleOf(a);if(!r)return null;const e=evalRule(r);return {ok:e.ok,why:e.why,cur:e.cur}}
+const items=f=>f.map(x=>RN[x]).join('');
+const mustTxt=m=>!m?'':m.length===1?`(${RN[m[0]]} 필수)`:`(${m.map(x=>RN[x]).join('·')} 중 1개 포함)`;
+function ruleText(r){
+  if(!r) return '최저 없음';
+  const p=[];
+  if(r.alt) p.push(r.alt.map(ruleText).join(' 또는 '));
+  if(r.sum){const {n,k,from,must}=r.sum; p.push(`${items(from)} ${n}합 ${k}${mustTxt(must)}`)}
+  if(r.ones){const {c,g,from,must}=r.ones; p.push(`${items(from)} ${g}등급 ${c}개${mustTxt(must)}`)}
+  if(r.cap) for(const [k2,v] of Object.entries(r.cap)) if(v) p.push(`${RN[k2]}${v}`);
+  return p.join(' · ');
+}
+const minLabel=a=>a.rule||a.min?ruleText(ruleOf(a)):(a.minText?'최저 있음(원문 참고)':'최저 없음');
 
 /* ============ 모든 일정 모으기 ============ */
 let GEV=[], gToken=null;
@@ -2053,6 +2097,11 @@ function appForm(a){
   <div class="fx"><label>면접일</label><input type="date" name="itv" value="${a.itv||''}"></div></div>
   <div class="fx2"><div class="fx"><label>1차 발표</label><input type="date" name="r1" value="${a.r1||''}"></div>
   <div class="fx"><label>최종 발표</label><input type="date" name="res" value="${a.res||''}"></div></div>
+  <div class="fx" id="ruleBox" style="${a.rule||(!a.min&&a.minText)?'':'display:none'}"><label>수능 최저 (모집요강 기준)</label>
+    <div class="rulebox"><b id="ruleTx">${esc(a.rule?ruleText(a.rule):(a.minText||''))}</b><small id="ruleReq">${esc((a.rule&&a.rule.req)||(!a.rule&&a.minText?'자동 판정이 안 되는 기준이에요':''))}</small>
+    <button type="button" class="tag" id="ruleEdit">직접 입력으로 바꾸기</button></div>
+    <input type="hidden" name="rule" value="${esc(a.rule?JSON.stringify(a.rule):'')}"><input type="hidden" name="minText" value="${esc(a.minText||'')}"></div>
+  <div id="minSimple" style="${a.rule||(!a.min&&a.minText)?'display:none':''}">
   <div class="fx"><label>수능 최저</label><div class="checks"><label><input type="checkbox" name="hasMin" id="hasMin" ${a.min?'checked':''}> 있음</label></div></div>
   <div id="minBox" style="${a.min?'':'display:none'}">
     <div class="fx2"><div class="fx"><label>몇 과목 합</label><select name="n">${[1,2,3,4].map(x=>`<option ${x==m.n?'selected':''}>${x}</option>`).join('')}</select></div>
@@ -2061,16 +2110,27 @@ function appForm(a){
     <div class="fx2"><div class="fx"><label>탐구 반영</label><select name="sci"><option value="best" ${m.sci!=='avg'&&m.sci!=='avgx'?'selected':''}>상위 1과목</option><option value="avg" ${m.sci==='avg'?'selected':''}>2과목 평균(버림)</option><option value="avgx" ${m.sci==='avgx'?'selected':''}>2과목 평균(그대로)</option></select></div>
     <div class="fx"><label>한국사</label><select name="hist"><option value="">조건 없음</option>${[3,4,5,6].map(x=>`<option value="${x}" ${x==m.hist?'selected':''}>${x}등급 이내</option>`).join('')}</select></div></div>
   </div>
+  </div>
   <div class="fx"><div class="checks"><label><input type="checkbox" name="ex" id="exChk" ${isEx(a)?'checked':''}> 6장 제한에서 빼기 (과학기술원 · 경찰대 · 사관학교 등)</label></div></div>
   <div class="fx"><label>메모</label><textarea name="memo" >${esc(a.memo||'')}</textarea></div>`;
 }
 function readApp(fd,a){
   Object.assign(a,{univ:fd.get('univ').trim(),major:fd.get('major').trim(),type:fd.get('type').trim(),status:fd.get('status'),doc:fd.get('doc'),itv:fd.get('itv'),r1:fd.get('r1')||'',res:fd.get('res')||'',memo:fd.get('memo'),ex:!!fd.get('ex')});
   const subs=fd.getAll('subs');
-  a.min=fd.get('hasMin')&&subs.length?{n:Math.min(+fd.get('n'),subs.length),k:+fd.get('k'),subs,sci:fd.get('sci'),hist:fd.get('hist')}:null;
+  let rule=null; try{rule=fd.get('rule')?JSON.parse(fd.get('rule')):null}catch(e){}
+  if(rule){a.rule=rule;a.min=null} else {delete a.rule;
+    a.min=fd.get('hasMin')&&subs.length?{n:Math.min(+fd.get('n'),subs.length),k:+fd.get('k'),subs,sci:fd.get('sci'),hist:fd.get('hist')}:null}
+  if(!rule&&!a.min&&fd.get('minText')) a.minText=fd.get('minText'); else delete a.minText;
   return a;
 }
-function bindMinToggle(){const c=$('hasMin');if(c)c.onchange=()=>$('minBox').style.display=c.checked?'':'none'}
+function bindMinToggle(){const c=$('hasMin');if(c)c.onchange=()=>$('minBox').style.display=c.checked?'':'none';
+  const e=$('ruleEdit');if(e)e.onclick=()=>{const f=$('mForm');f.elements.rule.value='';f.elements.minText.value='';$('ruleBox').style.display='none';$('minSimple').style.display=''}}
+/* 목록에서 고른 최저 규칙 표시 (rule: 계산 가능 / text만: 원문 표시) */
+function showRule(rule,text){
+  const f=$('mForm'); f.elements.rule.value=rule?JSON.stringify(rule):''; f.elements.minText.value=!rule&&text?text:'';
+  const on=!!(rule||text); $('ruleBox').style.display=on?'':'none'; $('minSimple').style.display=on?'none':'';
+  $('ruleTx').textContent=rule?ruleText(rule):(text||''); $('ruleReq').textContent=rule?(rule.req||''):(text?'자동 판정이 안 되는 기준이에요':'');
+}
 /* ===== 원서: 목록에서 고르기 (대학 → 전형 → 학과 → 아래 칸 자동 입력) =====
    데이터는 admissions/<학년도>.json (원서 창을 열 때만 불러옴 → 앱 속도와 무관) */
 const ADM_YEARS=[2028,2027];
@@ -2110,18 +2170,17 @@ function bindPicker(a){
     const put=(nm,v)=>{const el=f.elements[nm];if(el)el.value=v};
     put('univ',u.n); put('major',m.n); put('type',t.n+(t.cat&&t.cat!==t.n?` (${t.cat})`:''));
     put('doc',m.doc||t.doc||''); put('itv',m.itv||t.itv||''); put('r1',m.r1||t.r1||''); put('res',m.res||t.res||'');
-    const mn='min' in m?m.min:t.min, has=$('hasMin');
-    if(has){has.checked=!!mn;$('minBox').style.display=mn?'':'none'}
-    if(mn){put('n',String(mn.n));put('k',mn.k);put('sci',['avg','avgx'].includes(mn.sci)?mn.sci:'best');put('hist',mn.hist?String(mn.hist):'');
+    const own=['min','rule','minText'].some(k=>k in m), src=own?m:t;   // 학과에 최저가 따로 적혀 있으면 그것만 (없음 포함)
+    const mn=src.min||null, has=$('hasMin'), rl=src.rule||null, mt=src.minText||null;
+    if(rl){showRule(rl)}
+    else if(mn){showRule(null);if(has){has.checked=true;$('minBox').style.display=''}
+      put('n',String(mn.n));put('k',mn.k);put('sci',['avg','avgx'].includes(mn.sci)?mn.sci:'best');put('hist',mn.hist?String(mn.hist):'');
       f.querySelectorAll('input[name=subs]').forEach(c=>c.checked=(mn.subs||[]).includes(c.value))}
-    /* 앱이 계산할 수 없는 최저(영어 별도 등급 등)는 최저 칸은 비우고 원문 기준을 메모에 */
-    const mt='minText' in m?m.minText:t.minText, complex=!mn&&!!mt;
-    const memo=f.elements.memo, add=x=>{if(x&&memo&&!memo.value.includes(x))memo.value=(memo.value?memo.value+'\n':'')+x};
-    if(complex) add('수능 최저: '+mt);
-    add(t.note); add(m.note); if(memo) fitTA(memo);
+    else if(mt){showRule(null,mt)}
+    else {showRule(null);if(has){has.checked=false;$('minBox').style.display='none'}}
     {const ex=$('exChk');if(ex)ex.checked=u.g==='과학기술원'||EXRE.test(u.n)}
     f.dataset.src=JSON.stringify({y:+Y.value,u:u.n,t:t.n,m:m.n});
-    setMsg(`<b>${esc(u.n)} ${esc(m.n)} · ${esc(t.n)}</b> 정보를 채웠어요. 아래에서 고칠 수 있어요.`+(complex?'<br>수능 최저 기준이 자동 계산 형식과 달라 메모에 원문을 넣었어요.':''));
+    setMsg(`<b>${esc(u.n)} ${esc(m.n)} · ${esc(t.n)}</b> 정보를 채웠어요. 아래에서 고칠 수 있어요.`);
   }
   Y.onchange=load; U.onchange=pickU; U.oninput=()=>{if((D&&D.univs||[]).some(x=>x.n===U.value.trim()))pickU()}; T.onchange=pickT; M.onchange=pickM;
   load();
@@ -2142,7 +2201,7 @@ function appCard(a,label){
   return `<div class="card appc${isEx(a)?' ex':''}" data-act="app-edit" data-id="${a.id}">
       <div class="label"><span class="no">${label}</span><span class="pill ${st}">${esc(a.status)}</span></div>
       <div class="un">${esc(a.univ)}</div><div class="mj">${esc(a.major)} · ${esc(a.type)}</div>
-      <div class="rule"><span class="pill">${esc(ruleTxt(a.min))}</span>${ev?`<span class="pill ${ev.ok?'ok':'no'}">${ev.ok?'최저 충족':'최저 미충족'}</span>`:''}</div>
+      <div class="rule"><span class="pill">${esc(minLabel(a))}</span>${ev?`<span class="pill ${ev.ok?'ok':'no'}">${ev.ok?'최저 충족':'최저 미충족'}</span>`:''}</div>
       <div class="dates"><span>서류 <b>${a.doc?fmtMD(a.doc):'-'}</b></span><span>면접 <b>${a.itv?fmtMD(a.itv)+' · '+ddayTxt(ddayN(a.itv)):'-'}</b></span>${a.r1?`<span>1차 <b>${fmtMD(a.r1)}</b></span>`:''}<span>발표 <b>${a.res?fmtMD(a.res)+(ddayN(a.res)>=0?' · '+ddayTxt(ddayN(a.res)):''):'-'}</b></span></div>
     </div>`;
 }
@@ -2160,7 +2219,7 @@ function renderApps(){
   $('appGrid').innerHTML=h;
   $('appCount').innerHTML=`${inn.length}<small>/ 6장${out.length?` · 6장 외 ${out.length}`:''}</small>`;
   $('appSubmitted').textContent=S.apps.filter(a=>a.status!=='준비 중').length+'장';
-  const withMin=S.apps.filter(a=>a.min);
+  const withMin=S.apps.filter(a=>ruleOf(a));
   $('appMinOk').textContent=withMin.length?`${withMin.filter(a=>evalMin(a).ok).length} / ${withMin.length}`:'-';
   const up=[];S.apps.forEach(a=>{[['doc','서류 마감'],['itv','면접'],['r1','1차 발표'],['res','최종 발표']].forEach(([k,n])=>{if(a[k]&&ddayN(a[k])>=0)up.push({d:a[k],t:`${a.univ} ${n}`})})});
   up.sort((x,y)=>x.d.localeCompare(y.d));
@@ -2170,7 +2229,7 @@ function renderApps(){
 /* ============ 입시: 최저 계산기 ============ */
 const GN=[['kor','국어'],['math','수학'],['eng','영어'],['hist','한국사'],['sci1','탐구 1'],['sci2','탐구 2']];
 function renderMin(){
-  $('grades').innerHTML=GN.map(([k,n])=>`<div class="gr"><div class="gn">${n}</div><div class="gv">${S.grades[k]}</div>
+  $('grades').innerHTML=GN.map(([k,n])=>`<div class="gr"><div class="gn">${n}${k==='sci1'||k==='sci2'?` <button class="sty" data-act="sty" data-k="${k==='sci1'?'st1':'st2'}">${S.grades[k==='sci1'?'st1':'st2']==='s'?'사탐':'과탐'}</button>`:''}</div><div class="gv">${S.grades[k]}</div>
     <div class="gs"><button data-act="gr" data-k="${k}" data-d="-1">−</button><button data-act="gr" data-k="${k}" data-d="1">+</button></div></div>`).join('');
   const list=S.apps;
   if(!list.length){$('minRes').innerHTML='<li class="empty2">원서 없음</li>';$('minTag').textContent='-';return}
@@ -2178,9 +2237,9 @@ function renderMin(){
   $('minRes').innerHTML=list.map(a=>{
     const ev=evalMin(a);
     if(ev){cnt++;if(ev.ok)ok++}
-    const detail=!ev?'':` · 현재 ${ev.best}`;
-    return `<li><div class="rn"><b>${esc(a.univ)} ${esc(a.major)}</b><small>${esc(ruleTxt(a.min))}${detail}</small></div>
-      ${ev?`<span class="pill ${ev.ok?'ok':'no'}">${ev.ok?'충족':(ev.histOk?`${ev.best-a.min.k}등급 부족`:'한국사 미충족')}</span>`:'<span class="pill">없음</span>'}</li>`;
+    const detail=!ev||!ev.cur?'':` · 현재 ${ev.cur}`, req=a.rule&&a.rule.req?` · ${a.rule.req}`:'';
+    return `<li><div class="rn"><b>${esc(a.univ)} ${esc(a.major)}</b><small>${esc(minLabel(a))}${esc(req)}${detail}</small></div>
+      ${ev?`<span class="pill ${ev.ok?'ok':'no'}">${ev.ok?'충족':esc(ev.why[0]||'미충족')}</span>`:'<span class="pill">없음</span>'}</li>`;
   }).join('');
   $('minTag').textContent=cnt?`${ok} / ${cnt}`:'-';
 }
@@ -2625,6 +2684,7 @@ document.addEventListener('click',e=>{
   if(act==='app-new') editApp(null);
   else if(act==='app-new-ex'){editApp(null);const c=$('exChk');if(c)c.checked=true}
   else if(act==='app-edit') editApp(id);
+  else if(act==='sty'){const k=el.dataset.k;S.grades[k]=S.grades[k]==='s'?'g':'s';save()}
   else if(act==='gr'){const k=el.dataset.k;S.grades[k]=Math.min(9,Math.max(1,S.grades[k]+ +el.dataset.d));save()}
   else if(act==='dd-star'){S.ddays.forEach(d=>d.main=d.id===id);save()}
   else if(act==='dd-del'){S.ddays=S.ddays.filter(d=>d.id!==id);save()}
