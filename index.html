@@ -10,7 +10,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Fly Sky">
 <meta name="theme-color" content="#c9cfe2">
-<script>window.FLY_BUILD="2026.11.23-r86";
+<script>window.FLY_BUILD="2026.11.23-r87";
 /* 새로고침 버튼이 붙인 ?r=… 는 주소창에서 바로 지움 */
 if(/[?&]r=\d/.test(location.search))history.replaceState(history.state,"",location.pathname+location.hash);</script>
 <script>
@@ -482,6 +482,11 @@ try{if(navigator.standalone||matchMedia('(display-mode: standalone)').matches||m
   .fx textarea{min-height:76px;resize:none;overflow:hidden}
   .fx2{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:10px}
   .fx input,.fx select{min-width:0}
+  .fx input[type=date]{-webkit-appearance:none;appearance:none;display:block;min-height:48px;text-align:left}   /* 아이패드 Safari: 날짜 칸이 옆으로 넘치던 것 */
+  .fx input[type=date]::-webkit-date-and-time-value{text-align:left}
+  #mForm.locked .fx input[readonly]{background:transparent;padding-left:2px;pointer-events:none;font-weight:600}
+  #mForm.locked .fx input[readonly][type=date]::-webkit-calendar-picker-indicator{display:none}
+  .apick .unlock{align-self:flex-start;font-size:12px;padding:6px 12px;border-radius:999px;background:#fff;border:0}
   .apick .fx2{grid-template-columns:1fr}
   .apick{background:var(--accent-soft);border-radius:20px;padding:14px;margin-bottom:16px;display:flex;flex-direction:column;gap:8px}
   .apick .aph{display:flex;align-items:center;justify-content:space-between;gap:10px;font-size:14px}
@@ -2110,6 +2115,7 @@ function appForm(a){
     <input id="apU" list="apUL" placeholder="대학 이름 검색" autocomplete="off"><datalist id="apUL"></datalist>
     <div class="fx2"><select id="apT" disabled><option>전형</option></select><input id="apM" list="apML" placeholder="학과 검색" autocomplete="off" disabled><datalist id="apML"></datalist></div>
     <p class="apmsg" id="apMsg"></p>
+    <button type="button" class="tag unlock" id="unlockApp" style="display:none">직접 고치기</button>
   </div>
   <div class="fx2"><div class="fx"><label>대학</label><input name="univ" value="${esc(a.univ)}" required></div>
   <div class="fx"><label>학과</label><input name="major" value="${esc(a.major)}" required></div></div>
@@ -2148,6 +2154,16 @@ function readApp(fd,a){
 }
 function bindMinToggle(){const c=$('hasMin');if(c)c.onchange=()=>$('minBox').style.display=c.checked?'':'none';
   const e=$('ruleEdit');if(e)e.onclick=()=>{const f=$('mForm');f.elements.rule.value='';f.elements.minText.value='';$('ruleBox').style.display='none';$('minSimple').style.display=''}}
+/* 목록에서 고른 원서는 모집요강 값이라 잠가 둠 (대학 · 학과 · 전형 · 날짜 · 최저). 필요하면 '직접 고치기'로 풀기 */
+const LOCKF=['univ','major','type','doc','itv','r1','res'];
+function lockPicked(on){
+  const f=$('mForm'); f.classList.toggle('locked',on);
+  LOCKF.forEach(n=>{const el=f.elements[n];if(el){el.readOnly=on;el.tabIndex=on?-1:0}});
+  const rb=$('ruleBox'), ms=$('minSimple'), ed=$('ruleEdit');
+  if(on){rb.style.display='';ms.style.display='none';if(!f.elements.rule.value&&!f.elements.minText.value){$('ruleTx').textContent='최저 없음';$('ruleReq').textContent=''}}
+  if(ed) ed.style.display=on?'none':'';
+  const un=$('unlockApp'); if(un) un.style.display=on?'':'none';
+}
 /* 목록에서 고른 최저 규칙 표시 (rule: 계산 가능 / text만: 원문 표시) */
 function showRule(rule,text){
   const f=$('mForm'); f.elements.rule.value=rule?JSON.stringify(rule):''; f.elements.minText.value=!rule&&text?text:'';
@@ -2197,15 +2213,12 @@ function bindPicker(a){
     put('doc',m.doc||t.doc||''); put('itv',m.itv||t.itv||''); put('r1',m.r1||t.r1||''); put('res',m.res||t.res||'');
     const own=['min','rule','minText'].some(k=>k in m), src=own?m:t;   // 학과에 최저가 따로 적혀 있으면 그것만 (없음 포함)
     const mn=src.min||null, has=$('hasMin'), rl=src.rule||null, mt=src.minText||null;
-    if(rl){showRule(rl)}
-    else if(mn){showRule(null);if(has){has.checked=true;$('minBox').style.display=''}
-      put('n',String(mn.n));put('k',mn.k);put('sci',['avg','avgx'].includes(mn.sci)?mn.sci:'best');put('hist',mn.hist?String(mn.hist):'');
-      f.querySelectorAll('input[name=subs]').forEach(c=>c.checked=(mn.subs||[]).includes(c.value))}
-    else if(mt){showRule(null,mt)}
-    else {showRule(null);if(has){has.checked=false;$('minBox').style.display='none'}}
+    if(has){has.checked=false;$('minBox').style.display='none'}
+    if(rl) showRule(rl); else if(mn) showRule(minToRule(mn)); else if(mt) showRule(null,mt); else showRule(null);
+    delete f.dataset.unsrc; lockPicked(true);
     {const ex=$('exChk');if(ex)ex.checked=u.g==='과학기술원'||EXRE.test(u.n)}
     f.dataset.src=JSON.stringify({y:+Y.value,u:u.n,t:t.n,m:m.n});
-    setMsg(`<b>${esc(u.n)} ${esc(m.n)} · ${esc(t.n)}</b> 정보를 채웠어요. 아래에서 고칠 수 있어요.`);
+    setMsg(`<b>${esc(u.n)} ${esc(m.n)} · ${esc(t.n)}</b> 정보를 채웠어요. 모집요강 값이라 잠가 뒀어요.`);
   }
   Y.onchange=load; U.onchange=pickU; U.oninput=()=>{if((D&&D.univs||[]).some(x=>x.n===U.value.trim()))pickU()}; T.onchange=pickT; M.onchange=pickM; M.oninput=()=>{if(t&&(t.majors||[]).some(x=>x.n===M.value.trim()))pickM()};
   load();
@@ -2216,10 +2229,12 @@ function editApp(id){
     onSave:fd=>{
       const src=$('mForm').dataset.src;
       if(!fd.get('ex')&&curApps().filter(y=>y!==a&&!isEx(y)).length>=6){toast('수시 6장을 다 채웠어요 · 과학기술원 등은 6장 밖으로 더 넣을 수 있어요');return false}
-      const x=a?readApp(fd,a):readApp(fd,{id:uid(),y:ayear()});if(src)x.src=JSON.parse(src);if(!a)S.apps.push(x);save()},
+      const x=a?readApp(fd,a):readApp(fd,{id:uid(),y:ayear()});if(src)x.src=JSON.parse(src);if($('mForm').dataset.unsrc)delete x.src;if(!a)S.apps.push(x);save()},
     onDelete:a?()=>{S.apps=S.apps.filter(x=>x!==a);save()}:null
   });
-  bindMinToggle(); $('mForm').dataset.src=''; bindPicker(a);
+  bindMinToggle(); const F=$('mForm'); F.dataset.src=''; delete F.dataset.unsrc; bindPicker(a);
+  if(a&&a.src) lockPicked(true);
+  $('unlockApp').onclick=()=>{lockPicked(false);F.dataset.unsrc='1';if(!F.elements.rule.value&&!F.elements.minText.value)showRule(null)};
 }
 function appCard(a,label){
   const ev=evalMin(a), st=/합격/.test(a.status)&&a.status!=='불합격'?'ok':a.status==='불합격'?'no':'';
