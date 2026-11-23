@@ -10,7 +10,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Fly Sky">
 <meta name="theme-color" content="#c9cfe2">
-<script>window.FLY_BUILD="2026.11.23-r80";
+<script>window.FLY_BUILD="2026.11.23-r81";
 /* 새로고침 버튼이 붙인 ?r=… 는 주소창에서 바로 지움 */
 if(/[?&]r=\d/.test(location.search))history.replaceState(history.state,"",location.pathname+location.hash);</script>
 <script>
@@ -540,6 +540,9 @@ try{if(navigator.standalone||matchMedia('(display-mode: standalone)').matches||m
   .appc .rule{font-size:13px;margin-top:14px;display:flex;gap:6px;flex-wrap:wrap;align-items:center}
   .appc .dates{margin-top:auto;padding-top:16px;border-top:1px solid var(--line);display:flex;flex-wrap:wrap;gap:6px 14px;justify-content:space-between;font-size:13px;color:var(--sub)}
   .appc .dates b{color:var(--ink);font-weight:600}
+  .appc.ex .no{color:var(--accent);font-weight:700}
+  .appc.exadd{flex-direction:column;gap:4px}
+  .appc.exadd small{font-size:12px;font-weight:500;opacity:.8}
   .appc.empty{border:2px dashed #b9c0d8;background:rgba(255,255,255,.35);align-items:center;justify-content:center;color:var(--sub);font-size:15px;font-weight:600;gap:8px}
   .appc.empty svg{width:28px;height:28px}
 
@@ -1912,7 +1915,7 @@ function openModal(title,body,{onSave,onDelete,saveText='저장',delMsg='삭제�
   $('mTitle').textContent=title;
   const f=$('mForm');
   f.innerHTML=body+`<div class="mfoot">${onDelete?'<button type="button" class="pbtn del" id="mDel">삭제</button>':''}${onSave?`<button class="pbtn">${saveText}</button>`:'<button type="button" class="pbtn" id="mOk">확인</button>'}</div>`;
-  f.onsubmit=e=>{e.preventDefault();onSave&&onSave(new FormData(f));closeModal()};
+  f.onsubmit=e=>{e.preventDefault();if(onSave&&onSave(new FormData(f))===false)return;closeModal()};
   if(onDelete) $('mDel').onclick=async()=>{if(!await flyAsk(delMsg,{title:'정말 삭제하시겠습니까?',ok:'삭제',danger:true}))return;onDelete();closeModal()};
   if($('mOk')) $('mOk').onclick=closeModal;
   M.classList.add('open');
@@ -2028,6 +2031,9 @@ if(_ps) _ps.onclick=()=>{document.getElementById('pop').classList.remove('open')
 
 /* ============ 입시: 원서 ============ */
 const STAT=['준비 중','제출','1차 합격','최종 합격','불합격'];
+/* 수시 6장 제한 밖: 과학기술원(KAIST·GIST·DGIST·UNIST)·한국에너지공대·경찰대·사관학교 등 — 자동 판별 + 원서에서 직접 켜고 끌 수 있음 */
+const EXRE=/KAIST|카이스트|한국과학기술원|GIST|광주과학기술원|DGIST|대구경북과학기술원|UNIST|울산과학기술원|KENTECH|켄텍|한국에너지공과대|경찰대|사관학교/i;
+const isEx=a=>a.ex===true||(a.ex!==false&&EXRE.test(a.univ||''));
 function appForm(a){
   a=a||{univ:'',major:'',type:'학생부종합',status:'준비 중',doc:'',itv:'',min:null,memo:''};
   const m=a.min||{n:3,k:4,subs:['kor','math','eng','sci'],sci:'best',hist:''};
@@ -2055,10 +2061,11 @@ function appForm(a){
     <div class="fx2"><div class="fx"><label>탐구 반영</label><select name="sci"><option value="best" ${m.sci!=='avg'&&m.sci!=='avgx'?'selected':''}>상위 1과목</option><option value="avg" ${m.sci==='avg'?'selected':''}>2과목 평균(버림)</option><option value="avgx" ${m.sci==='avgx'?'selected':''}>2과목 평균(그대로)</option></select></div>
     <div class="fx"><label>한국사</label><select name="hist"><option value="">조건 없음</option>${[3,4,5,6].map(x=>`<option value="${x}" ${x==m.hist?'selected':''}>${x}등급 이내</option>`).join('')}</select></div></div>
   </div>
+  <div class="fx"><div class="checks"><label><input type="checkbox" name="ex" id="exChk" ${isEx(a)?'checked':''}> 6장 제한에서 빼기 (과학기술원 · 경찰대 · 사관학교 등)</label></div></div>
   <div class="fx"><label>메모</label><textarea name="memo" >${esc(a.memo||'')}</textarea></div>`;
 }
 function readApp(fd,a){
-  Object.assign(a,{univ:fd.get('univ').trim(),major:fd.get('major').trim(),type:fd.get('type').trim(),status:fd.get('status'),doc:fd.get('doc'),itv:fd.get('itv'),r1:fd.get('r1')||'',res:fd.get('res')||'',memo:fd.get('memo')});
+  Object.assign(a,{univ:fd.get('univ').trim(),major:fd.get('major').trim(),type:fd.get('type').trim(),status:fd.get('status'),doc:fd.get('doc'),itv:fd.get('itv'),r1:fd.get('r1')||'',res:fd.get('res')||'',memo:fd.get('memo'),ex:!!fd.get('ex')});
   const subs=fd.getAll('subs');
   a.min=fd.get('hasMin')&&subs.length?{n:Math.min(+fd.get('n'),subs.length),k:+fd.get('k'),subs,sci:fd.get('sci'),hist:fd.get('hist')}:null;
   return a;
@@ -2112,6 +2119,7 @@ function bindPicker(a){
     const memo=f.elements.memo, add=x=>{if(x&&memo&&!memo.value.includes(x))memo.value=(memo.value?memo.value+'\n':'')+x};
     if(complex) add('수능 최저: '+mt);
     add(t.note); add(m.note); if(memo) fitTA(memo);
+    {const ex=$('exChk');if(ex)ex.checked=u.g==='과학기술원'||EXRE.test(u.n)}
     f.dataset.src=JSON.stringify({y:+Y.value,u:u.n,t:t.n,m:m.n});
     setMsg(`<b>${esc(u.n)} ${esc(m.n)} · ${esc(t.n)}</b> 정보를 채웠어요. 아래에서 고칠 수 있어요.`+(complex?'<br>수능 최저 기준이 자동 계산 형식과 달라 메모에 원문을 넣었어요.':''));
   }
@@ -2121,26 +2129,36 @@ function bindPicker(a){
 function editApp(id){
   const a=id?S.apps.find(x=>x.id===id):null;
   openModal(a?`${a.univ} 원서`:'원서 추가',appForm(a),{
-    onSave:fd=>{const src=$('mForm').dataset.src;const x=a?readApp(fd,a):readApp(fd,{id:uid()});if(src)x.src=JSON.parse(src);if(!a)S.apps.push(x);save()},
+    onSave:fd=>{
+      const src=$('mForm').dataset.src;
+      if(!fd.get('ex')&&S.apps.filter(y=>y!==a&&!isEx(y)).length>=6){toast('수시 6장을 다 채웠어요 · 과학기술원 등은 6장 밖으로 더 넣을 수 있어요');return false}
+      const x=a?readApp(fd,a):readApp(fd,{id:uid()});if(src)x.src=JSON.parse(src);if(!a)S.apps.push(x);save()},
     onDelete:a?()=>{S.apps=S.apps.filter(x=>x!==a);save()}:null
   });
   bindMinToggle(); $('mForm').dataset.src=''; bindPicker(a);
 }
-function renderApps(){
-  let h='';
-  for(let i=0;i<6;i++){
-    const a=S.apps[i];
-    if(!a){h+=`<button class="card appc empty" data-act="app-new"><svg class="ic" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>원서 ${i+1} 추가</button>`;continue}
-    const ev=evalMin(a), st=/합격/.test(a.status)&&a.status!=='불합격'?'ok':a.status==='불합격'?'no':'';
-    h+=`<div class="card appc" data-act="app-edit" data-id="${a.id}">
-      <div class="label"><span class="no">원서 ${i+1}</span><span class="pill ${st}">${esc(a.status)}</span></div>
+function appCard(a,label){
+  const ev=evalMin(a), st=/합격/.test(a.status)&&a.status!=='불합격'?'ok':a.status==='불합격'?'no':'';
+  return `<div class="card appc${isEx(a)?' ex':''}" data-act="app-edit" data-id="${a.id}">
+      <div class="label"><span class="no">${label}</span><span class="pill ${st}">${esc(a.status)}</span></div>
       <div class="un">${esc(a.univ)}</div><div class="mj">${esc(a.major)} · ${esc(a.type)}</div>
       <div class="rule"><span class="pill">${esc(ruleTxt(a.min))}</span>${ev?`<span class="pill ${ev.ok?'ok':'no'}">${ev.ok?'최저 충족':'최저 미충족'}</span>`:''}</div>
       <div class="dates"><span>서류 <b>${a.doc?fmtMD(a.doc):'-'}</b></span><span>면접 <b>${a.itv?fmtMD(a.itv)+' · '+ddayTxt(ddayN(a.itv)):'-'}</b></span>${a.r1?`<span>1차 <b>${fmtMD(a.r1)}</b></span>`:''}<span>발표 <b>${a.res?fmtMD(a.res)+(ddayN(a.res)>=0?' · '+ddayTxt(ddayN(a.res)):''):'-'}</b></span></div>
     </div>`;
+}
+function renderApps(){
+  /* 6장 안 원서는 1~6번 칸, 과학기술원 등 6장 밖 원서는 그 뒤에 따로 + 언제든 더 넣는 칸 */
+  const inn=S.apps.filter(a=>!isEx(a)), out=S.apps.filter(isEx);
+  let h='';
+  for(let i=0;i<6;i++){
+    const a=inn[i];
+    h+=a?appCard(a,`원서 ${i+1}`):`<button class="card appc empty" data-act="app-new"><svg class="ic" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>원서 ${i+1} 추가</button>`;
   }
+  for(let i=6;i<inn.length;i++) h+=appCard(inn[i],`원서 ${i+1} · 6장 초과`);
+  out.forEach(a=>{h+=appCard(a,'6장 외')});
+  h+=`<button class="card appc empty exadd" data-act="app-new-ex"><svg class="ic" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>과학기술원 등 추가<small>6장 제한 밖</small></button>`;
   $('appGrid').innerHTML=h;
-  $('appCount').innerHTML=`${S.apps.length}<small>/ 6장</small>`;
+  $('appCount').innerHTML=`${inn.length}<small>/ 6장${out.length?` · 6장 외 ${out.length}`:''}</small>`;
   $('appSubmitted').textContent=S.apps.filter(a=>a.status!=='준비 중').length+'장';
   const withMin=S.apps.filter(a=>a.min);
   $('appMinOk').textContent=withMin.length?`${withMin.filter(a=>evalMin(a).ok).length} / ${withMin.length}`:'-';
@@ -2605,6 +2623,7 @@ document.addEventListener('click',e=>{
   const el=e.target.closest('[data-act]'); if(!el) return;
   const id=el.dataset.id, act=el.dataset.act;
   if(act==='app-new') editApp(null);
+  else if(act==='app-new-ex'){editApp(null);const c=$('exChk');if(c)c.checked=true}
   else if(act==='app-edit') editApp(id);
   else if(act==='gr'){const k=el.dataset.k;S.grades[k]=Math.min(9,Math.max(1,S.grades[k]+ +el.dataset.d));save()}
   else if(act==='dd-star'){S.ddays.forEach(d=>d.main=d.id===id);save()}
