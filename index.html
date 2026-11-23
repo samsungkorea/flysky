@@ -538,7 +538,7 @@ try{if(navigator.standalone||matchMedia('(display-mode: standalone)').matches||m
   .appc .un{font-size:22px;font-weight:700;letter-spacing:-.5px;margin-top:12px}
   .appc .mj{font-size:14px;color:var(--sub);margin-top:2px}
   .appc .rule{font-size:13px;margin-top:14px;display:flex;gap:6px;flex-wrap:wrap;align-items:center}
-  .appc .dates{margin-top:auto;padding-top:16px;border-top:1px solid var(--line);display:flex;justify-content:space-between;font-size:13px;color:var(--sub)}
+  .appc .dates{margin-top:auto;padding-top:16px;border-top:1px solid var(--line);display:flex;flex-wrap:wrap;gap:6px 14px;justify-content:space-between;font-size:13px;color:var(--sub)}
   .appc .dates b{color:var(--ink);font-weight:600}
   .appc.empty{border:2px dashed #b9c0d8;background:rgba(255,255,255,.35);align-items:center;justify-content:center;color:var(--sub);font-size:15px;font-weight:600;gap:8px}
   .appc.empty svg{width:28px;height:28px}
@@ -1875,14 +1875,14 @@ function save(){S._t=Date.now();try{localStorage.setItem(KEY,JSON.stringify(S))}
 
 /* ============ 최저 ============ */
 const SUBN={kor:'국',math:'수',eng:'영',sci:'탐'}, SUBF={kor:'국어',math:'수학',eng:'영어',sci:'탐구'};
-const sciG=m=>m.sci==='avg'?Math.floor((S.grades.sci1+S.grades.sci2)/2):Math.min(S.grades.sci1,S.grades.sci2);
+const sciG=m=>m.sci==='avg'?Math.floor((S.grades.sci1+S.grades.sci2)/2):m.sci==='avgx'?(S.grades.sci1+S.grades.sci2)/2:Math.min(S.grades.sci1,S.grades.sci2);   // avgx: 2과목 평균 그대로(예: 1.5)
 function evalMin(a){
   if(!a.min) return null; const m=a.min,g=S.grades;
   const arr=m.subs.map(k=>k==='sci'?sciG(m):g[k]).sort((x,y)=>x-y);
   const best=arr.slice(0,m.n).reduce((s,x)=>s+x,0), histOk=!m.hist||g.hist<=+m.hist;
   return {ok:arr.length>=m.n&&best<=m.k&&histOk,best,histOk};
 }
-const ruleTxt=m=>!m?'최저 없음':`${m.subs.map(k=>SUBN[k]).join('')} ${m.n}합 ${m.k}`+(m.subs.includes('sci')?(m.sci==='avg'?' · 탐2평균':' · 탐1'):'')+(m.hist?` · 한${m.hist}`:'');
+const ruleTxt=m=>!m?'최저 없음':`${m.subs.map(k=>SUBN[k]).join('')} ${m.n}합 ${m.k}`+(m.subs.includes('sci')?(m.sci==='avg'?' · 탐2평균':m.sci==='avgx'?' · 탐2평균(소수)':' · 탐1'):'')+(m.hist?` · 한${m.hist}`:'');
 
 /* ============ 모든 일정 모으기 ============ */
 let GEV=[], gToken=null;
@@ -1893,6 +1893,8 @@ function allEvents(){
   S.apps.forEach(a=>{
     if(a.doc) L.push({date:a.doc,title:`${a.univ} 서류 마감`,type:'wsr'});
     if(a.itv) L.push({date:a.itv,title:`${a.univ} 면접`,type:'wsr'});
+    if(a.r1) L.push({date:a.r1,title:`${a.univ} 1차 발표`,type:'wsr'});
+    if(a.res) L.push({date:a.res,title:`${a.univ} 최종 발표`,type:'wsr'});
   });
   GEV.forEach(e=>L.push({...e,type:'google'}));
   return L.sort((a,b)=>(a.time||'00:00').localeCompare(b.time||'00:00'));
@@ -2039,18 +2041,20 @@ function appForm(a){
   <div class="fx"><label>상태</label><select name="status">${STAT.map(s=>`<option ${s===a.status?'selected':''}>${s}</option>`).join('')}</select></div></div>
   <div class="fx2"><div class="fx"><label>서류 마감</label><input type="date" name="doc" value="${a.doc||''}"></div>
   <div class="fx"><label>면접일</label><input type="date" name="itv" value="${a.itv||''}"></div></div>
+  <div class="fx2"><div class="fx"><label>1차 발표</label><input type="date" name="r1" value="${a.r1||''}"></div>
+  <div class="fx"><label>최종 발표</label><input type="date" name="res" value="${a.res||''}"></div></div>
   <div class="fx"><label>수능 최저</label><div class="checks"><label><input type="checkbox" name="hasMin" id="hasMin" ${a.min?'checked':''}> 있음</label></div></div>
   <div id="minBox" style="${a.min?'':'display:none'}">
     <div class="fx2"><div class="fx"><label>몇 과목 합</label><select name="n">${[1,2,3,4].map(x=>`<option ${x==m.n?'selected':''}>${x}</option>`).join('')}</select></div>
     <div class="fx"><label>합 기준 (이내)</label><input type="number" name="k" min="1" max="36" value="${m.k}"></div></div>
     <div class="fx"><label>반영 과목</label><div class="checks">${['kor','math','eng','sci'].map(k=>`<label><input type="checkbox" name="subs" value="${k}" ${m.subs.includes(k)?'checked':''}> ${SUBF[k]}</label>`).join('')}</div></div>
-    <div class="fx2"><div class="fx"><label>탐구 반영</label><select name="sci"><option value="best" ${m.sci!=='avg'?'selected':''}>상위 1과목</option><option value="avg" ${m.sci==='avg'?'selected':''}>2과목 평균(버림)</option></select></div>
+    <div class="fx2"><div class="fx"><label>탐구 반영</label><select name="sci"><option value="best" ${m.sci!=='avg'&&m.sci!=='avgx'?'selected':''}>상위 1과목</option><option value="avg" ${m.sci==='avg'?'selected':''}>2과목 평균(버림)</option><option value="avgx" ${m.sci==='avgx'?'selected':''}>2과목 평균(그대로)</option></select></div>
     <div class="fx"><label>한국사</label><select name="hist"><option value="">조건 없음</option>${[3,4,5,6].map(x=>`<option value="${x}" ${x==m.hist?'selected':''}>${x}등급 이내</option>`).join('')}</select></div></div>
   </div>
   <div class="fx"><label>메모</label><textarea name="memo" >${esc(a.memo||'')}</textarea></div>`;
 }
 function readApp(fd,a){
-  Object.assign(a,{univ:fd.get('univ').trim(),major:fd.get('major').trim(),type:fd.get('type').trim(),status:fd.get('status'),doc:fd.get('doc'),itv:fd.get('itv'),memo:fd.get('memo')});
+  Object.assign(a,{univ:fd.get('univ').trim(),major:fd.get('major').trim(),type:fd.get('type').trim(),status:fd.get('status'),doc:fd.get('doc'),itv:fd.get('itv'),r1:fd.get('r1')||'',res:fd.get('res')||'',memo:fd.get('memo')});
   const subs=fd.getAll('subs');
   a.min=fd.get('hasMin')&&subs.length?{n:Math.min(+fd.get('n'),subs.length),k:+fd.get('k'),subs,sci:fd.get('sci'),hist:fd.get('hist')}:null;
   return a;
@@ -2094,10 +2098,10 @@ function bindPicker(a){
     const m=t&&(t.majors||[])[+M.value]; if(!m) return;
     const put=(nm,v)=>{const el=f.elements[nm];if(el)el.value=v};
     put('univ',u.n); put('major',m.n); put('type',t.n+(t.cat&&t.cat!==t.n?` (${t.cat})`:''));
-    put('doc',m.doc||t.doc||''); put('itv',m.itv||t.itv||'');
+    put('doc',m.doc||t.doc||''); put('itv',m.itv||t.itv||''); put('r1',m.r1||t.r1||''); put('res',m.res||t.res||'');
     const mn='min' in m?m.min:t.min, has=$('hasMin');
     if(has){has.checked=!!mn;$('minBox').style.display=mn?'':'none'}
-    if(mn){put('n',String(mn.n));put('k',mn.k);put('sci',mn.sci==='avg'?'avg':'best');put('hist',mn.hist?String(mn.hist):'');
+    if(mn){put('n',String(mn.n));put('k',mn.k);put('sci',['avg','avgx'].includes(mn.sci)?mn.sci:'best');put('hist',mn.hist?String(mn.hist):'');
       f.querySelectorAll('input[name=subs]').forEach(c=>c.checked=(mn.subs||[]).includes(c.value))}
     /* 앱이 계산할 수 없는 최저(영어 별도 등급 등)는 최저 칸은 비우고 원문 기준을 메모에 */
     const mt='minText' in m?m.minText:t.minText, complex=!mn&&!!mt;
@@ -2128,7 +2132,7 @@ function renderApps(){
       <div class="label"><span class="no">원서 ${i+1}</span><span class="pill ${st}">${esc(a.status)}</span></div>
       <div class="un">${esc(a.univ)}</div><div class="mj">${esc(a.major)} · ${esc(a.type)}</div>
       <div class="rule"><span class="pill">${esc(ruleTxt(a.min))}</span>${ev?`<span class="pill ${ev.ok?'ok':'no'}">${ev.ok?'최저 충족':'최저 미충족'}</span>`:''}</div>
-      <div class="dates"><span>서류 <b>${a.doc?fmtMD(a.doc):'-'}</b></span><span>면접 <b>${a.itv?fmtMD(a.itv)+' · '+ddayTxt(ddayN(a.itv)):'-'}</b></span></div>
+      <div class="dates"><span>서류 <b>${a.doc?fmtMD(a.doc):'-'}</b></span><span>면접 <b>${a.itv?fmtMD(a.itv)+' · '+ddayTxt(ddayN(a.itv)):'-'}</b></span>${a.r1?`<span>1차 <b>${fmtMD(a.r1)}</b></span>`:''}<span>발표 <b>${a.res?fmtMD(a.res)+(ddayN(a.res)>=0?' · '+ddayTxt(ddayN(a.res)):''):'-'}</b></span></div>
     </div>`;
   }
   $('appGrid').innerHTML=h;
@@ -2136,7 +2140,7 @@ function renderApps(){
   $('appSubmitted').textContent=S.apps.filter(a=>a.status!=='준비 중').length+'장';
   const withMin=S.apps.filter(a=>a.min);
   $('appMinOk').textContent=withMin.length?`${withMin.filter(a=>evalMin(a).ok).length} / ${withMin.length}`:'-';
-  const up=[];S.apps.forEach(a=>{[['doc','서류 마감'],['itv','면접']].forEach(([k,n])=>{if(a[k]&&ddayN(a[k])>=0)up.push({d:a[k],t:`${a.univ} ${n}`})})});
+  const up=[];S.apps.forEach(a=>{[['doc','서류 마감'],['itv','면접'],['r1','1차 발표'],['res','최종 발표']].forEach(([k,n])=>{if(a[k]&&ddayN(a[k])>=0)up.push({d:a[k],t:`${a.univ} ${n}`})})});
   up.sort((x,y)=>x.d.localeCompare(y.d));
   $('appNext').textContent=up[0]?`${up[0].t} ${ddayTxt(ddayN(up[0].d))}`:'없음';
 }
