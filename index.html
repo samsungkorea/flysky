@@ -10,7 +10,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Fly Sky">
 <meta name="theme-color" content="#c9cfe2">
-<script>window.FLY_BUILD="2026.11.23-r112";
+<script>window.FLY_BUILD="2026.11.23-r113";
 /* 동작 줄이기: 스크립트 애니메이션(카드 비켜나기 · 달 넘기기 · 모달 열림 등)도 움직임은 빼고 투명도만 */
 if(window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches&&Element.prototype.animate){const _an=Element.prototype.animate;
   Element.prototype.animate=function(k,o){if(Array.isArray(k)&&k.some(f=>f&&('transform' in f||'height' in f||'width' in f))){const op=k.some(f=>'opacity' in f);
@@ -2128,18 +2128,8 @@ function openSettings(){
   const GRIP='<svg viewBox="0 0 24 24"><path d="M4 8h16M4 12h16M4 16h16"/></svg>';
   if(sg){
     sg.innerHTML=window.__ypt.groups().map(x=>`<div class="grow" data-id="${x.id}"><span>${esc(x.t)}</span><span class="grip" aria-label="끌어서 순서 바꾸기">${GRIP}</span></div>`).join('');
-    sg.onpointerdown=e=>{
-      const h=e.target.closest('.grip'); if(!h) return;
-      e.preventDefault(); const row=h.closest('.grow'); row.classList.add('dragging');
-      const mv=ev=>{
-        const others=[...sg.querySelectorAll('.grow')].filter(r=>r!==row);
-        const k=others.findIndex(r=>{const bx=r.getBoundingClientRect();return ev.clientY<bx.top+bx.height/2});
-        if(k<0){if(sg.lastElementChild!==row)sg.appendChild(row)} else if(others[k]!==row.nextElementSibling) sg.insertBefore(row,others[k]);
-      };
-      const up=()=>{window.removeEventListener('pointermove',mv);window.removeEventListener('pointerup',up);window.removeEventListener('pointercancel',up);
-        row.classList.remove('dragging'); window.__ypt.setOrder([...sg.querySelectorAll('.grow')].map(r=>+r.dataset.id))};
-      window.addEventListener('pointermove',mv); window.addEventListener('pointerup',up); window.addEventListener('pointercancel',up);
-    };
+    sg.onpointerdown=e=>{const h=e.target.closest('.grip'); if(!h) return;
+      dragSort(e,sg,h.closest('.grow'),'.grow',null,()=>window.__ypt.setOrder([...sg.querySelectorAll('.grow')].map(r=>+r.dataset.id)))};
   }
 }
 const _ps=document.getElementById('popSettings');
@@ -2443,23 +2433,38 @@ function renderGoal(){
   sel.disabled=!av.length; sel.nextElementSibling.disabled=!av.length;
 }
 const RM=matchMedia('(prefers-reduced-motion: reduce)').matches;
+/* 목록 순서 바꾸기 (아이폰 목록 · dnd-kit과 같은 방식):
+   잡은 줄이 손가락을 그대로 따라오고, 옆 줄을 절반쯤 덮으면 자리가 바뀜 → 반 칸만 움직여도 바뀜 */
+let sorting=false;
+function dragSort(e,list,row,sel,onMove,onDone){
+  if(sorting||e.button>0) return; sorting=true; e.preventDefault();
+  const items=()=>[...list.querySelectorAll(sel)];
+  const slots=items().map(r=>({t:r.offsetTop,h:r.offsetHeight}));   // 칸 자리는 처음에 한 번만 잼
+  const sy=e.clientY, top0=row.offsetTop, pid=e.pointerId; let y=sy, raf=0;
+  row.classList.add('dragging'); row.style.transition='none';
+  const step=()=>{raf=0;
+    const c=top0+(y-sy)+row.offsetHeight/2;
+    let i=slots.findIndex(z=>c<z.t+z.h); if(i<0) i=slots.length-1;
+    const L=items(), cur=L.indexOf(row);
+    if(i!==cur){const others=L.filter(r=>r!==row), r0=new Map(others.map(r=>[r,r.offsetTop]));
+      const ref=L[i]; list.insertBefore(row,i>cur?ref.nextSibling:ref);
+      if(!RM) others.forEach(r=>{const d=r0.get(r)-r.offsetTop; if(d&&r.animate) r.animate([{transform:`translateY(${d}px)`},{transform:'none'}],{duration:200,easing:'cubic-bezier(.23,1,.32,1)'})});
+      onMove&&onMove()}
+    row.style.transform=`translateY(${top0+(y-sy)-row.offsetTop}px)`};
+  const mv=ev=>{if(ev.pointerId!==pid) return; y=ev.clientY; if(!raf) raf=requestAnimationFrame(step)};   // 다른 손가락은 무시
+  const up=ev=>{if(ev.pointerId!==pid) return; removeEventListener('pointermove',mv);removeEventListener('pointerup',up);removeEventListener('pointercancel',up);
+    cancelAnimationFrame(raf); step(); sorting=false;
+    const m=/translateY\((-?[\d.]+)px\)/.exec(row.style.transform), d=m?+m[1]:0;
+    row.style.transform=''; row.style.transition=''; row.classList.remove('dragging');
+    if(d&&row.animate&&!RM) row.animate([{transform:`translateY(${d}px)`},{transform:'none'}],{duration:200,easing:'cubic-bezier(.23,1,.32,1)'});   // 제자리로 쏙
+    onDone&&onDone()};
+  addEventListener('pointermove',mv); addEventListener('pointerup',up); addEventListener('pointercancel',up);
+}
 const GRIP2='<svg viewBox="0 0 24 24"><path d="M4 8h16M4 12h16M4 16h16"/></svg>';
 /* 목표 대학: 오른쪽 손잡이를 잡고 끌어서 순서 바꾸기 (터치 · 마우스 모두 바로) */
-$('goalList').addEventListener('pointerdown',e=>{
-  const h=e.target.closest('.grip'); if(!h) return;
-  e.preventDefault(); const ul=$('goalList'), row=h.closest('li'); row.classList.add('dragging');
-  const mv=ev=>{
-    const others=[...ul.querySelectorAll('li[data-id]')].filter(r=>r!==row);
-    const k=others.findIndex(r=>{const bx=r.getBoundingClientRect();return ev.clientY<bx.top+bx.height/2});
-    const r0=new Map(others.map(r=>[r,r.getBoundingClientRect().top]));
-    if(k<0){if(ul.lastElementChild!==row)ul.appendChild(row)} else if(others[k]!==row.nextElementSibling) ul.insertBefore(row,others[k]);
-    others.forEach(r=>{const dy=r0.get(r)-r.getBoundingClientRect().top; if(dy&&r.animate&&!RM) r.animate([{transform:`translateY(${dy}px)`},{transform:'none'}],{duration:220,easing:'cubic-bezier(.22,1,.36,1)'})});   // 다른 줄이 스르륵 비켜남
-    [...ul.querySelectorAll('li[data-id] .rk')].forEach((r,i)=>r.textContent=i+1);
-  };
-  const up=()=>{removeEventListener('pointermove',mv);removeEventListener('pointerup',up);removeEventListener('pointercancel',up);
-    row.classList.remove('dragging'); const ids=[...ul.querySelectorAll('li[data-id]')].map(r=>r.dataset.id);
-    S.goals.sort((a,b)=>ids.indexOf(a.id)-ids.indexOf(b.id)); save()};
-  addEventListener('pointermove',mv); addEventListener('pointerup',up); addEventListener('pointercancel',up);
+$('goalList').addEventListener('pointerdown',e=>{const h=e.target.closest('.grip'); if(!h) return; const ul=$('goalList');
+  dragSort(e,ul,h.closest('li'),'li[data-id]',()=>[...ul.querySelectorAll('li[data-id] .rk')].forEach((r,i)=>r.textContent=i+1),
+    ()=>{const ids=[...ul.querySelectorAll('li[data-id]')].map(r=>r.dataset.id);S.goals.sort((a,b)=>ids.indexOf(a.id)-ids.indexOf(b.id));save()});
 });
 $('ddForm').onsubmit=e=>{e.preventDefault();const f=new FormData(e.target);S.ddays.push({id:uid(),name:f.get('name').trim(),date:f.get('date'),suneung:/수능/.test(f.get('name'))&&!/발표/.test(f.get('name'))});e.target.reset();save()};
 $('goalForm').onsubmit=e=>{e.preventDefault();const a=S.apps.find(x=>x.id===$('goalSel').value);if(!a)return;S.goals.push({id:uid(),univ:a.univ,major:a.major,aid:a.id});save()};
