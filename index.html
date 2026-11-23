@@ -10,7 +10,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Fly Sky">
 <meta name="theme-color" content="#c9cfe2">
-<script>window.FLY_BUILD="2026.11.23-r101";
+<script>window.FLY_BUILD="2026.11.23-r102";
 /* 새로고침 버튼이 붙인 ?r=… 는 주소창에서 바로 지움 */
 if(/[?&]r=\d/.test(location.search))history.replaceState(history.state,"",location.pathname+location.hash);</script>
 <script>
@@ -2348,10 +2348,12 @@ function renderApps(){
   }
   grid.addEventListener('pointerdown',e=>{
     const c=e.target.closest('.appc[data-id]'); if(!c||e.button>0) return;
+    if(e.pointerType==='mouse'){e.preventDefault();lp={c,x:e.clientX,y:e.clientY,sx:e.clientX,sy:e.clientY,mouse:true};return}   // 컴퓨터: 꾹 누를 필요 없이 바로 끌기
     lp={c,x:e.clientX,y:e.clientY,sx:e.clientX,sy:e.clientY,t:setTimeout(()=>{if(lp){start(lp.c,lp.x,lp.y);lp=null}},420)};
   });
   addEventListener('pointermove',e=>{
     if(dr){e.preventDefault();move(e.clientX,e.clientY);return}
+    if(lp&&lp.mouse){if(Math.hypot(e.clientX-lp.sx,e.clientY-lp.sy)>5){const l=lp;lp=null;start(l.c,l.sx,l.sy);move(e.clientX,e.clientY)}return}
     if(lp){lp.x=e.clientX;lp.y=e.clientY; if(Math.hypot(e.clientX-lp.sx,e.clientY-lp.sy)>8){clearTimeout(lp.t);lp=null}}   // 그냥 스크롤이면 취소
   },{passive:false});
   const stop=()=>{if(lp){clearTimeout(lp.t);lp=null} if(dr) end()};
