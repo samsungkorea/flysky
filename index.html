@@ -10,7 +10,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Fly Sky">
 <meta name="theme-color" content="#c9cfe2">
-<script>window.FLY_BUILD="2026.11.23-r90";
+<script>window.FLY_BUILD="2026.11.23-r91";
 /* 새로고침 버튼이 붙인 ?r=… 는 주소창에서 바로 지움 */
 if(/[?&]r=\d/.test(location.search))history.replaceState(history.state,"",location.pathname+location.hash);</script>
 <script>
@@ -512,6 +512,7 @@ try{if(navigator.standalone||matchMedia('(display-mode: standalone)').matches||m
   .lgin.on{display:flex}
   .lgin .ic b{color:var(--ink)}
   .setrow>div{flex:1;min-width:0}
+  .setrow>.wpick{flex:0 0 auto}   /* 입시 연도처럼 버튼 묶음은 내용 크기만큼만 */
   .setrow b{font-size:15px;font-weight:600}
   .setrow small{display:block;font-size:12px;color:var(--sub);line-height:1.6;margin-top:4px}
   .setrow .pbtn{flex-shrink:0}
@@ -2056,7 +2057,7 @@ function openSettings(){
       <button type="button" class="pbtn soft" id="setLogo">바꾸기</button></div>
     <div class="setrow"><div><b>타이머 화면 꺼짐 방지</b><small>${'wakeLock' in navigator?'수능 시계 · 스톱워치 · 타이머를 보는 동안 화면이 꺼지지 않아요':'이 브라우저에서는 지원하지 않아요'}</small></div>
       <button type="button" class="setsw${S.prefs&&S.prefs.wake?' on':''}" id="setWake" aria-label="타이머 화면 꺼짐 방지" ${'wakeLock' in navigator?'':'disabled'}></button></div>
-    <div class="setrow"><div><b>입시 연도</b><small>로고 옆 연도 · 수능 D-day · 원서 목록이 이 학년도로 바뀌어요</small></div>
+    <div class="setrow"><div><b>입시 연도</b><small>로고 옆 연도 · 수능 D-day · 원서 목록이 바뀌어요</small></div>
       <div class="wpick" id="setYear">${Object.keys(SUNEUNG).map(y=>`<button type="button" data-y="${y}" class="${+y===ayear()?'on':''}">${y}</button>`).join('')}</div></div>
     <div class="setrow"><div><b>기기 간 동기화</b><small>${syncTxt}</small></div></div>
     <div class="setrow"><div><b>열품타</b><small>${yp.on?'연결됨 · @'+esc(yp.nick||'열품타'):'연결 안 됨'}</small></div>
