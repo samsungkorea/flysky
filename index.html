@@ -10,7 +10,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Fly Sky">
 <meta name="theme-color" content="#c9cfe2">
-<script>window.FLY_BUILD="2026.11.23-r93";
+<script>window.FLY_BUILD="2026.11.23-r94";
 /* 새로고침 버튼이 붙인 ?r=… 는 주소창에서 바로 지움 */
 if(/[?&]r=\d/.test(location.search))history.replaceState(history.state,"",location.pathname+location.hash);</script>
 <script>
@@ -545,8 +545,10 @@ try{if(navigator.standalone||matchMedia('(display-mode: standalone)').matches||m
   .appc .no{font-size:12px;color:var(--sub);font-weight:600}
   .appc .un{font-size:22px;font-weight:700;letter-spacing:-.5px;margin-top:12px}
   .appc .mj{font-size:14px;color:var(--sub);margin-top:2px}
+  .appc .rule .cnt{background:var(--ink);color:#fff}
   .appc .rule{font-size:13px;margin-top:14px;display:flex;gap:6px;flex-wrap:wrap;align-items:center}
-  .appc .dates{margin-top:auto;padding-top:16px;border-top:1px solid var(--line);display:flex;flex-wrap:wrap;gap:6px 14px;justify-content:space-between;font-size:13px;color:var(--sub)}
+  .appc .dates{margin-top:auto;padding-top:14px;border-top:1px solid var(--line);display:grid;grid-template-columns:1fr 1fr;gap:6px 14px;font-size:13px;color:var(--sub)}   /* 서류 · 면접 / 1차 · 최종 발표 2줄로 가지런히 */
+  .appc .dates span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .appc .dates b{color:var(--ink);font-weight:600}
   .rulebox{background:var(--chip);border-radius:14px;padding:12px 14px;display:flex;flex-direction:column;gap:4px;align-items:flex-start}
   .rulebox b{font-size:15px;line-height:1.45}
@@ -2221,7 +2223,7 @@ function bindPicker(a){
     if(rl) showRule(rl); else if(mn) showRule(minToRule(mn)); else if(mt) showRule(null,mt); else showRule(null);
     delete f.dataset.unsrc; lockPicked(true);
     {const ex=$('exChk');if(ex)ex.checked=u.g==='과학기술원'||EXRE.test(u.n)}
-    f.dataset.src=JSON.stringify({y:YR,u:u.n,t:t.n,m:m.n});
+    f.dataset.src=JSON.stringify({y:YR,u:u.n,t:t.n,m:m.n,cnt:m.cnt??null});
     setMsg(`<b>${esc(u.n)} ${esc(m.n)} · ${esc(t.n)}</b> 정보를 채웠어요. 모집요강 값이라 잠가 뒀어요.`);
   }
   U.onchange=pickU; U.oninput=()=>{if((D&&D.univs||[]).some(x=>x.n===U.value.trim()))pickU()}; T.onchange=pickT; M.onchange=pickM; M.oninput=()=>{if(t&&(t.majors||[]).some(x=>x.n===M.value.trim()))pickM()};
@@ -2242,7 +2244,7 @@ function editApp(id){
           F.requestSubmit()});
         return false;
       }
-      const x=a?readApp(fd,a):readApp(fd,{id:uid(),y:ayear()});if(src)x.src=JSON.parse(src);if($('mForm').dataset.unsrc)delete x.src;
+      const x=a?readApp(fd,a):readApp(fd,{id:uid(),y:ayear()});if(src){x.src=JSON.parse(src);x.cnt=x.src.cnt;delete x.src.cnt}if($('mForm').dataset.unsrc){delete x.src;delete x.cnt}
       if(F.dataset.keep) x.keepFut=true; else if(x.status!=='불합격') delete x.keepFut;
       if(!a)S.apps.push(x);save()},
     onDelete:a?()=>{S.apps=S.apps.filter(x=>x!==a);save()}:null
@@ -2261,11 +2263,16 @@ function appCard(a,label){
   return `<div class="card appc${isEx(a)?' ex':''}" data-act="app-edit" data-id="${a.id}">
       <div class="label"><span class="no">${label}</span><span class="pill ${st}">${esc(a.status)}</span></div>
       <div class="un">${esc(a.univ)}</div><div class="mj">${esc(a.major)} · ${esc(a.type)}</div>
-      <div class="rule"><span class="pill">${esc(minLabel(a))}</span>${ev?`<span class="pill ${ev.ok?'ok':'no'}">${ev.ok?'최저 충족':'최저 미충족'}</span>`:''}</div>
-      <div class="dates"><span>서류 <b>${a.doc?fmtMD(a.doc):'-'}</b></span><span>면접 <b>${a.itv?fmtMD(a.itv)+' · '+ddayTxt(ddayN(a.itv)):'-'}</b></span>${a.r1?`<span>1차 <b>${fmtMD(a.r1)}</b></span>`:''}<span>발표 <b>${a.res?fmtMD(a.res)+(ddayN(a.res)>=0?' · '+ddayTxt(ddayN(a.res)):''):'-'}</b></span></div>
+      <div class="rule">${a.cnt?`<span class="pill cnt">모집 ${a.cnt}명</span>`:''}<span class="pill">${esc(minLabel(a))}</span>${ev?`<span class="pill ${ev.ok?'ok':'no'}">${ev.ok?'최저 충족':'최저 미충족'}</span>`:''}</div>
+      <div class="dates">${[['서류','doc',0],['면접','itv',1],['1차','r1',0],['발표','res',1]].map(([n,k,dd])=>`<span>${n} <b>${a[k]?fmtMD(a[k])+(dd&&ddayN(a[k])>=0?' · '+ddayTxt(ddayN(a[k])):''):'-'}</b></span>`).join('')}</div>
     </div>`;
 }
 function renderApps(){
+  /* 예전에 목록에서 고른 원서는 모집인원이 없어서 한 번 채워 넣음 */
+  {const need=curApps().filter(a=>a.src&&a.cnt===undefined); if(need.length&&!renderApps._f){renderApps._f=1;
+    Promise.all([...new Set(need.map(a=>a.src.y))].map(y=>admLoad(y).then(d=>[y,d]))).then(L=>{let ch=0;
+      need.forEach(a=>{const d=(L.find(x=>x[0]===a.src.y)||[])[1];const u=d&&(d.univs||[]).find(x=>x.n===a.src.u),t=u&&u.types.find(x=>x.n===a.src.t),m=t&&t.majors.find(x=>x.n===a.src.m);if(m){a.cnt=m.cnt??null;ch=1}});
+      renderApps._f=0; if(ch) save()}).catch(()=>{renderApps._f=0})}}
   if(window.__appDrag){clearTimeout(renderApps._t);renderApps._t=setTimeout(renderApps,300);return}   // 끄는 중에는 다시 그리지 않음
   /* 6장 안 원서는 1~6번 칸, 과학기술원 등 6장 밖 원서는 그 뒤에 따로 + 언제든 더 넣는 칸 */
   const yr=curApps(), inn=yr.filter(a=>!isEx(a)), out=yr.filter(isEx);
