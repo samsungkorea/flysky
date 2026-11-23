@@ -10,7 +10,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Fly Sky">
 <meta name="theme-color" content="#c9cfe2">
-<script>window.FLY_BUILD="2026.11.23-r104";
+<script>window.FLY_BUILD="2026.11.23-r105";
 /* 새로고침 버튼이 붙인 ?r=… 는 주소창에서 바로 지움 */
 if(/[?&]r=\d/.test(location.search))history.replaceState(history.state,"",location.pathname+location.hash);</script>
 <script>
@@ -233,9 +233,7 @@ try{if(navigator.standalone||matchMedia('(display-mode: standalone)').matches||m
   .askbox p{color:var(--sub);font-size:14px;line-height:1.5;margin:8px 0 18px}
   .askbox p[style*=none]+.mfoot{margin-top:20px}
   #askOk.danger{background:#c94f4f}
-  .sheet{background:#fff;border-radius:32px;width:100%;max-width:460px;padding:28px;max-height:90vh;overflow:auto;overscroll-behavior:contain}
-  :where(button,a,[tabindex],summary):focus-visible{outline:2px solid var(--accent);outline-offset:2px}   /* 키보드로 이동할 때만 보이는 위치 표시 */
-  h1,h2,h3{text-wrap:balance}
+  .sheet{background:#fff;border-radius:32px;width:100%;max-width:460px;padding:28px;max-height:90vh;overflow:auto}
   .sheet .hd{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px}
   .sheet h2{font-size:22px;letter-spacing:-.5px}
   .sheet .desc{font-size:13px;color:var(--sub);margin-bottom:20px}
@@ -246,7 +244,7 @@ try{if(navigator.standalone||matchMedia('(display-mode: standalone)').matches||m
   .field{display:flex;align-items:center;gap:12px;background:var(--chip);border-radius:999px;padding:6px 6px 6px 8px;margin-bottom:10px}
   .field .ic{width:38px;height:38px;border-radius:50%;background:#fff;display:grid;place-items:center}
   .field .ic svg{width:18px;height:18px}
-  .field input,.field select{flex:1;border:0;background:none;color:inherit;font:inherit;font-size:15px;outline:none;min-width:0}
+  .field input,.field select{flex:1;border:0;background:none;font:inherit;font-size:15px;outline:none;min-width:0}
   .note{font-size:12px;color:var(--sub);line-height:1.6;margin:14px 4px 18px}
   .cta{width:100%;display:flex;align-items:center;justify-content:space-between;background:var(--ink);color:#fff;border-radius:999px;padding:6px 6px 6px 24px;font-size:15px}
   .cta .arr{width:44px;height:44px;border-radius:50%;background:#fff;color:var(--ink);display:grid;place-items:center}
@@ -1075,7 +1073,7 @@ html.pwa .toast{top:calc(max(env(safe-area-inset-top),24px) + 34px)}
     <div class="tgrid">
       <!-- Watch -->
       <section class="card stage">
-        <span id="clockLabel"></span><button class="fsb" id="fsOpen" title="전체화면" aria-label="전체화면"><svg class="ic" viewBox="0 0 24 24"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg></button>
+        <span id="clockLabel"></span><button class="fsb" id="fsOpen" title="전체화면"><svg class="ic" viewBox="0 0 24 24"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg></button>
         <div id="watch" class="wsvg"><svg class="wbase" viewBox="0 0 480 900" xmlns="http://www.w3.org/2000/svg">
           <defs>
             <linearGradient id="gStrap" x1="0" x2="1">
@@ -1285,7 +1283,7 @@ html.pwa .toast{top:calc(max(env(safe-area-inset-top),24px) + 34px)}
           <div class="label">D-day</div>
           <ul class="rows" id="ddList"></ul>
           <form class="inline" id="ddForm">
-            <input name="name" placeholder="이름" aria-label="D-day 이름" autocomplete="off" required>
+            <input name="name" placeholder="이름" required>
             <input name="date" type="date" required>
             <button class="pbtn">추가</button>
           </form>
@@ -1294,8 +1292,8 @@ html.pwa .toast{top:calc(max(env(safe-area-inset-top),24px) + 34px)}
           <div class="label">목표 대학</div>
           <ul class="rows" id="goalList"></ul>
           <form class="inline" id="goalForm">
-            <input name="univ" placeholder="대학" aria-label="목표 대학" autocomplete="off" required>
-            <input name="major" placeholder="학과" aria-label="목표 학과" autocomplete="off" required>
+            <input name="univ" placeholder="대학" required>
+            <input name="major" placeholder="학과" required>
             <button class="pbtn">추가</button>
           </form>
         </section>
@@ -1311,9 +1309,9 @@ html.pwa .toast{top:calc(max(env(safe-area-inset-top),24px) + 34px)}
         <div class="mhead">
           <h3 id="calTitle"></h3>
           <div class="nv">
-            <button class="ibtn" id="calPrev" aria-label="이전 달"><svg class="ic" viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"/></svg></button>
+            <button class="ibtn" id="calPrev"><svg class="ic" viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"/></svg></button>
             <button class="pbtn soft" id="calToday" style="padding:8px 14px">오늘</button>
-            <button class="ibtn" id="calNext" aria-label="다음 달"><svg class="ic" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg></button>
+            <button class="ibtn" id="calNext"><svg class="ic" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg></button>
           </div>
         </div>
         <div class="wk"><span>일</span><span>월</span><span>화</span><span>수</span><span>목</span><span>금</span><span>토</span></div>
@@ -1379,12 +1377,12 @@ html.pwa .toast{top:calc(max(env(safe-area-inset-top),24px) + 34px)}
   </main>
 
 </div>
-<div class="toast" id="toast" role="status" aria-live="polite"></div>
+<div class="toast" id="toast"></div>
 
 <!-- 공용 모달 -->
 <div class="scrim" id="modal" onclick="if(event.target===this)closeModal()">
   <div class="sheet" style="max-width:520px">
-    <div class="hd"><h2 id="mTitle"></h2><button type="button" class="circle" style="background:var(--chip)" onclick="closeModal()" aria-label="닫기"><svg viewBox="0 0 24 24" style="width:18px;height:18px"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>
+    <div class="hd"><h2 id="mTitle"></h2><button type="button" class="circle" style="background:var(--chip)" onclick="closeModal()"><svg viewBox="0 0 24 24" style="width:18px;height:18px"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>
     <form id="mForm" style="margin-top:16px"></form>
   </div>
 </div>
@@ -1999,7 +1997,6 @@ function openModal(title,body,{onSave,onDelete,saveText='저장',delMsg='삭제�
   f.onsubmit=e=>{e.preventDefault();if(onSave&&onSave(new FormData(f))===false)return;closeModal()};
   if(onDelete) $('mDel').onclick=async()=>{if(!await flyAsk(delMsg,{title:'정말 삭제하시겠습니까?',ok:'삭제',danger:true}))return;onDelete();closeModal()};
   if($('mOk')) $('mOk').onclick=closeModal;
-  f.querySelectorAll('.fx').forEach(fx=>{const l=fx.querySelector(':scope>label'),i=fx.querySelector('input:not([type=hidden]),select,textarea');if(l&&i&&!l.htmlFor){if(!i.id)i.id='fx'+Math.random().toString(36).slice(2,8);l.htmlFor=i.id}});   // 라벨을 누르면 그 칸으로
   M.classList.add('open');
   f.querySelectorAll('textarea').forEach(fitTA);
 }
@@ -2127,8 +2124,8 @@ function appForm(a){
   return `
   <div class="apick" id="apick">
     <div class="aph"><b>목록에서 고르기</b></div>
-    <input id="apU" list="apUL" placeholder="대학 이름 검색…" aria-label="대학 검색" autocomplete="off"><datalist id="apUL"></datalist>
-    <div class="fx2"><select id="apT" aria-label="전형" disabled><option>전형</option></select><input id="apM" list="apML" placeholder="학과 검색…" aria-label="학과 검색" autocomplete="off" disabled><datalist id="apML"></datalist></div>
+    <input id="apU" list="apUL" placeholder="대학 이름 검색" autocomplete="off"><datalist id="apUL"></datalist>
+    <div class="fx2"><select id="apT" disabled><option>전형</option></select><input id="apM" list="apML" placeholder="학과 검색" autocomplete="off" disabled><datalist id="apML"></datalist></div>
     <p class="apmsg" id="apMsg"></p>
     <button type="button" class="tag unlock" id="unlockApp" style="display:none">직접 고치기</button>
   </div>
@@ -2221,7 +2218,7 @@ function bindPicker(a){
   function pickT(){
     t=u&&u.types[+T.value]||null;
     M.value=''; ML.innerHTML=t?(t.majors||[]).map(x=>`<option value="${esc(x.n)}">${x.cnt?x.cnt+'명':''}</option>`).join(''):'';
-    M.placeholder=t?`학과 검색… (${(t.majors||[]).length}개)`:'학과'; M.disabled=!t; if(t) setTimeout(()=>M.focus(),50);
+    M.placeholder=t?`학과 검색 (${(t.majors||[]).length}개)`:'학과'; M.disabled=!t; if(t) setTimeout(()=>M.focus(),50);
   }
   function pickM(){
     const m=t&&(t.majors||[]).find(x=>x.n===M.value.trim()); if(!m) return;
@@ -2390,14 +2387,14 @@ function mainDday(){
 function renderGoal(){
   const dl=[...S.ddays].sort((a,b)=>a.date.localeCompare(b.date));
   $('ddList').innerHTML=dl.length?dl.map(d=>`<li>
-    <button class="ibtn star ${d.main?'on':''}" data-act="dd-star" data-id="${d.id}" title="홈에 표시" aria-label="홈에 표시">${STAR}</button>
+    <button class="ibtn star ${d.main?'on':''}" data-act="dd-star" data-id="${d.id}" title="홈에 표시">${STAR}</button>
     <div class="rt"><b>${esc(d.name)}</b><small>${fmtLong(d.date)}</small></div>
     <span class="dd">${ddayTxt(ddayN(d.date))}</span>
-    <button class="ibtn" data-act="dd-del" data-id="${d.id}" aria-label="삭제">${X}</button></li>`).join(''):'<li class="empty2">없음</li>';
+    <button class="ibtn" data-act="dd-del" data-id="${d.id}">${X}</button></li>`).join(''):'<li class="empty2">없음</li>';
   $('goalList').innerHTML=S.goals.length?S.goals.map((g,i)=>`<li>
     <span class="rk">${i+1}</span><div class="rt"><b>${esc(g.univ)}</b><small>${esc(g.major)}</small></div>
-    <button class="ibtn" data-act="goal-up" data-i="${i}" aria-label="위로">${UP}</button><button class="ibtn" data-act="goal-down" data-i="${i}" aria-label="아래로">${DOWN}</button>
-    <button class="ibtn" data-act="goal-del" data-i="${i}" aria-label="삭제">${X}</button></li>`).join(''):'<li class="empty2">없음</li>';
+    <button class="ibtn" data-act="goal-up" data-i="${i}">${UP}</button><button class="ibtn" data-act="goal-down" data-i="${i}">${DOWN}</button>
+    <button class="ibtn" data-act="goal-del" data-i="${i}">${X}</button></li>`).join(''):'<li class="empty2">없음</li>';
 }
 $('ddForm').onsubmit=e=>{e.preventDefault();const f=new FormData(e.target);S.ddays.push({id:uid(),name:f.get('name').trim(),date:f.get('date'),suneung:/수능/.test(f.get('name'))&&!/발표/.test(f.get('name'))});e.target.reset();save()};
 $('goalForm').onsubmit=e=>{e.preventDefault();const f=new FormData(e.target);S.goals.push({id:uid(),univ:f.get('univ').trim(),major:f.get('major').trim()});e.target.reset();save()};
@@ -2693,8 +2690,8 @@ function renderBucket(){
   $('bkGrid').innerHTML=cats.map(c=>{
     const items=S.bucket.filter(b=>b.cat===c);
     return `<section class="card bkc"><div class="label"><span class="bkn">${esc(c)} <span class="tag">${items.length}</span></span><button type="button" class="ibtn bkedit" data-act="bk-cat" data-c="${esc(c)}" aria-label="범주 수정">${PEN}</button></div>
-      <ul>${items.map(b=>`<li><span class="bt">${esc(b.text)}</span><button class="ibtn" data-act="bk-del" data-id="${b.id}" aria-label="삭제">${X}</button></li>`).join('')}</ul>
-      <form class="inline" data-bk="${esc(c)}"><input name="text" placeholder="추가" aria-label="버킷리스트 추가" autocomplete="off" required><button class="pbtn">추가</button></form></section>`;
+      <ul>${items.map(b=>`<li><span class="bt">${esc(b.text)}</span><button class="ibtn" data-act="bk-del" data-id="${b.id}">${X}</button></li>`).join('')}</ul>
+      <form class="inline" data-bk="${esc(c)}"><input name="text" placeholder="추가" required><button class="pbtn">추가</button></form></section>`;
   }).join('')+`<button type="button" class="card bkc bkadd" data-act="bk-cat-new"><svg class="ic" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>범주 추가</button>`;
 }
 /* 범주 추가 · 이름 바꾸기 · 삭제 */
@@ -2963,7 +2960,7 @@ function searchItems(q){
   return R.slice(0,40);
 }
 function openSearch(){
-  openModal('검색',`<div class="field"><span class="ic"><svg viewBox="0 0 24 24">${IC.search}</svg></span><input id="srchQ" placeholder="기능, 일정, 원서, D-day…" aria-label="검색" autocomplete="off" enterkeyhint="search"></div><ul class="srch" id="srchRes"></ul>`);
+  openModal('검색',`<div class="field"><span class="ic"><svg viewBox="0 0 24 24">${IC.search}</svg></span><input id="srchQ" placeholder="기능, 일정, 원서, D-day" autocomplete="off" enterkeyhint="search"></div><ul class="srch" id="srchRes"></ul>`);
   let cur=[];
   const draw=()=>{cur=searchItems($('srchQ').value);
     $('srchRes').innerHTML=cur.length?cur.map((r,i)=>`<li data-i="${i}"><span class="k">${esc(r.k)}</span><div><b>${esc(r.t)}</b>${r.sub?`<small>${esc(r.sub)}</small>`:''}</div></li>`).join(''):'<li class="empty2">결과 없음</li>'};
@@ -3436,7 +3433,7 @@ function groupParts(){
   let body;
   if(!on) body='<div class="empty">열품타를 연결하면 그룹이 보여요</div>';
   else if(err&&!members.length) body=`<div class="empty">${esc(err)}</div>`;
-  else if(!groups.length) body=`<div class="empty">${loading||!info?'불러오는 중…':'가입한 그룹이 없어요'}</div>`;
+  else if(!groups.length) body=`<div class="empty">${loading||!info?'불러오는 중':'가입한 그룹이 없어요'}</div>`;
   else body=view.map(({m,i,t},r)=>{
     const me=isMe(m), lv=live(m);
     const label=lv?'공부 중':m.paused?'일시정지':'휴식';
@@ -3451,7 +3448,7 @@ function groupParts(){
 }
 function subjectList(){
   if(!Y.jwt) return '<li class="empty2">열품타를 연결하면 보여요</li>';
-  const subs=(info?info.subjects:[]); if(!subs.length) return `<li class="empty2">${info?'열품타에 과목이 없어요':'불러오는 중…'}</li>`;
+  const subs=(info?info.subjects:[]); if(!subs.length) return `<li class="empty2">${info?'열품타에 과목이 없어요':'불러오는 중'}</li>`;
   const L=subs.map(x=>({t:x.t,sm:x.sm+(Y.run&&Y.run.subject===x.t?runMs():0),run:!!(Y.run&&Y.run.subject===x.t)}));
   const max=Math.max(1,...L.map(x=>x.sm));
   return L.map(x=>`<li class="${x.run?'run':''}"><b>${esc(x.t)}</b><span class="t">${hms(x.sm)}</span><span class="bar"><i style="width:${x.sm/max*100}%"></i></span></li>`).join('');
