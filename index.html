@@ -10,7 +10,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Fly Sky">
 <meta name="theme-color" content="#c9cfe2">
-<script>window.FLY_BUILD="2026.11.23-r107";
+<script>window.FLY_BUILD="2026.11.23-r108";
 /* 새로고침 버튼이 붙인 ?r=… 는 주소창에서 바로 지움 */
 if(/[?&]r=\d/.test(location.search))history.replaceState(history.state,"",location.pathname+location.hash);</script>
 <script>
@@ -587,6 +587,10 @@ try{if(navigator.standalone||matchMedia('(display-mode: standalone)').matches||m
 
   .rows li{list-style:none;display:flex;align-items:center;gap:12px;padding:12px 4px;border-bottom:1px solid var(--line)}
   .rows li:last-child{border:0}
+  .rows .grip{width:36px;height:34px;display:grid;place-items:center;color:var(--sub);cursor:grab;flex-shrink:0;margin:0 -6px 0 -4px}
+  .rows .grip svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round}
+  .rows li.dragging{background:#fff;box-shadow:0 8px 24px rgba(30,40,80,.18);border-radius:14px;position:relative;z-index:2}
+  .rows li.dragging .grip{cursor:grabbing;color:var(--ink)}
   .rows .rk{width:26px;height:26px;border-radius:50%;background:var(--chip);display:grid;place-items:center;font-size:12px;font-weight:700;flex-shrink:0}
   .rows li:first-child .rk{background:var(--ink);color:#fff}
   .rows .rt{flex:1;min-width:0}
@@ -864,7 +868,7 @@ html,body{height:100%;overflow:hidden;overscroll-behavior:none}   /* 당겨서 �
 /* 확대 막기: touch-action은 가장 가까운 스크롤 영역까지만 효력이 있어서 html에만 걸면 .app · 모달 안에서는 풀림
    → 모든 요소에 걸어서 두 번 탭 확대 · 핀치 확대를 막음 (끌어서 순서 바꾸는 손잡이는 none 그대로) */
 *{touch-action:pan-x pan-y}
-.grow .grip{touch-action:none}
+.grow .grip,.rows .grip{touch-action:none}
 /* iOS는 16px보다 작은 입력칸을 누르면 자동 확대함 */
 @media (hover:none),(pointer:coarse){input,select,textarea{font-size:16px!important}}
 /* 높이를 100dvh로 계산하면 iPad Safari(탭 바 표시)에서 실제 화면보다 작게 잡혀 아래가 잘림 → 화면 네 모서리에 직접 붙임 */
@@ -1300,8 +1304,7 @@ html.pwa .toast{top:calc(max(env(safe-area-inset-top),24px) + 34px)}
           <div class="label">목표 대학</div>
           <ul class="rows" id="goalList"></ul>
           <form class="inline" id="goalForm">
-            <input name="univ" placeholder="대학" required>
-            <input name="major" placeholder="학과" required>
+            <select name="app" id="goalSel" style="flex:1;min-width:0;padding:12px 16px"></select>
             <button class="pbtn">추가</button>
           </form>
         </section>
@@ -2399,13 +2402,33 @@ function renderGoal(){
     <div class="rt"><b>${esc(d.name)}</b><small>${fmtLong(d.date)}</small></div>
     <span class="dd">${ddayTxt(ddayN(d.date))}</span>
     <button class="ibtn" data-act="dd-del" data-id="${d.id}">${X}</button></li>`).join(''):'<li class="empty2">없음</li>';
-  $('goalList').innerHTML=S.goals.length?S.goals.map((g,i)=>`<li>
+  $('goalList').innerHTML=S.goals.length?S.goals.map((g,i)=>`<li data-id="${g.id}">
     <span class="rk">${i+1}</span><div class="rt"><b>${esc(g.univ)}</b><small>${esc(g.major)}</small></div>
-    <button class="ibtn" data-act="goal-up" data-i="${i}">${UP}</button><button class="ibtn" data-act="goal-down" data-i="${i}">${DOWN}</button>
-    <button class="ibtn" data-act="goal-del" data-i="${i}">${X}</button></li>`).join(''):'<li class="empty2">없음</li>';
+    <button class="ibtn" data-act="goal-del" data-i="${i}">${X}</button><span class="grip">${GRIP2}</span></li>`).join(''):'<li class="empty2">없음</li>';
+  /* 추가: 지원한 원서 중 아직 목표에 없는 것만 */
+  const has=g=>S.goals.some(x=>x.aid===g.id||(x.univ===g.univ&&x.major===g.major));
+  const av=curApps().filter(a=>!has(a)), sel=$('goalSel');
+  sel.innerHTML=av.length?av.map(a=>`<option value="${a.id}">${esc(a.univ)} ${esc(a.major)}</option>`).join(''):`<option value="">${curApps().length?'모두 추가됨':'원서를 먼저 추가해 주세요'}</option>`;
+  sel.disabled=!av.length; sel.nextElementSibling.disabled=!av.length;
 }
+const GRIP2='<svg viewBox="0 0 24 24"><path d="M4 8h16M4 12h16M4 16h16"/></svg>';
+/* 목표 대학: 오른쪽 손잡이를 잡고 끌어서 순서 바꾸기 (터치 · 마우스 모두 바로) */
+$('goalList').addEventListener('pointerdown',e=>{
+  const h=e.target.closest('.grip'); if(!h) return;
+  e.preventDefault(); const ul=$('goalList'), row=h.closest('li'); row.classList.add('dragging');
+  const mv=ev=>{
+    const others=[...ul.querySelectorAll('li[data-id]')].filter(r=>r!==row);
+    const k=others.findIndex(r=>{const bx=r.getBoundingClientRect();return ev.clientY<bx.top+bx.height/2});
+    if(k<0){if(ul.lastElementChild!==row)ul.appendChild(row)} else if(others[k]!==row.nextElementSibling) ul.insertBefore(row,others[k]);
+    [...ul.querySelectorAll('li[data-id] .rk')].forEach((r,i)=>r.textContent=i+1);
+  };
+  const up=()=>{removeEventListener('pointermove',mv);removeEventListener('pointerup',up);removeEventListener('pointercancel',up);
+    row.classList.remove('dragging'); const ids=[...ul.querySelectorAll('li[data-id]')].map(r=>r.dataset.id);
+    S.goals.sort((a,b)=>ids.indexOf(a.id)-ids.indexOf(b.id)); save()};
+  addEventListener('pointermove',mv); addEventListener('pointerup',up); addEventListener('pointercancel',up);
+});
 $('ddForm').onsubmit=e=>{e.preventDefault();const f=new FormData(e.target);S.ddays.push({id:uid(),name:f.get('name').trim(),date:f.get('date'),suneung:/수능/.test(f.get('name'))&&!/발표/.test(f.get('name'))});e.target.reset();save()};
-$('goalForm').onsubmit=e=>{e.preventDefault();const f=new FormData(e.target);S.goals.push({id:uid(),univ:f.get('univ').trim(),major:f.get('major').trim()});e.target.reset();save()};
+$('goalForm').onsubmit=e=>{e.preventDefault();const a=S.apps.find(x=>x.id===$('goalSel').value);if(!a)return;S.goals.push({id:uid(),univ:a.univ,major:a.major,aid:a.id});save()};
 
 function setAdmitTab(t){
   document.querySelectorAll('#admitTabs button').forEach(b=>b.classList.toggle('on',b.dataset.t===t));
