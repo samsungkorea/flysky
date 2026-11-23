@@ -10,7 +10,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Fly Sky">
 <meta name="theme-color" content="#c9cfe2">
-<script>window.FLY_BUILD="2026.11.23-r115";
+<script>window.FLY_BUILD="2026.11.23-r116";
 /* 동작 줄이기: 스크립트 애니메이션(카드 비켜나기 · 달 넘기기 · 모달 열림 등)도 움직임은 빼고 투명도만 */
 if(window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches&&Element.prototype.animate){const _an=Element.prototype.animate;
   Element.prototype.animate=function(k,o){if(Array.isArray(k)&&k.some(f=>f&&('transform' in f||'height' in f||'width' in f))){const op=k.some(f=>'opacity' in f);
@@ -487,6 +487,8 @@ try{if(navigator.standalone||matchMedia('(display-mode: standalone)').matches||m
   .g2{display:grid;grid-template-columns:1fr 1fr;gap:20px;align-items:start}
   .g3{display:grid;grid-template-columns:repeat(3,1fr);gap:20px}
   .card h3.ct{font-size:20px;letter-spacing:-.4px;margin:10px 0 14px}
+  .selhd{display:flex;align-items:center;justify-content:space-between;gap:8px}
+  .selhd .nv{display:flex;gap:4px;margin:10px -6px 14px 0}
 
   /* modal form */
   .fx{display:flex;flex-direction:column;gap:6px;margin-bottom:14px}
@@ -614,7 +616,7 @@ try{if(navigator.standalone||matchMedia('(display-mode: standalone)').matches||m
   .mhead .nv{display:flex;gap:6px}
   .wk{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));font-size:12px;color:var(--sub);text-align:center;padding-bottom:8px}
   .days{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:4px}
-  .dc{aspect-ratio:1/0.9;border-radius:14px;padding:8px;display:flex;flex-direction:column;align-items:flex-start;cursor:pointer;font-size:14px;font-weight:600;position:relative;min-height:54px}
+  .dc{min-width:0;width:100%;aspect-ratio:1/0.9;border-radius:14px;padding:8px;display:flex;flex-direction:column;align-items:flex-start;cursor:pointer;font-size:14px;font-weight:600;position:relative;min-height:54px}
   .dc:hover{background:var(--chip)}
   .dc.out{color:#c3c8d8}
   .dc.today .n{background:var(--ink);color:#fff;border-radius:50%;width:26px;height:26px;display:grid;place-items:center;margin:-4px 0 0 -4px}
@@ -783,7 +785,10 @@ try{if(navigator.standalone||matchMedia('(display-mode: standalone)').matches||m
     .inline{flex-wrap:wrap}
     .inline input[type=date]{flex:1 1 140px}
     .bl .ibtn{opacity:1}
-    .dc{padding:6px;min-height:46px;font-size:13px;border-radius:10px}
+    .dc{aspect-ratio:auto;padding:6px 2px;min-height:46px;font-size:13px;border-radius:10px;align-items:center}   /* 휴대폰: 칸이 좁아 가운데 정렬, 칸 밖으로 안 넘침 */
+    .dc.today .n{margin:-4px 0 0}
+    .dc .dots{flex-wrap:nowrap;gap:2px;justify-content:center;max-width:100%;overflow:hidden}
+    .dc .dots i{width:5px;height:5px;flex-shrink:0}
     .inline input:first-child{flex:1 1 100%}
     .mhead h3{font-size:20px}
   }
@@ -1354,7 +1359,7 @@ html.pwa .toast{top:calc(max(env(safe-area-inset-top),24px) + 34px)}
       <div style="display:flex;flex-direction:column;gap:20px">
         <section class="card">
           <div class="label"><span id="selLabel"></span><span class="tag" id="selCount">0</span></div>
-          <h3 class="ct" id="selTitle"></h3>
+          <div class="selhd"><h3 class="ct" id="selTitle"></h3><div class="nv"><button class="ibtn" id="selPrev" aria-label="전날"><svg class="ic" viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"/></svg></button><button class="ibtn" id="selNext" aria-label="다음 날"><svg class="ic" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg></button></div></div>
           <ul class="evs" id="selList"></ul>
         </section>
         <section class="card">
@@ -2523,6 +2528,9 @@ function editEvent(id,date){
 }
 $('calPrev').onclick=()=>{calM--;if(calM<0){calM=11;calY--}renderCal();if(gValid())fetchGoogle()};
 $('calNext').onclick=()=>{calM++;if(calM>11){calM=0;calY++}renderCal();if(gValid())fetchGoogle()};
+/* 아래 날짜 카드의 ‹ ›: 하루씩 이동 (달이 바뀌면 달력도 넘어감) */
+const selStep=n=>{const d=parse(sel);d.setDate(d.getDate()+n);sel=ds(d);if(d.getMonth()!==calM||d.getFullYear()!==calY){calY=d.getFullYear();calM=d.getMonth();renderCal();if(gValid())fetchGoogle()}else renderCal()};
+$('selPrev').onclick=()=>selStep(-1); $('selNext').onclick=()=>selStep(1);
 $('calToday').onclick=()=>{calY=T.getFullYear();calM=T.getMonth();sel=TS;renderCal()};
 $('calAdd').onclick=()=>editEvent(null,sel);
 function editGEvent(gid){
