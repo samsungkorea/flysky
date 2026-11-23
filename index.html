@@ -10,7 +10,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Fly Sky">
 <meta name="theme-color" content="#c9cfe2">
-<script>window.FLY_BUILD="2026.11.23-r88";
+<script>window.FLY_BUILD="2026.11.23-r89";
 /* 새로고침 버튼이 붙인 ?r=… 는 주소창에서 바로 지움 */
 if(/[?&]r=\d/.test(location.search))history.replaceState(history.state,"",location.pathname+location.hash);</script>
 <script>
@@ -2111,7 +2111,7 @@ function appForm(a){
   const m=a.min||{n:3,k:4,subs:['kor','math','eng','sci'],sci:'best',hist:''};
   return `
   <div class="apick" id="apick">
-    <div class="aph"><b>목록에서 고르기</b><select id="apY">${ADM_YEARS.map(y=>`<option value="${y}" ${y==admYear(a)?'selected':''}>${y}학년도</option>`).join('')}</select></div>
+    <div class="aph"><b>목록에서 고르기</b></div>
     <input id="apU" list="apUL" placeholder="대학 이름 검색" autocomplete="off"><datalist id="apUL"></datalist>
     <div class="fx2"><select id="apT" disabled><option>전형</option></select><input id="apM" list="apML" placeholder="학과 검색" autocomplete="off" disabled><datalist id="apML"></datalist></div>
     <p class="apmsg" id="apMsg"></p>
@@ -2179,19 +2179,19 @@ function admLoad(y){
   return ADM[y];
 }
 function bindPicker(a){
-  const Y=$('apY'),U=$('apU'),UL=$('apUL'),T=$('apT'),M=$('apM'),ML=$('apML'),msg=$('apMsg'),f=$('mForm');
-  if(!Y) return;
+  const YR=ayear(),U=$('apU'),UL=$('apUL'),T=$('apT'),M=$('apM'),ML=$('apML'),msg=$('apMsg'),f=$('mForm');
+  if(!U) return;
   let D=null,u=null,t=null;
   const opt=(arr,ph)=>`<option value="">${ph}</option>`+arr.map((x,i)=>`<option value="${i}">${esc(x)}</option>`).join('');
   const setMsg=h=>msg.innerHTML=h;
   async function load(){
     D=null;u=t=null;U.value='';T.innerHTML=opt([],'전형');M.value='';ML.innerHTML='';M.placeholder='학과';T.disabled=M.disabled=true;
     setMsg('불러오는 중…');
-    const d=await admLoad(+Y.value); D=d;
+    const d=await admLoad(YR); D=d;
     const us=(d.univs||[]);
     UL.innerHTML=us.map(x=>`<option value="${esc(x.n)}">${esc(x.g||'')}</option>`).join('');
     U.disabled=!us.length;
-    setMsg(d.err?'자료를 불러오지 못했어요 · 아래에 직접 입력해 주세요':!us.length?`${Y.value}학년도 자료는 아직 준비 중이에요 · 아래에 직접 입력해 주세요`:`${us.length}개 대학 · 대학을 고르면 전형 · 학과를 고를 수 있어요`);
+    setMsg(d.err?'자료를 불러오지 못했어요 · 아래에 직접 입력해 주세요':!us.length?`${YR}학년도 자료는 아직 준비 중이에요 · 아래에 직접 입력해 주세요`:`${us.length}개 대학 · 대학을 고르면 전형 · 학과를 고를 수 있어요`);
   }
   function pickU(){
     const nu=(D&&D.univs||[]).find(x=>x.n===U.value.trim())||null; if(nu&&nu===u) return;   // 같은 대학이면 그대로 (포커스 이동 때 다시 불리는 것)
@@ -2216,10 +2216,10 @@ function bindPicker(a){
     if(rl) showRule(rl); else if(mn) showRule(minToRule(mn)); else if(mt) showRule(null,mt); else showRule(null);
     delete f.dataset.unsrc; lockPicked(true);
     {const ex=$('exChk');if(ex)ex.checked=u.g==='과학기술원'||EXRE.test(u.n)}
-    f.dataset.src=JSON.stringify({y:+Y.value,u:u.n,t:t.n,m:m.n});
+    f.dataset.src=JSON.stringify({y:YR,u:u.n,t:t.n,m:m.n});
     setMsg(`<b>${esc(u.n)} ${esc(m.n)} · ${esc(t.n)}</b> 정보를 채웠어요. 모집요강 값이라 잠가 뒀어요.`);
   }
-  Y.onchange=load; U.onchange=pickU; U.oninput=()=>{if((D&&D.univs||[]).some(x=>x.n===U.value.trim()))pickU()}; T.onchange=pickT; M.onchange=pickM; M.oninput=()=>{if(t&&(t.majors||[]).some(x=>x.n===M.value.trim()))pickM()};
+  U.onchange=pickU; U.oninput=()=>{if((D&&D.univs||[]).some(x=>x.n===U.value.trim()))pickU()}; T.onchange=pickT; M.onchange=pickM; M.oninput=()=>{if(t&&(t.majors||[]).some(x=>x.n===M.value.trim()))pickM()};
   load();
 }
 function editApp(id){
