@@ -10,7 +10,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Fly Sky">
 <meta name="theme-color" content="#c9cfe2">
-<script>window.FLY_BUILD="2026.11.23-r99";
+<script>window.FLY_BUILD="2026.11.23-r100";
 /* 새로고침 버튼이 붙인 ?r=… 는 주소창에서 바로 지움 */
 if(/[?&]r=\d/.test(location.search))history.replaceState(history.state,"",location.pathname+location.hash);</script>
 <script>
@@ -1030,7 +1030,7 @@ html.pwa .toast{top:calc(max(env(safe-area-inset-top),24px) + 34px)}
 
         <section class="card bucket">
           <div class="label">버킷리스트 <span class="tag" id="homeBkTag" style="border-color:var(--line)"></span></div>
-          <h3 data-act="go" data-v="bucket" style="cursor:pointer">수능 끝나면 할 것</h3>
+          <h3 data-act="go" data-v="bucket" style="cursor:pointer">입시 끝나면 할 것</h3>
           <ul id="homeBucket"></ul>
         </section>
       </div>
@@ -2751,7 +2751,7 @@ const FEATS=[
     {n:'D-day · 목표 대학',ic:'flag',v:'admit',t:'goal'}]},
   {cat:'면접',items:[{n:'연세대 의대 면접 연습',ic:'mic',url:INTERVIEW_URL}]},
   {cat:'일정',items:[{n:'캘린더',ic:'cal',v:'cal'}]},
-  {cat:'수능 이후',items:[{n:'버킷리스트',ic:'list',v:'bucket'}]}
+  {cat:'입시 이후',items:[{n:'버킷리스트',ic:'list',v:'bucket'}]}
 ];
 $('allCats').innerHTML=FEATS.map((c,ci)=>`<div class="cat"><h4>${c.cat}</h4><div class="tiles">${c.items.map((f,fi)=>`
   <button class="tile" data-act="feat" data-c="${ci}" data-f="${fi}" data-ic="${f.ic}"><span class="ti"><svg class="ic" viewBox="0 0 24 24">${IC[f.ic]}</svg></span>
