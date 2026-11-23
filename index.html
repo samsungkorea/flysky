@@ -10,7 +10,12 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Fly Sky">
 <meta name="theme-color" content="#c9cfe2">
-<script>window.FLY_BUILD="2026.11.23-r110";
+<script>window.FLY_BUILD="2026.11.23-r111";
+/* 동작 줄이기: 스크립트 애니메이션(카드 비켜나기 · 달 넘기기 · 모달 열림 등)도 움직임은 빼고 투명도만 */
+if(window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches&&Element.prototype.animate){const _an=Element.prototype.animate;
+  Element.prototype.animate=function(k,o){if(Array.isArray(k)&&k.some(f=>f&&('transform' in f||'height' in f||'width' in f))){const op=k.some(f=>'opacity' in f);
+    k=op?k.map(f=>('opacity' in f)?{opacity:f.opacity}:{}):[{},{}]; o=typeof o==='number'?{duration:op?Math.min(o,220):0}:{...(o||{}),duration:op?Math.min((o&&o.duration)||220,220):0}}
+    return _an.call(this,k,o)}}
 /* 새로고침 버튼이 붙인 ?r=… 는 주소창에서 바로 지움 */
 if(/[?&]r=\d/.test(location.search))history.replaceState(history.state,"",location.pathname+location.hash);</script>
 <script>
@@ -561,6 +566,8 @@ try{if(navigator.standalone||matchMedia('(display-mode: standalone)').matches||m
   .appc .dates{margin-top:auto;padding-top:14px;border-top:1px solid var(--line);display:grid;grid-template-columns:1fr 1fr;gap:6px 14px;font-size:13px;color:var(--sub)}   /* 서류 · 면접 / 1차 · 최종 발표 2줄로 가지런히 */
   .appc .dates span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .appc .dates b{color:var(--ink);font-weight:600}
+  .appc .dates span.nx{color:var(--accent);font-weight:600}
+  .appc .dates span.nx b{color:var(--accent);font-weight:700}
   .rulebox{background:var(--chip);border-radius:14px;padding:12px 14px;display:flex;flex-direction:column;gap:4px;align-items:flex-start}
   .rulebox b{font-size:15px;line-height:1.45}
   .rulebox small{font-size:12px;color:var(--sub)}
@@ -863,7 +870,18 @@ try{if(navigator.standalone||matchMedia('(display-mode: standalone)').matches||m
 .circle .bdot{transition:transform .4s var(--spring)}
 .circle .bdot[hidden]{display:block;transform:scale(0)}
 
-@media (prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;animation-delay:0s!important;transition-duration:.01ms!important}}
+/* 동작 줄이기(기기 설정): 움직임·튕김은 없애고, 부드럽게 나타나고 사라지는 것만 남김 */
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{transition-property:opacity,color,background-color,border-color,box-shadow!important;animation-delay:0s!important}
+  @keyframes flyRise{from{opacity:0}to{opacity:1}}
+  @keyframes flySheetIn{from{opacity:0}to{opacity:1}}
+  @keyframes flyPopIn{from{opacity:0}to{opacity:1}}
+  @keyframes clkIn{from{opacity:0}to{opacity:1}}
+  @keyframes cdPop{from{opacity:0}to{opacity:1}}
+  @keyframes flySheetOut{from{opacity:1}to{opacity:0}}
+  @keyframes flyPopOut{from{opacity:1}to{opacity:0}}
+  @keyframes flyBlob{from{opacity:0;transform:translate(-50%,-50%)}to{opacity:1;transform:translate(-50%,-50%)}}
+}
 </style>
 <style>
 /* ===== 스크롤: 내용(.app)만 스크롤되고 페이지 자체는 고정 → 왼쪽 바 · 하단 메뉴는 튕길 때도 절대 안 움직임 ===== */
@@ -2290,7 +2308,8 @@ function appCard(a,label){
       <div class="label"><span class="no">${label}</span><span class="pill st ${st}">${esc(a.status)}</span></div>
       <div class="un">${esc(a.univ)}</div><div class="mj">${esc(a.major)} · ${esc(a.type)}</div>
       <div class="rule">${a.cnt?`<span class="pill cnt">모집 ${a.cnt}명</span>`:''}<span class="pill" title="${esc(minLabel(a))}">${esc(minShort(a))}</span>${ev?`<span class="pill ${ev.ok?'ok':'no'}">${ev.ok?'최저 충족':'최저 미충족'}</span>`:''}</div>
-      <div class="dates">${[['서류','doc',0],['면접','itv',1],['1차','r1',0],['발표','res',1]].map(([n,k,dd])=>`<span>${n} <b>${a[k]?fmtMD(a[k])+(dd&&ddayN(a[k])>=0?' · '+ddayTxt(ddayN(a[k])):''):'-'}</b></span>`).join('')}</div>
+      <div class="dates">${(()=>{const live=a.status!=='불합격'&&a.status!=='최종 합격', nx=live?['doc','itv','r1','res'].filter(k=>a[k]&&ddayN(a[k])>=0).sort((x,y)=>a[x].localeCompare(a[y]))[0]:null;   /* 다음 일정 하나만 강조 */
+        return [['서류','doc'],['면접','itv'],['1차','r1'],['발표','res']].map(([n,k])=>`<span${k===nx?' class="nx"':''}>${n} <b>${a[k]?fmtMD(a[k])+(k===nx?' · '+ddayTxt(ddayN(a[k])):''):'-'}</b></span>`).join('')})()}</div>
     </div>`;
 }
 function renderApps(){
@@ -2423,6 +2442,7 @@ function renderGoal(){
   sel.innerHTML=av.length?av.map(a=>`<option value="${a.id}">${esc(a.univ)} ${esc(a.major)}</option>`).join(''):`<option value="">${curApps().length?'모두 추가됨':'원서를 먼저 추가해 주세요'}</option>`;
   sel.disabled=!av.length; sel.nextElementSibling.disabled=!av.length;
 }
+const RM=matchMedia('(prefers-reduced-motion: reduce)').matches;
 const GRIP2='<svg viewBox="0 0 24 24"><path d="M4 8h16M4 12h16M4 16h16"/></svg>';
 /* 목표 대학: 오른쪽 손잡이를 잡고 끌어서 순서 바꾸기 (터치 · 마우스 모두 바로) */
 $('goalList').addEventListener('pointerdown',e=>{
@@ -2431,7 +2451,9 @@ $('goalList').addEventListener('pointerdown',e=>{
   const mv=ev=>{
     const others=[...ul.querySelectorAll('li[data-id]')].filter(r=>r!==row);
     const k=others.findIndex(r=>{const bx=r.getBoundingClientRect();return ev.clientY<bx.top+bx.height/2});
+    const r0=new Map(others.map(r=>[r,r.getBoundingClientRect().top]));
     if(k<0){if(ul.lastElementChild!==row)ul.appendChild(row)} else if(others[k]!==row.nextElementSibling) ul.insertBefore(row,others[k]);
+    others.forEach(r=>{const dy=r0.get(r)-r.getBoundingClientRect().top; if(dy&&r.animate&&!RM) r.animate([{transform:`translateY(${dy}px)`},{transform:'none'}],{duration:220,easing:'cubic-bezier(.22,1,.36,1)'})});   // 다른 줄이 스르륵 비켜남
     [...ul.querySelectorAll('li[data-id] .rk')].forEach((r,i)=>r.textContent=i+1);
   };
   const up=()=>{removeEventListener('pointermove',mv);removeEventListener('pointerup',up);removeEventListener('pointercancel',up);
