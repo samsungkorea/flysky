@@ -10,7 +10,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Fly Sky">
 <meta name="theme-color" content="#c9cfe2">
-<script>window.FLY_BUILD="2026.11.23-r116";
+<script>window.FLY_BUILD="2026.11.23-r117";
 /* 동작 줄이기: 스크립트 애니메이션(카드 비켜나기 · 달 넘기기 · 모달 열림 등)도 움직임은 빼고 투명도만 */
 if(window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches&&Element.prototype.animate){const _an=Element.prototype.animate;
   Element.prototype.animate=function(k,o){if(Array.isArray(k)&&k.some(f=>f&&('transform' in f||'height' in f||'width' in f))){const op=k.some(f=>'opacity' in f);
@@ -614,7 +614,7 @@ try{if(navigator.standalone||matchMedia('(display-mode: standalone)').matches||m
   .mhead{display:flex;align-items:center;justify-content:space-between;margin:6px 0 16px}
   .mhead h3{font-size:24px;letter-spacing:-.6px}
   .mhead .nv{display:flex;gap:6px}
-  .wk{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));font-size:12px;color:var(--sub);text-align:center;padding-bottom:8px}
+  .wk{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:4px;font-size:12px;color:var(--sub);text-align:center;padding-bottom:8px}
   .days{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:4px}
   .dc{min-width:0;width:100%;aspect-ratio:1/0.9;border-radius:14px;padding:8px;display:flex;flex-direction:column;align-items:flex-start;cursor:pointer;font-size:14px;font-weight:600;position:relative;min-height:54px}
   .dc:hover{background:var(--chip)}
