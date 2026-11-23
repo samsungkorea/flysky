@@ -10,7 +10,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Fly Sky">
 <meta name="theme-color" content="#c9cfe2">
-<script>window.FLY_BUILD="2026.11.23-r98";
+<script>window.FLY_BUILD="2026.11.23-r99";
 /* 새로고침 버튼이 붙인 ?r=… 는 주소창에서 바로 지움 */
 if(/[?&]r=\d/.test(location.search))history.replaceState(history.state,"",location.pathname+location.hash);</script>
 <script>
@@ -2224,7 +2224,7 @@ function bindPicker(a){
     const m=t&&(t.majors||[]).find(x=>x.n===M.value.trim()); if(!m) return;
     const put=(nm,v)=>{const el=f.elements[nm];if(el)el.value=v};
     put('univ',u.n); put('major',m.n); put('type',t.n+(t.cat&&t.cat!==t.n?` (${t.cat})`:''));
-    put('doc',m.doc||t.doc||''); put('itv',m.itv||t.itv||''); put('r1',m.r1||t.r1||''); put('res',m.res||t.res||'');
+    put('doc',m.doc||t.doc||''); put('itv',m.itv||t.itv||''); put('r1',m.r1||t.r1||''); put('res',m.res||t.res||''); if(f.__sync1)f.__sync1();
     const own=['min','rule','minText'].some(k=>k in m), src=own?m:t;   // 학과에 최저가 따로 적혀 있으면 그것만 (없음 포함)
     const mn=src.min||null, has=$('hasMin'), rl=src.rule||null, mt=src.minText||null;
     if(has){has.checked=false;$('minBox').style.display='none'}
@@ -2262,6 +2262,10 @@ function editApp(id){
   const clr=$('clrFut'), syncClr=()=>{const st=F.elements.status.value, has=['itv','r1','res'].some(k=>F.elements[k].value&&ddayN(F.elements[k].value)>=0);clr.style.display=st==='불합격'&&has?'':'none'};
   clr.onclick=()=>{['itv','r1','res'].forEach(k=>{const el=F.elements[k];if(el.value&&ddayN(el.value)>=0)el.value=''});F.dataset.asked='1';delete F.dataset.keep;syncClr();toast('저장하면 남은 일정이 지워져요')};
   F.elements.status.addEventListener('change',syncClr); syncClr();
+  /* 1차가 없는 전형(1차 발표일 없음)에는 '1차 합격' 상태를 빼기 — iOS는 option hidden이 안 먹어서 뺐다 넣음 */
+  const SS=F.elements.status, o1=[...SS.options].find(o=>o.value==='1차 합격'), sync1=()=>{const need=!!F.elements.r1.value||SS.value==='1차 합격';
+    if(need&&!o1.parentNode) SS.insertBefore(o1,SS.options[2]||null); else if(!need&&o1.parentNode) o1.remove()};
+  F.elements.r1.addEventListener('input',sync1); F.elements.r1.addEventListener('change',sync1); F.__sync1=sync1; sync1();
   if(a&&a.src) lockPicked(true);
   /* 직접 고치기: 잠금을 풀고 모집요강 연결을 끊음 → '직접 입력한 원서'가 됨 */
   $('unlockApp').onclick=()=>{lockPicked(false);F.dataset.unsrc='1';F.dataset.src='';if(!F.elements.rule.value&&!F.elements.minText.value)showRule(null)};
