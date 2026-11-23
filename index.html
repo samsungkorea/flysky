@@ -10,7 +10,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Fly Sky">
 <meta name="theme-color" content="#c9cfe2">
-<script>window.FLY_BUILD="2026.11.23-r78";
+<script>window.FLY_BUILD="2026.11.23-r79";
 /* 새로고침 버튼이 붙인 ?r=… 는 주소창에서 바로 지움 */
 if(/[?&]r=\d/.test(location.search))history.replaceState(history.state,"",location.pathname+location.hash);</script>
 <script>
@@ -2107,7 +2107,7 @@ function bindPicker(a){
     const mt='minText' in m?m.minText:t.minText, complex=!mn&&!!mt;
     const memo=f.elements.memo, add=x=>{if(x&&memo&&!memo.value.includes(x))memo.value=(memo.value?memo.value+'\n':'')+x};
     if(complex) add('수능 최저: '+mt);
-    add(m.note||t.note);
+    add(t.note); add(m.note);
     f.dataset.src=JSON.stringify({y:+Y.value,u:u.n,t:t.n,m:m.n});
     setMsg(`<b>${esc(u.n)} ${esc(m.n)} · ${esc(t.n)}</b> 정보를 채웠어요. 아래에서 고칠 수 있어요.`+(complex?'<br>수능 최저 기준이 자동 계산 형식과 달라 메모에 원문을 넣었어요.':''));
   }
